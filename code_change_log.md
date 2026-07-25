@@ -1,5 +1,15 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 11:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：裸 ≤5 `*石` 開前綴補上英文 open 動詞，避免 `open石` 誤關 WhatsApp。
+- **遇到的問題**：
+  - 問題1：`open石`／`play石` 落進 `endswith("石")` 被強制 `閂 whatsapp`
+  - 解決方案：bare 區塊開前綴與後段 `open_verbs` 對齊（`open|launch|start|play`）
+  - 狀態：✅ 已解決
+- **備註**：close 前綴 `s` 仍在開前綴之後，不影響。
+
 ## [2026-07-27 19:00:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py

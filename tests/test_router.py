@@ -261,6 +261,8 @@ def test_whatsapp_garbled_open_close():
         return
     for raw, expected in (
         ("開 what石", "open_profile"),
+        ("open石", "open_profile"),
+        ("play石", "open_profile"),
         ("闩 石", "close_profile"),
         ("沙锅石", "close_profile"),
         ("散木石", "close_profile"),

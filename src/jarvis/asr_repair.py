@@ -303,7 +303,7 @@ def _force_whatsapp_open_close(text: str) -> str | None:
 
     # Bare / fused STT: 沙锅石、散木石、山鍋石、闩石（整句 ≤5，含石）
     if "石" in t and len(t) <= 5 and not re.search(r"\s", t):
-        if re.match(r"^(再開|另開|多開|打開|開啟|啟動|開)", t):
+        if re.match(r"^(再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play)", t, re.I):
             return "開 whatsapp"
         if re.match(
             r"^(散|沙|傘|伞|蒜|算|山|三|閃|冂|闩|閂|關|关闭|關掉|關上|close|quit|kill|s)",
