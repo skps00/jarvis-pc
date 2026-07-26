@@ -1,0 +1,114 @@
+# Copy to profiles.yaml (gitignored) and fill real paths.
+version: 1
+defaults:
+  minecraft_launcher: prism
+  last_battlefield: null
+  restore_policy: role_layout
+allow_bare_name: false
+
+verb_kind_limits:
+  play: [game, launcher_instance]
+
+match_policy:
+  min_name_chars: 2
+  locale_hints_min_chars: 2
+  prefer_longest: true
+  locale_hints_require_verb: true
+
+restore_phrases:
+  - 還原戰場
+  - 恢復戰場
+  - 恢復上次佈局
+  - 還原桌面
+  - resume battlefield
+  - resume last
+  - restore layout
+  - restore battlefield
+
+target_modifiers:
+  - 上次
+  - 上一次
+  - last
+  - previous
+
+open_verbs:
+  - open
+  - launch
+  - start
+  - run
+  - "switch on"
+  - "swittch on"
+  - "turn on"
+  - boot
+  - play
+  - 開
+  - 啟動
+  - 打開
+  - 開啟
+  - 幫我開
+
+name_aliases:
+  mc: _default_mc
+  minecraft: _default_mc
+  "我的世界": _default_mc
+  ide: cursor
+
+profiles:
+  - id: cs2
+    display_name: Counter-Strike 2
+    kind: game
+    enabled: true
+    match:
+      names: [CS, CS2, "Counter Strike", 特戰, 反恐]
+      locale_hints: ["cs"]
+    launch:
+      type: steam_app
+      app_id: "730"
+    restore:
+      role: primary_game
+      monitor: primary
+
+  - id: mc-nfwc
+    display_name: No Flesh Within Chest
+    kind: launcher_instance
+    enabled: true
+    match:
+      names: ["No Flesh", NFWC, 胸中無肉]
+    launch:
+      type: prism_instance
+      prism_exe: "C:\\Path\\To\\prismlauncher.exe"
+      instance_id: "No_Flesh_Within_Chest-1.0.2-DIM"
+      instance_name: "No Flesh Within Chest"
+      use_as_default_mc: true
+    restore:
+      role: primary_game
+      monitor: primary
+
+  - id: cursor
+    display_name: Cursor
+    kind: app
+    enabled: true
+    match:
+      names: [Cursor, IDE, coding]
+    launch:
+      type: app_exe
+      exe: "C:\\Users\\skps9\\AppData\\Local\\Programs\\cursor\\Cursor.exe"
+    restore:
+      role: ide
+      monitor: secondary
+
+  - id: browser-main
+    display_name: Chrome
+    kind: browser_session
+    enabled: true
+    match:
+      names: [browser, 瀏覽器, Chrome, chrome]
+    launch:
+      type: browser_restore
+      browser: chrome
+      strategy: chrome_restore_last_session
+      exe: null
+      profile_directory: "Default"
+    restore:
+      role: browser
+      monitor: secondary
