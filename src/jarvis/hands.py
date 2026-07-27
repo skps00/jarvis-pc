@@ -83,18 +83,15 @@ def launch_profile(
     before_pids = _pids_for_images(track_names) if track_names else set()
     try:
         if ltype == "steam_app":
-            msg = _launch_or_close_steam(
+            msg = _launch_or_focus_steam(
                 launch,
                 display_name=profile.display_name,
                 ask_confirm=ask_confirm,
                 force_new=force_new,
                 profile_id=profile_id,
                 memory_path=memory_path,
+                monitor=str(profile.restore.get("monitor") or "") or None,
             )
-            if msg.startswith("已取消"):
-                return LaunchResult(False, msg, profile_id)
-            if msg.startswith("已關閉"):
-                return LaunchResult(True, msg, profile_id)
         elif ltype == "prism_instance":
             msg = _launch_prism(launch, force_new=force_new)
             if profile.kind == "launcher_instance":
@@ -104,20 +101,34 @@ def launch_profile(
             _touch_battlefield(registry, profile_id, memory_path)
             return LaunchResult(True, msg, profile_id)
         elif ltype == "app_exe":
-            _launch_exe(launch)
-            msg = f"{'已新開' if force_new else '已啟動'}：{profile.display_name}"
+            msg = _launch_or_focus_exe(
+                launch,
+                display_name=profile.display_name,
+                force_new=force_new,
+                monitor=str(profile.restore.get("monitor") or "") or None,
+            )
         elif ltype == "browser_restore":
-            msg = _launch_chrome_restore(launch, ask_confirm=ask_confirm, force_new=force_new)
+            msg = _launch_chrome_restore(
+                launch,
+                ask_confirm=ask_confirm,
+                force_new=force_new,
+                monitor=str(profile.restore.get("monitor") or "") or None,
+            )
             _touch_battlefield(registry, profile_id, memory_path)
             return LaunchResult(True, msg, profile_id)
         elif ltype == "app_lnk":
-            _launch_lnk(launch)
-            msg = f"{'已新開' if force_new else '已啟動'}：{profile.display_name}"
+            msg = _launch_or_focus_lnk(
+                launch,
+                display_name=profile.display_name,
+                force_new=force_new,
+                monitor=str(profile.restore.get("monitor") or "") or None,
+            )
         elif ltype == "shell_app":
             msg = _launch_or_focus_shell_app(
                 launch,
                 display_name=profile.display_name,
                 force_new=force_new,
+                monitor=str(profile.restore.get("monitor") or "") or None,
             )
         elif ltype == "script_file":
             _launch_script(launch)
@@ -304,34 +315,52 @@ def _remember_launch_pids(
     return merged
 
 
-def _launch_or_close_steam(
+def _steam_focus_needles(display_name: str) -> tuple[str, ...]:
+    """Window-title needles for Steam games (CS2 etc.)."""
+    name = (display_name or "").strip()
+    out: list[str] = []
+    if name:
+        out.append(name)
+    low = name.lower()
+    if "counter-strike" in low or name.upper() == "CS2" or "cs2" in low:
+        out.extend(["Counter-Strike 2", "Counter-Strike"])
+    # unique keep order
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for n in out:
+        k = n.lower()
+        if k not in seen:
+            seen.add(k)
+            uniq.append(n)
+    return tuple(uniq)
+
+
+def _launch_or_focus_steam(
     launch: dict,
     *,
     display_name: str,
-    ask_confirm: Callable[[str], bool] | None,
-    force_new: bool,
+    ask_confirm: Callable[[str], bool] | None = None,
+    force_new: bool = False,
     profile_id: str | None = None,
     memory_path: Path | None = None,
+    monitor: str | None = None,
 ) -> str:
-    """Launch via steam://; if already running (and not force_new) → confirm close."""
+    """Launch via steam://; if already running (and not force_new) → focus window."""
+    _ = ask_confirm, profile_id, memory_path
     names = _process_names(launch)
     if not force_new and names and _any_process_running(names):
-        prompt = f"「{display_name}」已開。確認關閉？"
-        ok = ask_confirm(prompt) if ask_confirm else False
-        if not ok:
-            return f"已取消關閉：{display_name}"
-        remembered = (
-            _alive_remembered_pids(profile_id, memory_path) if profile_id else []
-        )
-        if remembered:
-            _kill_pids(remembered)
-        else:
-            _kill_images(names)
-        if profile_id:
-            mem.clear_profile_pids(profile_id, memory_path)
-        return f"已關閉：{display_name}"
+        needles = _steam_focus_needles(display_name)
+        if needles:
+            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            if ok:
+                return f"{display_name} 已在執行；已切換至視窗{note}"
+        return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
     _launch_steam(launch)
     return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+
+
+# backward alias for tests / imports
+_launch_or_close_steam = _launch_or_focus_steam
 
 
 def _cmdline_matches_instance(cmdline: str, instance_id: str) -> bool:
@@ -464,11 +493,105 @@ def _focus_hwnd(hwnd: int) -> bool:
     return True
 
 
-def _focus_window_title_contains(*needles: str) -> tuple[bool, str]:
+def _monitor_work_areas() -> list[tuple[int, int, int, int]]:
     """
-    Focus Z-order topmost matching window.
+    Return work-area rects (left, top, right, bottom), primary first.
 
-    Returns (ok, note). note explains multi-window pick when >1 hit.
+    Soft multi-monitor support for restore.monitor.
+    """
+    if sys.platform != "win32":
+        return []
+    user32 = ctypes.windll.user32
+    areas: list[tuple[int, int, int, int]] = []
+
+    class RECT(ctypes.Structure):
+        _fields_ = [
+            ("left", wintypes.LONG),
+            ("top", wintypes.LONG),
+            ("right", wintypes.LONG),
+            ("bottom", wintypes.LONG),
+        ]
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("rcMonitor", RECT),
+            ("rcWork", RECT),
+            ("dwFlags", wintypes.DWORD),
+        ]
+
+    MonitorEnumProc = ctypes.WINFUNCTYPE(
+        wintypes.BOOL,
+        wintypes.HMONITOR,
+        wintypes.HDC,
+        ctypes.POINTER(RECT),
+        wintypes.LPARAM,
+    )
+
+    primary: list[tuple[int, int, int, int]] = []
+    others: list[tuple[int, int, int, int]] = []
+
+    def _cb(hmon, _hdc, _lprc, _lp):  # noqa: ANN001
+        info = MONITORINFO()
+        info.cbSize = ctypes.sizeof(MONITORINFO)
+        if user32.GetMonitorInfoW(hmon, ctypes.byref(info)):
+            r = info.rcWork
+            box = (int(r.left), int(r.top), int(r.right), int(r.bottom))
+            if info.dwFlags & 1:  # MONITORINFOF_PRIMARY
+                primary.append(box)
+            else:
+                others.append(box)
+        return True
+
+    user32.EnumDisplayMonitors(0, 0, MonitorEnumProc(_cb), 0)
+    return primary + others
+
+
+def _place_hwnd_on_monitor(hwnd: int, monitor: str) -> str:
+    """
+    Move window top-left onto primary/secondary work area (keep size).
+
+    Returns short note or empty.
+    """
+    if sys.platform != "win32" or not hwnd or not monitor:
+        return ""
+    which = monitor.strip().lower()
+    areas = _monitor_work_areas()
+    if not areas:
+        return ""
+    if which in ("primary", "main", "1"):
+        box = areas[0]
+        label = "主螢幕"
+    elif which in ("secondary", "second", "2", "aux"):
+        if len(areas) < 2:
+            return ""
+        box = areas[1]
+        label = "副螢幕"
+    else:
+        return ""
+    user32 = ctypes.windll.user32
+    rect = wintypes.RECT()
+    if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return ""
+    w = int(rect.right - rect.left)
+    h = int(rect.bottom - rect.top)
+    # keep on-screen: clamp size into work area
+    max_w = max(100, box[2] - box[0])
+    max_h = max(100, box[3] - box[1])
+    w = min(w, max_w)
+    h = min(h, max_h)
+    user32.MoveWindow(hwnd, box[0], box[1], w, h, True)
+    return f"；已移去{label}"
+
+
+def _focus_window_title_contains(
+    *needles: str,
+    monitor: str | None = None,
+) -> tuple[bool, str]:
+    """
+    Focus Z-order topmost matching window; optional move to monitor.
+
+    Returns (ok, note). note explains multi-window pick / monitor move.
     """
     wins = _list_windows_title_contains(*needles)
     if not wins:
@@ -479,6 +602,8 @@ def _focus_window_title_contains(*needles: str) -> tuple[bool, str]:
         short = title[:40] + ("…" if len(title) > 40 else "")
         note = f"；多窗×{len(wins)}揀最上「{short}」"
     ok = _focus_hwnd(hwnd)
+    if ok and monitor:
+        note += _place_hwnd_on_monitor(hwnd, monitor)
     return ok, note
 
 
@@ -524,6 +649,26 @@ def _launch_exe(launch: dict) -> None:
     _start_detached(args, cwd=str(cwd) if cwd else str(exe.parent))
 
 
+def _launch_or_focus_exe(
+    launch: dict,
+    *,
+    display_name: str,
+    force_new: bool = False,
+    monitor: str | None = None,
+) -> str:
+    """Launch exe; if process_names already running → focus (not second copy)."""
+    names = _process_names(launch)
+    if not force_new and names and _any_process_running(names):
+        needles = (display_name,) if display_name.strip() else ()
+        if needles:
+            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            if ok:
+                return f"{display_name} 已在執行；已切換至視窗{note}"
+        return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
+    _launch_exe(launch)
+    return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+
+
 def _launch_script(launch: dict) -> None:
     path = Path(str(launch.get("path") or ""))
     if not path.is_file():
@@ -563,11 +708,12 @@ def _launch_or_focus_shell_app(
     *,
     display_name: str,
     force_new: bool = False,
+    monitor: str | None = None,
 ) -> str:
     """Launch shell_app; if already open (and not force_new) just focus window."""
     needles = _shell_app_focus_needles(display_name)
     if not force_new and needles and _window_pids_title_contains(*needles):
-        ok, note = _focus_window_title_contains(*needles)
+        ok, note = _focus_window_title_contains(*needles, monitor=monitor)
         if ok:
             return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
@@ -579,7 +725,7 @@ def _launch_or_focus_shell_app(
     # Wait for window then focus (Store apps start slow)
     deadline = time.time() + 4.0
     while time.time() < deadline:
-        ok, note = _focus_window_title_contains(*needles)
+        ok, note = _focus_window_title_contains(*needles, monitor=monitor)
         if ok:
             return f"{'已新開' if force_new else '已啟動'}：{display_name}{note}"
         time.sleep(0.25)
@@ -598,11 +744,32 @@ def _launch_lnk(launch: dict) -> None:
     os.startfile(str(lnk))  # noqa: S606
 
 
+def _launch_or_focus_lnk(
+    launch: dict,
+    *,
+    display_name: str,
+    force_new: bool = False,
+    monitor: str | None = None,
+) -> str:
+    """Open .lnk; if process_names running → focus."""
+    names = _process_names(launch)
+    if not force_new and names and _any_process_running(names):
+        needles = (display_name,) if display_name.strip() else ()
+        if needles:
+            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            if ok:
+                return f"{display_name} 已在執行；已切換至視窗{note}"
+        return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
+    _launch_lnk(launch)
+    return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+
+
 def _launch_chrome_restore(
     launch: dict,
     ask_confirm: Callable[[str], bool] | None = None,
     *,
     force_new: bool = False,
+    monitor: str | None = None,
 ) -> str:
     """Cold-start restore, focus if running, or --new-window when force_new."""
     _ = ask_confirm
@@ -617,7 +784,9 @@ def _launch_chrome_restore(
 
     if _chrome_running():
         # ponytail: 唔問殺 process；設計＝已開只 focus。多窗揀 Z-order 最上
-        ok, note = _focus_window_title_contains("google chrome", "- chrome")
+        ok, note = _focus_window_title_contains(
+            "google chrome", "- chrome", monitor=monitor
+        )
         if ok:
             return f"Chrome 已在執行；已切換至現有視窗{note or '（多窗揀最上）'}"
         return "Chrome 已在執行；未搶到 focus（請 Alt+Tab）"

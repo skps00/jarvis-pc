@@ -14,7 +14,7 @@ from jarvis.config import Profile, Registry
 from jarvis import memory as mem
 from jarvis.hands import (
     _cmdline_matches_instance,
-    _launch_or_close_steam,
+    _launch_or_focus_steam,
     _launch_or_focus_shell_app,
     _remember_launch_pids,
     close_profile,
@@ -30,37 +30,44 @@ def test_cmdline_matches_instance():
     assert not _cmdline_matches_instance("javaw -jar other.jar", iid)
 
 
-def test_steam_toggle_close_when_running():
+def test_steam_focus_when_running():
     launch = {"type": "steam_app", "app_id": "730", "process_names": ["cs2.exe"]}
     with mock.patch("jarvis.hands._any_process_running", return_value=True):
-        with mock.patch("jarvis.hands._kill_images") as kill:
-            msg = _launch_or_close_steam(
+        with mock.patch(
+            "jarvis.hands._focus_window_title_contains", return_value=(True, "")
+        ) as focus:
+            with mock.patch("jarvis.hands._launch_steam") as launch_fn:
+                msg = _launch_or_focus_steam(
+                    launch,
+                    display_name="Counter-Strike 2",
+                    ask_confirm=lambda _p: True,
+                    force_new=False,
+                )
+    assert "已切換" in msg
+    focus.assert_called()
+    launch_fn.assert_not_called()
+
+
+def test_steam_focus_miss_when_running():
+    launch = {"type": "steam_app", "app_id": "730", "process_names": ["cs2.exe"]}
+    with mock.patch("jarvis.hands._any_process_running", return_value=True):
+        with mock.patch(
+            "jarvis.hands._focus_window_title_contains", return_value=(False, "")
+        ):
+            msg = _launch_or_focus_steam(
                 launch,
                 display_name="Counter-Strike 2",
-                ask_confirm=lambda _p: True,
+                ask_confirm=lambda _p: False,
                 force_new=False,
             )
-    assert msg.startswith("已關閉")
-    kill.assert_called_once()
+    assert "未搶到 focus" in msg
 
 
-def test_steam_toggle_cancel():
-    launch = {"type": "steam_app", "app_id": "730", "process_names": ["cs2.exe"]}
-    with mock.patch("jarvis.hands._any_process_running", return_value=True):
-        msg = _launch_or_close_steam(
-            launch,
-            display_name="Counter-Strike 2",
-            ask_confirm=lambda _p: False,
-            force_new=False,
-        )
-    assert msg.startswith("已取消")
-
-
-def test_steam_force_new_skips_close():
+def test_steam_force_new_skips_focus():
     launch = {"type": "steam_app", "app_id": "730", "process_names": ["cs2.exe"]}
     with mock.patch("jarvis.hands._any_process_running", return_value=True):
         with mock.patch("jarvis.hands._launch_steam") as launch_fn:
-            msg = _launch_or_close_steam(
+            msg = _launch_or_focus_steam(
                 launch,
                 display_name="Counter-Strike 2",
                 ask_confirm=lambda _p: True,
@@ -182,9 +189,9 @@ def test_shell_app_launches_when_not_running():
 
 if __name__ == "__main__":
     test_cmdline_matches_instance()
-    test_steam_toggle_close_when_running()
-    test_steam_toggle_cancel()
-    test_steam_force_new_skips_close()
+    test_steam_focus_when_running()
+    test_steam_focus_miss_when_running()
+    test_steam_force_new_skips_focus()
     test_memory_profile_pids_roundtrip()
     test_remember_launch_pids_merges()
     test_close_prefers_remembered_pids()

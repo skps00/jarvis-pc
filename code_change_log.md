@@ -1,5 +1,121 @@
 # 代碼變更與問題日誌
 
+## [2026-07-28 01:42:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, src/jarvis/wake.py
+- **變更摘要**：聽候 CD 5s → 2s。
+- **遇到的問題**：
+  - 問題1：CD 太長
+  - 解決方案：WAKE_CD_SECONDS／_POST_RESUME_S＝2
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 01:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py
+- **變更摘要**：審核開／focus：清 steam 死分支；app_exe／app_lnk 已開改 focus。
+- **遇到的問題**：
+  - 問題1：steam focus 後仍判斷「已關閉／已取消」
+  - 解決方案：刪死碼
+  - 狀態：✅ 已解決
+  - 問題2：Cursor 等 app_exe 已開會再 launch 一份
+  - 解決方案：有 process_names 且在跑 → focus display_name
+  - 狀態：✅ 已解決
+- **備註**：brain「無開動詞→改關」仍係設計風險（STT 漏「開」會變關）。
+
+## [2026-07-28 01:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py
+- **變更摘要**：Steam 已開改 focus 視窗，唔再問「確認關閉」。
+- **遇到的問題**：
+  - 問題1：開 CS2 已運行 → 彈「已開。確認關閉？」；用戶要 focus
+  - 解決方案：`_launch_or_focus_steam` 對齊 shell_app／Chrome
+  - 狀態：✅ 已解決
+- **備註**：關 CS 仍用「關／閂」動詞走 close_profile。
+
+## [2026-07-28 01:32:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, src/jarvis/wake.py
+- **變更摘要**：錄音顯示 REC n；指令後顯示聽候 CD n（5s）至就緒。
+- **遇到的問題**：
+  - 問題1：用戶問 CD
+  - 解決方案：大字 CD 倒數對齊 debounce／post-resume
+  - 狀態：✅ 已解決
+- **備註**：REC＝錄音；CD＝聽候冷卻。
+
+## [2026-07-28 01:30:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py
+- **變更摘要**：錄音大字倒數 timer（4→1）；日誌每秒一筆；結束隱藏。
+- **遇到的問題**：
+  - 問題1：用戶想見到錄音 timer
+  - 解決方案：獨立大 Label + status／title／tray 同步
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 01:25:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：防狂錄：邊沿觸發（分數要跌先再醒）＋恢復後 4s 冷卻＋UI 5s debounce。
+- **遇到的問題**：
+  - 問題1：醒完又即刻再醒 → 不停錄音
+  - 解決方案：armed 要 score<_REARM_BELOW；post-resume cooldown；shell 5s 略過
+  - 狀態：✅ 已解決（待再測）
+- **備註**：—
+
+## [2026-07-28 01:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, tests/test_wake.py
+- **變更摘要**：聽候打回簡易版：拆 model.reset／連幀／STT；門檻 0.5；_fire 即 pause；忙緊略過要 clear pause。
+- **遇到的問題**：
+  - 問題1：加嚴＋reset 後完全唔醒
+  - 解決方案：OWW 單幀 0.5；唔 reset；唔再開 STT wake；防 pause 死鎖
+  - 狀態：✅ 已解決（待再測）
+- **備註**：穩優先於減誤觸。
+
+## [2026-07-28 01:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, src/jarvis/wake.py
+- **變更摘要**：修「只醒一次」：listen／submit 必定 finally 清 busy＋pause；恢復時 model.reset。
+- **遇到的問題**：
+  - 問題1：語音執行中拋錯或中途 return → pause 永遠 set → 聽候死
+  - 解決方案：work() 統一 finally busy=False；pause.clear 唔再依賴 _wake_on；OWW reset 後重開 mic
+  - 狀態：✅ 已解決（待再測）
+- **備註**：日誌應見每次指令後「聽候恢復」。
+
+## [2026-07-28 01:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, tests/test_wake.py
+- **變更摘要**：聽候聽唔到 → 門檻 0.55、連 2 幀、關 VAD、恢復嚴格 STT 後備。
+- **遇到的問題**：
+  - 問題1：0.68＋VAD＋3 幀太嚴，Hey Jarvis 唔觸
+  - 解決方案：降門檻／幀數；移除 vad_threshold；無自訂 onnx 時開短句 STT
+  - 狀態：✅ 已解決（待再測）
+- **備註**：誤觸同漏聽要夾；仍漏再降至 0.5。
+
+## [2026-07-28 00:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, tests/test_wake.py
+- **變更摘要**：減 Hey Jarvis 誤觸：門檻 0.68、連 3 幀、3s cooldown、關 STT wake、VAD／RMS gate。
+- **遇到的問題**：
+  - 問題1：hey jarvis 背景誤觸
+  - 解決方案：提高 threshold；連續幀確認；預設唔再用 SenseVoice 當 wake；短靜音略過
+  - 狀態：✅ 已解決（待用戶再測）
+- **備註**：漏聽↑換準；仍漏可略降 `DEFAULT_THRESHOLD`（唔好低過 0.55）。
+
+## [2026-07-28 00:10:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{wake,hands,shell_app}.py, docs/train_wake_jarvis.md
+- **變更摘要**：英文 Jarvis OWW：自訂 onnx 目錄、門檻調低；soft 多螢幕 restore.monitor 移窗。
+- **遇到的問題**：
+  - 問題1：自訓要 Colab／GPU，本機難一次跑完
+  - 解決方案：文件教 Colab；下載後放 `%APPDATA%\\Jarvis\\wake\\jarvis.onnx` 自動載入並關 STT 後備
+  - 狀態：✅ 已解決（訓練本身交用戶 Colab）
+  - 問題2：多螢幕只記 yaml、唔搬窗
+  - 解決方案：focus 後 `_place_hwnd_on_monitor`（primary／secondary）
+  - 狀態：✅ 已解決
+- **備註**：PR #4 已 merge；本變更在 feature/wake-jarvis-oww-monitor。
+
 ## [2026-07-27 23:45:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
