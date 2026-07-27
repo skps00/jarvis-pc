@@ -1,5 +1,28 @@
 # 代碼變更與問題日誌
 
+## [2026-07-28 07:05:00] 操作類型：修改 | 新增
+
+- **文件路徑**：src/jarvis/{autostart,__main__}.py, tests/test_autostart.py, code_change_log.md
+- **變更摘要**：修 autostart：legacy .cmd 算已啟用；disable 淨清 .cmd 唔再誤報；status 警告舊腳本；加單測。
+- **遇到的問題**：
+  - 問題1：開機彈 CMD（Startup JARVIS.cmd + python.exe）
+  - 解決方案：改 silent VBS + pythonw；enable 清舊 cmd
+  - 狀態：✅ 已解決
+  - 問題2：disable 只剩 .cmd 時會講「本來就未開啟」
+  - 解決方案：先記 had_vbs/had_cmd 再刪
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 07:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/autostart.py
+- **變更摘要**：開機自啟改寫 silent `JARVIS.vbs`（pythonw，WindowStyle=0）；清舊 `JARVIS.cmd`。
+- **遇到的問題**：
+  - 問題1：重開機 Jarvis 跟住彈 CMD
+  - 解決方案：Startup 唔再用 `python.exe` 嘅 `.cmd`；改 VBS + pythonw
+  - 狀態：✅ 已解決
+- **備註**：跑一次 `python -m jarvis autostart on` 覆寫 Startup。
+
 ## [2026-07-28 01:50:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/{brain,hands,wake}.py, tests/test_brain.py, docs/train_wake_jarvis.md
