@@ -114,6 +114,7 @@ def run_wake_loop(
     on_detect: Callable[[], None],
     *,
     threshold: float = DEFAULT_THRESHOLD,
+    post_resume_s: float | None = None,
     stop_event: threading.Event | None = None,
     pause_event: threading.Event | None = None,
     text_wake: bool | None = None,
@@ -124,6 +125,7 @@ def run_wake_loop(
     After a hit, must see score drop below _REARM_BELOW before next hit.
     """
     _ = text_wake
+    resume_s = float(_POST_RESUME_S if post_resume_s is None else post_resume_s)
     try:
         import numpy as np
         import sounddevice as sd
@@ -177,7 +179,7 @@ def run_wake_loop(
             break
         # after command: hold off + require re-arm from low scores
         armed = False
-        cool_until = time.time() + _POST_RESUME_S
+        cool_until = time.time() + resume_s
         time.sleep(0.4)
         if pause.is_set():
             continue

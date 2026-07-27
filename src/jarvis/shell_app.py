@@ -1,4 +1,4 @@
-"""System tray + small command window + Ctrl+Alt+J hotkey."""
+"""System tray + small command window + Ctrl+Alt+J hotkey + settings."""
 
 from __future__ import annotations
 
@@ -6,14 +6,27 @@ import queue
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, ttk
 
 from jarvis.engine import execute_utterance
+from jarvis.settings import (
+    ASR_OPENAI_AUDIO,
+    ASR_SENSEVOICE,
+    LLM_PRESET_CUSTOM,
+    LLM_PRESET_DEEPSEEK,
+    LLM_PRESET_OLLAMA,
+    PRESET_LABELS,
+    Settings,
+    apply_llm_preset,
+    list_models,
+    load_settings,
+    preset_from_label,
+    probe_connection,
+    save_settings,
+    uses_cloud_asr,
+)
 
 HOTKEY = "<ctrl>+<alt>+j"
-RECORD_SECONDS = 4
-# 聽候 CD（同 debounce／wake post-resume 對齊）
-WAKE_CD_SECONDS = 2
 
 
 def _make_icon_image(*, recording: bool = False):
@@ -29,13 +42,455 @@ def _make_icon_image(*, recording: bool = False):
     return img
 
 
+class SettingsWindow:
+    """
+    Settings UI — tabs like OpenClaw/Cherry; provider→model like Hermes;
+    connection probe like Cherry「檢測」.
+    """
+
+    def __init__(self, parent: JarvisShell) -> None:
+        self.parent = parent
+        self.win = tk.Toplevel(parent.root)
+        self.win.title("JARVIS 設定")
+        self.win.geometry("540x520+100+60")
+        self.win.attributes("-topmost", True)
+        self.win.transient(parent.root)
+
+        from jarvis.brain import _load_dotenv
+
+        _load_dotenv()
+        s = load_settings(force=True)
+        self._custom = list(s.custom_models)
+
+        nb = ttk.Notebook(self.win)
+        nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        tab_asr = tk.Frame(nb, padx=8, pady=8)
+        tab_llm = tk.Frame(nb, padx=8, pady=8)
+        tab_sys = tk.Frame(nb, padx=8, pady=8)
+        nb.add(tab_asr, text="語音 ASR")
+        nb.add(tab_llm, text="大腦 LLM")
+        nb.add(tab_sys, text="聽候／系統")
+
+        self._build_asr_tab(tab_asr, s)
+        self._build_llm_tab(tab_llm, s)
+        self._build_sys_tab(tab_sys, s)
+
+        btn = tk.Frame(self.win)
+        btn.pack(fill=tk.X, padx=8, pady=(0, 8))
+        tk.Label(
+            btn,
+            text="存檔 → %APPDATA%\\Jarvis\\settings.json",
+            fg="#666",
+            font=("Segoe UI", 8),
+        ).pack(side=tk.LEFT)
+        tk.Button(btn, text="取消", command=self.win.destroy).pack(side=tk.RIGHT, padx=4)
+        tk.Button(btn, text="儲存", command=self._save).pack(side=tk.RIGHT)
+
+        self._sync_asr_cloud_visibility()
+        self.win.grab_set()
+        self.win.focus_force()
+
+    def _build_asr_tab(self, frm: tk.Frame, s: Settings) -> None:
+        asr_val = (
+            ASR_OPENAI_AUDIO
+            if s.asr_provider in (ASR_OPENAI_AUDIO, "mimo")
+            else ASR_SENSEVOICE
+        )
+        self.var_asr = tk.StringVar(
+            value=(
+                f"{ASR_SENSEVOICE}（本機）"
+                if asr_val == ASR_SENSEVOICE
+                else f"{ASR_OPENAI_AUDIO}（雲端）"
+            )
+        )
+        tk.Label(frm, text="供應商", font=("Segoe UI", 10, "bold")).grid(
+            row=0, column=0, sticky="w", pady=4
+        )
+        cmb = ttk.Combobox(
+            frm,
+            textvariable=self.var_asr,
+            values=(
+                f"{ASR_SENSEVOICE}（本機）",
+                f"{ASR_OPENAI_AUDIO}（雲端）",
+            ),
+            state="readonly",
+            width=36,
+        )
+        cmb.grid(row=0, column=1, columnspan=2, sticky="ew", pady=4)
+        cmb.bind("<<ComboboxSelected>>", lambda _e: self._sync_asr_cloud_visibility())
+
+        self._asr_cloud = tk.Frame(frm)
+        self._asr_cloud.grid(row=1, column=0, columnspan=3, sticky="ew")
+
+        self.var_asr_key = tk.StringVar(value=s.asr_api_key or s.mimo_api_key)
+        self.var_asr_base = tk.StringVar(value=s.asr_base_url or s.mimo_base_url)
+        self.var_asr_model = tk.StringVar(value=s.asr_model)
+
+        r = 0
+        tk.Label(self._asr_cloud, text="API Key").grid(row=r, column=0, sticky="w", pady=2)
+        tk.Entry(self._asr_cloud, textvariable=self.var_asr_key, width=36, show="*").grid(
+            row=r, column=1, columnspan=2, sticky="ew", pady=2
+        )
+        r += 1
+        tk.Label(self._asr_cloud, text="Base URL").grid(row=r, column=0, sticky="w", pady=2)
+        tk.Entry(self._asr_cloud, textvariable=self.var_asr_base, width=36).grid(
+            row=r, column=1, columnspan=2, sticky="ew", pady=2
+        )
+        r += 1
+        tk.Label(self._asr_cloud, text="Model").grid(row=r, column=0, sticky="w", pady=2)
+        self.cmb_asr_model = ttk.Combobox(
+            self._asr_cloud,
+            textvariable=self.var_asr_model,
+            values=self._model_choices(s.asr_model),
+            width=28,
+        )
+        self.cmb_asr_model.grid(row=r, column=1, sticky="ew", pady=2)
+        tk.Button(self._asr_cloud, text="列出", command=self._list_asr_models).grid(
+            row=r, column=2, padx=2
+        )
+        r += 1
+        tk.Button(self._asr_cloud, text="檢測連線", command=self._probe_asr).grid(
+            row=r, column=1, sticky="w", pady=6
+        )
+        tk.Label(
+            self._asr_cloud,
+            text="Hermes 式：Key／Base → 列出 → 揀 Model（MiMo＝openai_audio）",
+            fg="#666",
+            font=("Segoe UI", 8),
+            wraplength=420,
+            justify="left",
+        ).grid(row=r + 1, column=0, columnspan=3, sticky="w")
+        self._asr_cloud.columnconfigure(1, weight=1)
+        frm.columnconfigure(1, weight=1)
+
+    def _build_llm_tab(self, frm: tk.Frame, s: Settings) -> None:
+        preset_id = s.llm_preset or LLM_PRESET_DEEPSEEK
+        self.var_preset_label = tk.StringVar(
+            value=PRESET_LABELS.get(preset_id, PRESET_LABELS[LLM_PRESET_CUSTOM])
+        )
+        tk.Label(frm, text="供應商 Preset", font=("Segoe UI", 10, "bold")).grid(
+            row=0, column=0, sticky="w", pady=4
+        )
+        cmb = ttk.Combobox(
+            frm,
+            textvariable=self.var_preset_label,
+            values=tuple(
+                PRESET_LABELS[p] for p in ("deepseek", "mimo", "ollama", "custom")
+            ),
+            state="readonly",
+            width=36,
+        )
+        cmb.grid(row=0, column=1, columnspan=2, sticky="ew", pady=4)
+        cmb.bind("<<ComboboxSelected>>", self._on_preset)
+
+        self.var_llm_key = tk.StringVar(value=s.llm_api_key)
+        self.var_llm_base = tk.StringVar(value=s.llm_base_url)
+        self.var_llm_model = tk.StringVar(value=s.llm_model)
+
+        row = 1
+        tk.Label(frm, text="API Key").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_llm_key, width=36, show="*").grid(
+            row=row, column=1, columnspan=2, sticky="ew", pady=2
+        )
+        row += 1
+        tk.Label(frm, text="Base URL").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_llm_base, width=36).grid(
+            row=row, column=1, columnspan=2, sticky="ew", pady=2
+        )
+        row += 1
+        tk.Label(frm, text="Model").grid(row=row, column=0, sticky="w", pady=2)
+        self.cmb_llm_model = ttk.Combobox(
+            frm,
+            textvariable=self.var_llm_model,
+            values=self._model_choices(s.llm_model),
+            width=28,
+        )
+        self.cmb_llm_model.grid(row=row, column=1, sticky="ew", pady=2)
+        tk.Button(frm, text="列出", command=self._list_llm_models).grid(
+            row=row, column=2, padx=2
+        )
+        row += 1
+        tk.Button(frm, text="檢測連線", command=self._probe_llm).grid(
+            row=row, column=1, sticky="w", pady=4
+        )
+        row += 1
+
+        self.var_custom_new = tk.StringVar()
+        tk.Label(frm, text="自訂模型").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_custom_new, width=28).grid(
+            row=row, column=1, sticky="ew", pady=2
+        )
+        tk.Button(frm, text="加入", command=self._add_custom_model).grid(
+            row=row, column=2, padx=2
+        )
+        row += 1
+        tk.Label(
+            frm,
+            text="Ollama 例：http://127.0.0.1:11434/v1｜對齊 Codex／Claude Code 揀 model id",
+            fg="#666",
+            font=("Segoe UI", 8),
+            wraplength=420,
+            justify="left",
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=4)
+        frm.columnconfigure(1, weight=1)
+
+    def _build_sys_tab(self, frm: tk.Frame, s: Settings) -> None:
+        self.var_thresh = tk.StringVar(value=str(s.wake_threshold))
+        self.var_cd = tk.StringVar(value=str(s.wake_cd_seconds))
+        self.var_rec = tk.StringVar(value=str(s.record_seconds))
+        row = 0
+        for label, var in (
+            ("Wake 門檻 (0.1–0.99)", self.var_thresh),
+            ("聽候 CD 秒", self.var_cd),
+            ("錄音秒數", self.var_rec),
+        ):
+            tk.Label(frm, text=label).grid(row=row, column=0, sticky="w", pady=4)
+            tk.Entry(frm, textvariable=var, width=20).grid(
+                row=row, column=1, sticky="w", pady=4
+            )
+            row += 1
+
+        from jarvis import autostart as auto
+
+        self.var_auto = tk.BooleanVar(value=auto.is_enabled())
+        tk.Checkbutton(frm, text="開機自啟（無黑窗 VBS）", variable=self.var_auto).grid(
+            row=row, column=0, columnspan=2, sticky="w", pady=8
+        )
+        row += 1
+        tk.Label(
+            frm,
+            text="profiles.yaml／TTS 未喺呢度改。",
+            fg="#666",
+            font=("Segoe UI", 8),
+        ).grid(row=row, column=0, columnspan=2, sticky="w")
+
+    def _asr_provider_id(self) -> str:
+        raw = self.var_asr.get()
+        if ASR_OPENAI_AUDIO in raw:
+            return ASR_OPENAI_AUDIO
+        return ASR_SENSEVOICE
+
+    def _sync_asr_cloud_visibility(self) -> None:
+        if self._asr_provider_id() == ASR_OPENAI_AUDIO:
+            self._asr_cloud.grid()
+        else:
+            self._asr_cloud.grid_remove()
+
+    def _model_choices(self, current: str) -> tuple[str, ...]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for m in [current, *self._custom]:
+            name = (m or "").strip()
+            if name and name.lower() not in seen:
+                seen.add(name.lower())
+                out.append(name)
+        return tuple(out)
+
+    def _refresh_model_combos(self) -> None:
+        self.cmb_asr_model.configure(values=self._model_choices(self.var_asr_model.get()))
+        self.cmb_llm_model.configure(values=self._model_choices(self.var_llm_model.get()))
+
+    def _on_preset(self, _evt=None) -> None:
+        pid = preset_from_label(self.var_preset_label.get())
+        tmp = Settings(
+            llm_preset=pid,
+            llm_api_key=self.var_llm_key.get(),
+            llm_base_url=self.var_llm_base.get(),
+            llm_model=self.var_llm_model.get(),
+        )
+        apply_llm_preset(tmp, pid)
+        self.var_llm_base.set(tmp.llm_base_url)
+        if tmp.llm_api_key and not self.var_llm_key.get().strip():
+            self.var_llm_key.set(tmp.llm_api_key)
+
+    def _list_asr_models(self) -> None:
+        self._list_into(
+            self.var_asr_base.get(),
+            self.var_asr_key.get(),
+            self.var_asr_model,
+            self.cmb_asr_model,
+        )
+
+    def _list_llm_models(self) -> None:
+        self._list_into(
+            self.var_llm_base.get(),
+            self.var_llm_key.get(),
+            self.var_llm_model,
+            self.cmb_llm_model,
+        )
+
+    def _probe_asr(self) -> None:
+        self._run_net(
+            "ASR 檢測",
+            lambda: probe_connection(self.var_asr_base.get(), self.var_asr_key.get()),
+        )
+
+    def _probe_llm(self) -> None:
+        self._run_net(
+            "LLM 檢測",
+            lambda: probe_connection(self.var_llm_base.get(), self.var_llm_key.get()),
+        )
+
+    def _run_net(self, title: str, fn) -> None:
+        """Run blocking HTTP off the Tk thread (avoid freeze)."""
+
+        def work() -> None:
+            try:
+                msg = fn()
+            except RuntimeError as exc:
+                err = str(exc)
+                self.win.after(
+                    0,
+                    lambda t=title, e=err: messagebox.showerror(
+                        f"{t}失敗", e, parent=self.win
+                    ),
+                )
+                return
+            ok = str(msg)
+            self.win.after(
+                0,
+                lambda t=title, m=ok: messagebox.showinfo(t, m, parent=self.win),
+            )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _list_into(
+        self,
+        base: str,
+        key: str,
+        model_var: tk.StringVar,
+        combo: ttk.Combobox,
+    ) -> None:
+        def work() -> None:
+            try:
+                ids = list_models(base, key)
+            except RuntimeError as exc:
+                err = str(exc)
+                self.win.after(
+                    0,
+                    lambda e=err: messagebox.showerror(
+                        "列模型失敗", e, parent=self.win
+                    ),
+                )
+                return
+
+            def apply() -> None:
+                merged: list[str] = []
+                seen: set[str] = set()
+                for m in [*self._custom, *ids, model_var.get()]:
+                    name = (m or "").strip()
+                    if name and name.lower() not in seen:
+                        seen.add(name.lower())
+                        merged.append(name)
+                combo.configure(values=tuple(merged))
+                if model_var.get().strip() not in merged and merged:
+                    model_var.set(merged[0])
+                messagebox.showinfo(
+                    "模型列表",
+                    f"API {len(ids)} 個 + 自訂 {len(self._custom)}。請喺下拉揀要用嘅。",
+                    parent=self.win,
+                )
+
+            self.win.after(0, apply)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _add_custom_model(self) -> None:
+        name = self.var_custom_new.get().strip()
+        if not name:
+            return
+        low = name.lower()
+        if not any(c.lower() == low for c in self._custom):
+            self._custom.append(name)
+        self.var_custom_new.set("")
+        self.var_llm_model.set(name)
+        self._refresh_model_combos()
+        messagebox.showinfo("自訂模型", f"已加入並選用：{name}", parent=self.win)
+
+    def _save(self) -> None:
+        asr = self._asr_provider_id()
+        if asr == ASR_OPENAI_AUDIO and not self.var_asr_key.get().strip():
+            messagebox.showwarning(
+                "JARVIS 設定",
+                "雲端 ASR 請填 API Key。",
+                parent=self.win,
+            )
+            return
+        preset = preset_from_label(self.var_preset_label.get())
+        if preset == LLM_PRESET_OLLAMA and not self.var_llm_key.get().strip():
+            self.var_llm_key.set("ollama")
+        try:
+            thresh = float(self.var_thresh.get().strip())
+            cd = float(self.var_cd.get().strip())
+            rec = float(self.var_rec.get().strip())
+        except ValueError:
+            messagebox.showerror(
+                "JARVIS 設定", "門檻／CD／錄音秒數要係數字。", parent=self.win
+            )
+            return
+        if not (0.1 <= thresh <= 0.99):
+            messagebox.showerror(
+                "JARVIS 設定", "Wake 門檻要喺 0.1–0.99。", parent=self.win
+            )
+            return
+        if not (0.5 <= cd <= 30.0):
+            messagebox.showerror(
+                "JARVIS 設定", "聽候 CD 要喺 0.5–30 秒。", parent=self.win
+            )
+            return
+        if not (1.0 <= rec <= 15.0):
+            messagebox.showerror(
+                "JARVIS 設定", "錄音秒數要喺 1–15。", parent=self.win
+            )
+            return
+
+        asr_key = self.var_asr_key.get().strip()
+        asr_base = self.var_asr_base.get().strip()
+        s = Settings(
+            asr_provider=asr,
+            asr_api_key=asr_key,
+            asr_base_url=asr_base,
+            asr_model=self.var_asr_model.get().strip(),
+            mimo_api_key=asr_key,
+            mimo_base_url=asr_base,
+            llm_preset=preset,
+            llm_api_key=self.var_llm_key.get().strip(),
+            llm_base_url=self.var_llm_base.get().strip(),
+            llm_model=self.var_llm_model.get().strip(),
+            custom_models=list(self._custom),
+            wake_threshold=thresh,
+            wake_cd_seconds=cd,
+            record_seconds=rec,
+        )
+        path = save_settings(s)
+
+        from jarvis import autostart as auto
+
+        want_auto = bool(self.var_auto.get())
+        auto_msg = ""
+        try:
+            if want_auto:
+                auto_msg = auto.enable()
+            elif auto.is_enabled():
+                auto_msg = auto.disable()
+        except OSError as exc:
+            auto_msg = f"開機自啟失敗：{exc}"
+
+        self.parent.apply_settings(s, restart_wake=True)
+        self.parent.append_log(f"[ok] 設定已存：{path}")
+        if auto_msg:
+            self.parent.append_log(f"[ok] {auto_msg}")
+        self.win.destroy()
+
+
 class JarvisShell:
     """Tk command panel + optional tray; hotkey shows the panel."""
 
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("JARVIS · 就緒")
-        self.root.geometry("440x380+80+80")
+        self.root.geometry("440x400+80+80")
         self.root.attributes("-topmost", True)
         # ponytail: withdraw until hotkey — reduces focus steal when idle
         self.root.withdraw()
@@ -52,6 +507,12 @@ class JarvisShell:
         self._last_wake_ts = 0.0
         self._cd_left = 0
         self._timer_mode = ""  # "rec" | "cd" | ""
+        self._settings_win: SettingsWindow | None = None
+
+        cfg = load_settings()
+        self._record_seconds = int(round(cfg.record_seconds))
+        self._wake_cd = float(cfg.wake_cd_seconds)
+        self._wake_threshold = float(cfg.wake_threshold)
 
         frm = tk.Frame(self.root, padx=8, pady=8)
         frm.pack(fill=tk.BOTH, expand=True)
@@ -92,10 +553,48 @@ class JarvisShell:
         self.btn_listen.pack(side=tk.LEFT, padx=6)
         self.btn_wake = tk.Button(btn_row, text="聽候：關", command=self._toggle_wake)
         self.btn_wake.pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_row, text="設定", command=self.open_settings).pack(
+            side=tk.LEFT, padx=6
+        )
         tk.Button(btn_row, text="隱藏", command=self.hide).pack(side=tk.LEFT, padx=6)
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.root.after(100, self._drain_queue)
+
+    def apply_settings(self, s: Settings, *, restart_wake: bool = False) -> None:
+        """Apply runtime knobs from Settings (after save)."""
+        was_wake = bool(self._wake_on)
+        self._record_seconds = max(1, int(round(s.record_seconds)))
+        self._wake_cd = float(s.wake_cd_seconds)
+        self._wake_threshold = float(s.wake_threshold)
+        self.append_log(
+            f"[ok] 已套用：ASR={s.asr_provider} REC={self._record_seconds}s "
+            f"CD={self._wake_cd}s thr={self._wake_threshold}"
+        )
+        # Must join old wake thread before start — else start_wake early-returns
+        # and listening stays off (common settings-restart race).
+        if restart_wake and was_wake:
+            self.stop_wake()
+            if self._wake_thread is not None and self._wake_thread.is_alive():
+                self.append_log("[warn] 聽候重啟失敗（舊線程未結束）；門檻可能未套用")
+            else:
+                self.start_wake()
+                # Settings stays clickable while busy; don't steal mic mid-record.
+                if self._busy:
+                    self._wake_pause.set()
+
+    def open_settings(self) -> None:
+        """Open settings Toplevel (one at a time)."""
+        if self._settings_win is not None:
+            try:
+                if self._settings_win.win.winfo_exists():
+                    self._settings_win.win.lift()
+                    self._settings_win.win.focus_force()
+                    return
+            except tk.TclError:
+                pass
+        self.request_show()
+        self._settings_win = SettingsWindow(self)
 
     def set_status(self, text: str, *, kind: str = "idle") -> None:
         """Update status bar + window title (UI thread)."""
@@ -149,7 +648,7 @@ class JarvisShell:
             self._wake_pause.clear()
             if self._wake_on:
                 self.append_log("[ok] 聽候 CD 開始")
-                self._start_wake_cd(WAKE_CD_SECONDS)
+                self._start_wake_cd(int(round(self._wake_cd)))
 
     def _ask_confirm(self, prompt: str) -> bool:
         return bool(messagebox.askyesno("JARVIS 確認", prompt, parent=self.root))
@@ -227,11 +726,11 @@ class JarvisShell:
             self.append_log("[ok] 聽候就緒")
 
     def _on_listen(self) -> None:
-        """Record with visible countdown, then SenseVoice → execute."""
+        """Record with visible countdown, then ASR → execute."""
         if self._busy:
             return
         self._set_busy(True)
-        secs = RECORD_SECONDS
+        secs = self._record_seconds
         self.append_log(f"[ear] 錄音 {secs}s — 倒數開始，請講短指令")
         self._countdown_left = secs
         self._show_timer(secs, mode="rec")
@@ -242,18 +741,25 @@ class JarvisShell:
             path = None
             try:
                 from jarvis.config import load_registry
-                from jarvis.ear import record_wav, transcribe_wav
+                from jarvis.ear import record_wav, transcribe_path
+                from jarvis.settings import load_settings
 
-                path = record_wav(seconds=float(RECORD_SECONDS))
+                cfg = load_settings()
+                path = record_wav(seconds=float(self._record_seconds))
                 self._ui_queue.put(("timer_hide", None))
-                self._ui_queue.put(("status", ("● 辨識中（首次下載模型會較久）…", "busy")))
+                status_msg = (
+                    f"● 辨識中（{cfg.asr_model}）…"
+                    if uses_cloud_asr(cfg)
+                    else "● 辨識中（首次下載模型會較久）…"
+                )
+                self._ui_queue.put(("status", (status_msg, "busy")))
                 registry = load_registry()
                 hot = []
                 for p in registry.profiles.values():
                     hot.extend(p.names)
                     hot.extend(p.locale_hints)
-                text = transcribe_wav(path, language="yue", hotwords=hot)
-                self._ui_queue.put(("log", f"[ear] raw={text!r}"))
+                text = transcribe_path(path, language="yue", hotwords=hot)
+                self._ui_queue.put(("log", f"[ear] raw={text!r} ({cfg.asr_provider})"))
                 if not text.strip():
                     self._ui_queue.put(("log", "[fail] 無辨識文字"))
                     self._ui_queue.put(("status", ("● 無辨識文字", "fail")))
@@ -327,6 +833,8 @@ class JarvisShell:
                     self.show()
                 elif kind == "toggle":
                     self.toggle()
+                elif kind == "settings":
+                    self.open_settings()
                 elif kind == "log":
                     self.append_log(str(payload))
                 elif kind == "status":
@@ -339,10 +847,9 @@ class JarvisShell:
                 elif kind == "wake":
                     self.request_show()
                     now = time.time()
-                    # UI debounce：5 秒內唔好再開錄音
-                    if now - self._last_wake_ts < float(WAKE_CD_SECONDS):
+                    if now - self._last_wake_ts < float(self._wake_cd):
                         self._wake_pause.clear()
-                        left = max(0, int(WAKE_CD_SECONDS - (now - self._last_wake_ts)))
+                        left = max(0, int(self._wake_cd - (now - self._last_wake_ts)))
                         self.append_log(f"[warn] 聽候略過（CD {left}s）")
                     elif self._busy:
                         self._wake_pause.clear()
@@ -376,6 +883,10 @@ class JarvisShell:
         """Called from hotkey thread to toggle visibility."""
         self._ui_queue.put(("toggle", None))
 
+    def request_settings(self) -> None:
+        """Open settings from tray thread."""
+        self._ui_queue.put(("settings", None))
+
     def start_hotkey(self) -> None:
         """Listen for Ctrl+Alt+J in a background thread."""
         try:
@@ -403,12 +914,16 @@ class JarvisShell:
         def on_show(icon, item) -> None:  # noqa: ARG001
             self.request_show()
 
+        def on_settings(icon, item) -> None:  # noqa: ARG001
+            self.request_settings()
+
         def on_quit(icon, item) -> None:  # noqa: ARG001
             icon.stop()
             self.root.after(0, self.root.destroy)
 
         menu = pystray.Menu(
             pystray.MenuItem("開啟 JARVIS", on_show, default=True),
+            pystray.MenuItem("設定", on_settings),
             pystray.MenuItem("結束", on_quit),
         )
         icon = pystray.Icon("jarvis", _make_icon_image(), "JARVIS · 就緒", menu)
@@ -437,6 +952,8 @@ class JarvisShell:
         self._wake_pause.clear()
         self._wake_on = True
         self.btn_wake.configure(text="聽候：開")
+        thr = float(self._wake_threshold)
+        cd = float(self._wake_cd)
 
         def on_detect() -> None:
             self._ui_queue.put(("wake", None))
@@ -446,11 +963,13 @@ class JarvisShell:
                 self._ui_queue.put(
                     (
                         "log",
-                        "[ok] 聽候中 — Hey Jarvis（邊沿觸發，唔會連錄）",
+                        f"[ok] 聽候中 — Hey Jarvis（thr={thr} CD={cd}s）",
                     )
                 )
                 run_wake_loop(
                     on_detect,
+                    threshold=thr,
+                    post_resume_s=cd,
                     stop_event=self._wake_stop,
                     pause_event=self._wake_pause,
                 )
@@ -458,14 +977,21 @@ class JarvisShell:
                 self._ui_queue.put(("log", f"[fail] 聽候錯誤：{exc}"))
                 self._ui_queue.put(("wake_off", None))
 
-        self._wake_thread = threading.Thread(target=work, daemon=True)
+        self._wake_thread = threading.Thread(target=work, daemon=True, name="jarvis-wake")
         self._wake_thread.start()
 
-    def stop_wake(self) -> None:
-        """Stop wake loop and release mic."""
+    def stop_wake(self, *, join_timeout: float = 2.5) -> None:
+        """Stop wake loop, join thread, release mic."""
         self._wake_on = False
         self._wake_stop.set()
         self._wake_pause.set()
+        t = self._wake_thread
+        if t is not None and t.is_alive() and t is not threading.current_thread():
+            t.join(timeout=join_timeout)
+        if t is not None and t.is_alive():
+            self.append_log("[warn] 聽候線程未及時結束")
+        elif t is not None:
+            self._wake_thread = None
         self.btn_wake.configure(text="聽候：關")
         self.append_log("[ok] 聽候已關")
 
@@ -476,7 +1002,12 @@ class JarvisShell:
         self.request_show()
         self.set_status("● 就緒（背景運行中）", kind="idle")
         self.append_log("JARVIS Shell 就緒。輸入 open CS2 / 開 Cursor …")
-        self.append_log("提示：講 Hey Jarvis → 自動錄音；或撳「語音」。")
+        self.append_log("提示：講 Hey Jarvis → 自動錄音；或撳「語音」／「設定」。")
+        cfg = load_settings()
+        self.append_log(
+            f"[ok] 設定：ASR={cfg.asr_provider} REC={self._record_seconds}s "
+            f"CD={self._wake_cd}s"
+        )
         self.start_wake()
         self.root.mainloop()
         self.stop_wake()

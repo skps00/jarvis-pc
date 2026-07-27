@@ -1,8 +1,12 @@
-"""Ear: short mic capture → SenseVoice (local) → text."""
+"""Ear: short mic capture → SenseVoice (local) or MiMo cloud ASR → text."""
 
 from __future__ import annotations
 
+import base64
+import json
 import tempfile
+import urllib.error
+import urllib.request
 import wave
 from pathlib import Path
 
@@ -147,11 +151,134 @@ def transcribe_wav(
     return _strip_sensevoice_tags(text)
 
 
-def listen_once(seconds: float = DEFAULT_SECONDS, *, language: str = "yue") -> str:
-    """Record then transcribe; deletes temp wav afterwards."""
-    path = record_wav(seconds=seconds)
+def transcribe_mimo(
+    path: Path,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    model: str | None = None,
+    language: str = "auto",
+) -> str:
+    """Alias for transcribe_openai_audio (legacy name)."""
+    return transcribe_openai_audio(
+        path, api_key=api_key, base_url=base_url, model=model, language=language
+    )
+
+
+def transcribe_openai_audio(
+    path: Path,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    model: str | None = None,
+    language: str = "auto",
+) -> str:
+    """
+    Transcribe wav via OpenAI-compatible chat/completions + input_audio.
+
+    Used by Xiaomi MiMo ASR and any API with the same shape.
+    """
+    from jarvis.settings import (
+        DEFAULT_ASR_MODEL,
+        DEFAULT_MIMO_BASE,
+        load_settings,
+        openai_chat_url,
+    )
+
+    s = load_settings()
+    key = (api_key if api_key is not None else s.asr_api_key or s.mimo_api_key).strip()
+    if not key:
+        raise RuntimeError("未設定 ASR API Key（設定頁）")
+    base = (base_url if base_url is not None else s.asr_base_url or s.mimo_base_url).rstrip(
+        "/"
+    )
+    if not base:
+        base = DEFAULT_MIMO_BASE
+    mid = (model if model is not None else s.asr_model).strip() or DEFAULT_ASR_MODEL
+    raw_bytes = Path(path).read_bytes()
+    b64 = base64.b64encode(raw_bytes).decode("ascii")
+    data_url = f"data:audio/wav;base64,{b64}"
+    url = openai_chat_url(base)
+    body = {
+        "model": mid,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": data_url},
+                    }
+                ],
+            }
+        ],
+        "asr_options": {"language": language or "auto"},
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {key}",
+            "api-key": key,
+        },
+        method="POST",
+    )
     try:
-        return transcribe_wav(path, language=language)
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+        except Exception:
+            pass
+        raise RuntimeError(f"ASR HTTP {exc.code}: {detail or exc.reason}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"ASR 連線失敗：{exc.reason}") from exc
+
+    choices = payload.get("choices") or []
+    if not choices:
+        return ""
+    msg = choices[0].get("message") or {}
+    content = msg.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                parts.append(str(part.get("text") or ""))
+            elif isinstance(part, str):
+                parts.append(part)
+        return "".join(parts).strip()
+    return str(content or "").strip()
+
+
+def transcribe_path(
+    path: Path,
+    *,
+    language: str = "yue",
+    hotwords: list[str] | None = None,
+) -> str:
+    """Route to SenseVoice or cloud openai_audio per settings.asr_provider."""
+    from jarvis.settings import ASR_OPENAI_AUDIO, load_settings, uses_cloud_asr
+
+    s = load_settings()
+    if uses_cloud_asr(s) or s.asr_provider == ASR_OPENAI_AUDIO:
+        return transcribe_openai_audio(path, language="auto")
+    return transcribe_wav(path, language=language, hotwords=hotwords)
+
+
+def listen_once(seconds: float | None = None, *, language: str = "yue") -> str:
+    """Record then transcribe (provider from settings); deletes temp wav."""
+    from jarvis.settings import load_settings
+
+    if seconds is None:
+        seconds = float(load_settings().record_seconds)
+    path = record_wav(seconds=float(seconds))
+    try:
+        return transcribe_path(path, language=language)
     finally:
         try:
             path.unlink(missing_ok=True)
