@@ -24,6 +24,11 @@ ear = [
   "torch>=2.0.0",
   "torchaudio>=2.0.0",
 ]
+wake = [
+  "jarvis-pc[ear]",
+  "openwakeword>=0.6.0,<0.7",
+  "onnxruntime>=1.16.0,<2",
+]
 
 [project.scripts]
 jarvis = "jarvis.__main__:main"

@@ -294,8 +294,9 @@ def apply_learned_alias(
     text: str,
     *,
     memory_path: Path | None = None,
+    static_aliases: dict[str, str] | None = None,
 ) -> tuple[str, str | None]:
-    """Replace app_query (or bare token) using learned stt_aliases."""
+    """Replace app_query (or bare token) using memory then static stt_aliases."""
     from jarvis import memory as mem
 
     t = (text or "").strip()
@@ -305,7 +306,7 @@ def apply_learned_alias(
     slots = parse_command_slots(t)
     if slots:
         prefix, core = _split_force_new_prefix(slots.app_query)
-        hit = mem.get_stt_alias(core, memory_path)
+        hit = mem.get_stt_alias(core, memory_path, static=static_aliases)
         if hit and _norm(hit) != _norm(core):
             new_q = f"{prefix} {hit}".strip() if prefix else hit
             new = f"{slots.verb} {new_q}"
@@ -313,7 +314,7 @@ def apply_learned_alias(
         return t, None
 
     # bare token
-    hit = mem.get_stt_alias(t, memory_path)
+    hit = mem.get_stt_alias(t, memory_path, static=static_aliases)
     if hit and _norm(hit) != _norm(t):
         return hit, f"alias：{t!r} → {hit!r}"
     return t, None
@@ -344,7 +345,11 @@ def rewrite_command_target(
     if not core:
         return t, None
 
-    aliased = mem.get_stt_alias(core, memory_path)
+    aliased = mem.get_stt_alias(
+        core,
+        memory_path,
+        static=registry.stt_aliases if registry else None,
+    )
     if aliased and _norm(aliased) != _norm(core):
         new_target = f"{prefix} {aliased}".strip() if prefix else aliased
         new = f"{verb} {new_target}"

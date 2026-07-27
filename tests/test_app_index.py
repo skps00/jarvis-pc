@@ -97,6 +97,26 @@ def test_alias_roundtrip_skips_fuzzy():
         assert note2 and "alias" in note2
 
 
+def test_static_stt_alias_from_registry():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "memory.json"
+        static = {"沙锅石": "WhatsApp"}
+        text, note = apply_learned_alias(
+            "開 沙锅石", memory_path=path, static_aliases=static
+        )
+        assert text == "開 WhatsApp"
+        assert note and "alias" in note
+
+
+def test_list_clear_stt_aliases():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "memory.json"
+        mem.learn_stt_alias("abc", "WhatsApp", path)
+        assert mem.list_stt_aliases(path)
+        mem.clear_stt_aliases(path)
+        assert mem.list_stt_aliases(path) == {}
+
+
 def test_pair_score_max():
     assert pair_score("whatsapp", "WhatsApp") == 100.0
 
@@ -136,6 +156,8 @@ if __name__ == "__main__":
     test_parse_command_slots()
     test_rewrite_open_target()
     test_alias_roundtrip_skips_fuzzy()
+    test_static_stt_alias_from_registry()
+    test_list_clear_stt_aliases()
     test_pair_score_max()
     test_short_query_blocks_sentence_label()
     test_asr_bare_app_autoprefix_open()

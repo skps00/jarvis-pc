@@ -405,59 +405,17 @@ def _minecraft_instance_running(instance_id: str) -> bool:
     return any(_cmdline_matches_instance(line, instance_id) for line in _java_command_lines())
 
 
-def _focus_window_title_contains(*needles: str) -> bool:
-    """Bring first visible window whose title contains any needle (Windows)."""
-    if sys.platform != "win32" or not needles:
-        return False
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-    hits = [n.lower() for n in needles if n]
-    found = False
+def _list_windows_title_contains(*needles: str) -> list[tuple[int, str, int]]:
+    """
+    Visible windows matching title needles, Z-order top→bottom.
 
-    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-    def _enum(hwnd, _lparam):  # noqa: ANN001
-        nonlocal found
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        length = user32.GetWindowTextLengthW(hwnd) + 1
-        buf = ctypes.create_unicode_buffer(length)
-        user32.GetWindowTextW(hwnd, buf, length)
-        title = buf.value.lower()
-        if any(n in title for n in hits):
-            # ponytail: 只最小化先 SW_RESTORE；否則會把全螢幕／最大化拆成細窗
-            if user32.IsIconic(hwnd):
-                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-            else:
-                user32.ShowWindow(hwnd, 5)  # SW_SHOW
-            user32.BringWindowToTop(hwnd)
-            # Background agents often blocked from SetForegroundWindow — attach FG thread
-            fg = user32.GetForegroundWindow()
-            if fg:
-                tid_fg = user32.GetWindowThreadProcessId(fg, None)
-                tid_self = kernel32.GetCurrentThreadId()
-                if tid_fg and tid_self and tid_fg != tid_self:
-                    user32.AttachThreadInput(tid_self, tid_fg, True)
-                    user32.SetForegroundWindow(hwnd)
-                    user32.AttachThreadInput(tid_self, tid_fg, False)
-                else:
-                    user32.SetForegroundWindow(hwnd)
-            else:
-                user32.SetForegroundWindow(hwnd)
-            found = True
-            return False
-        return True
-
-    user32.EnumWindows(_enum, 0)
-    return found
-
-
-def _window_pids_title_contains(*needles: str) -> list[int]:
-    """Collect visible window owner PIDs whose title contains any needle."""
+    Each item: (hwnd, title, pid).
+    """
     if sys.platform != "win32" or not needles:
         return []
     user32 = ctypes.windll.user32
     hits = [n.lower() for n in needles if n]
-    out: set[int] = set()
+    out: list[tuple[int, str, int]] = []
 
     @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
     def _enum(hwnd, _lparam):  # noqa: ANN001
@@ -466,17 +424,73 @@ def _window_pids_title_contains(*needles: str) -> list[int]:
         length = user32.GetWindowTextLengthW(hwnd) + 1
         buf = ctypes.create_unicode_buffer(length)
         user32.GetWindowTextW(hwnd, buf, length)
-        title = buf.value.lower()
-        if not title or not any(n in title for n in hits):
+        title = buf.value
+        if not title or not any(n in title.lower() for n in hits):
             return True
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         if int(pid.value) > 0:
-            out.add(int(pid.value))
+            out.append((int(hwnd), title, int(pid.value)))
         return True
 
     user32.EnumWindows(_enum, 0)
-    return sorted(out)
+    return out
+
+
+def _focus_hwnd(hwnd: int) -> bool:
+    """Bring one hwnd to foreground (Windows)."""
+    if sys.platform != "win32" or not hwnd:
+        return False
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    # ponytail: 只最小化先 SW_RESTORE；否則會把全螢幕／最大化拆成細窗
+    if user32.IsIconic(hwnd):
+        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    else:
+        user32.ShowWindow(hwnd, 5)  # SW_SHOW
+    user32.BringWindowToTop(hwnd)
+    fg = user32.GetForegroundWindow()
+    if fg:
+        tid_fg = user32.GetWindowThreadProcessId(fg, None)
+        tid_self = kernel32.GetCurrentThreadId()
+        if tid_fg and tid_self and tid_fg != tid_self:
+            user32.AttachThreadInput(tid_self, tid_fg, True)
+            user32.SetForegroundWindow(hwnd)
+            user32.AttachThreadInput(tid_self, tid_fg, False)
+        else:
+            user32.SetForegroundWindow(hwnd)
+    else:
+        user32.SetForegroundWindow(hwnd)
+    return True
+
+
+def _focus_window_title_contains(*needles: str) -> tuple[bool, str]:
+    """
+    Focus Z-order topmost matching window.
+
+    Returns (ok, note). note explains multi-window pick when >1 hit.
+    """
+    wins = _list_windows_title_contains(*needles)
+    if not wins:
+        return False, ""
+    hwnd, title, _pid = wins[0]
+    note = ""
+    if len(wins) > 1:
+        short = title[:40] + ("…" if len(title) > 40 else "")
+        note = f"；多窗×{len(wins)}揀最上「{short}」"
+    ok = _focus_hwnd(hwnd)
+    return ok, note
+
+
+def _window_pids_title_contains(*needles: str) -> list[int]:
+    """Collect visible window owner PIDs whose title contains any needle."""
+    seen: set[int] = set()
+    out: list[int] = []
+    for _hwnd, _title, pid in _list_windows_title_contains(*needles):
+        if pid not in seen:
+            seen.add(pid)
+            out.append(pid)
+    return out
 
 
 def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
@@ -490,8 +504,9 @@ def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
 
     if not force_new and _minecraft_instance_running(instance_id):
         needles = [instance_name, "Minecraft", instance_id.replace("_", " ")]
-        if _focus_window_title_contains(*needles):
-            return f"Minecraft（{instance_name}）已在執行；已切換至遊戲視窗"
+        ok, note = _focus_window_title_contains(*needles)
+        if ok:
+            return f"Minecraft（{instance_name}）已在執行；已切換至遊戲視窗{note}"
         return f"Minecraft（{instance_name}）已在執行；未搶到 focus（請 Alt+Tab）"
 
     _start_detached([str(exe), "--launch", instance_id], cwd=str(exe.parent))
@@ -552,8 +567,9 @@ def _launch_or_focus_shell_app(
     """Launch shell_app; if already open (and not force_new) just focus window."""
     needles = _shell_app_focus_needles(display_name)
     if not force_new and needles and _window_pids_title_contains(*needles):
-        if _focus_window_title_contains(*needles):
-            return f"{display_name} 已在執行；已切換至視窗"
+        ok, note = _focus_window_title_contains(*needles)
+        if ok:
+            return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
 
     _launch_shell_app(launch)
@@ -563,8 +579,9 @@ def _launch_or_focus_shell_app(
     # Wait for window then focus (Store apps start slow)
     deadline = time.time() + 4.0
     while time.time() < deadline:
-        if _focus_window_title_contains(*needles):
-            return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+        ok, note = _focus_window_title_contains(*needles)
+        if ok:
+            return f"{'已新開' if force_new else '已啟動'}：{display_name}{note}"
         time.sleep(0.25)
     return f"{'已新開' if force_new else '已啟動'}：{display_name}（未搶到 focus）"
 
@@ -599,12 +616,10 @@ def _launch_chrome_restore(
         return "已開新 Chrome 視窗（--new-window）"
 
     if _chrome_running():
-        # ponytail: 唔問殺 process；設計＝已開只 focus。多窗唔問邊個，focus Z-order 最上
-        if _focus_window_title_contains("google chrome", "- chrome"):
-            return (
-                "Chrome 已在執行；已切換至現有視窗"
-                "（多窗時唔問邊個，focus 最上層嗰個）"
-            )
+        # ponytail: 唔問殺 process；設計＝已開只 focus。多窗揀 Z-order 最上
+        ok, note = _focus_window_title_contains("google chrome", "- chrome")
+        if ok:
+            return f"Chrome 已在執行；已切換至現有視窗{note or '（多窗揀最上）'}"
         return "Chrome 已在執行；未搶到 focus（請 Alt+Tab）"
 
     _start_detached([str(chrome), "--restore-last-session"])
@@ -774,7 +789,11 @@ def close_profile(
         except OSError as exc:
             return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
         mem.clear_profile_pids(profile_id, memory_path)
-        return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+        return LaunchResult(
+            True,
+            f"已關閉：{profile.display_name}（Prism java ×{len(pids)}）",
+            profile_id,
+        )
 
     remembered = _alive_remembered_pids(profile_id, memory_path)
     names = _close_process_names(profile)
@@ -791,7 +810,11 @@ def close_profile(
         except OSError as exc:
             return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
         mem.clear_profile_pids(profile_id, memory_path)
-        return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+        return LaunchResult(
+            True,
+            f"已關閉：{profile.display_name}（記住 PID ×{len(remembered)}）",
+            profile_id,
+        )
 
     # shell_app fallback: process name may differ (Store/UWP wrapper)
     if ltype == "shell_app":
@@ -809,7 +832,11 @@ def close_profile(
             except OSError as exc:
                 return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
             mem.clear_profile_pids(profile_id, memory_path)
-            return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+            return LaunchResult(
+                True,
+                f"已關閉：{profile.display_name}（視窗標題 ×{len(pids)}）",
+                profile_id,
+            )
 
     if not names:
         return LaunchResult(
@@ -830,7 +857,11 @@ def close_profile(
     except OSError as exc:
         return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
     mem.clear_profile_pids(profile_id, memory_path)
-    return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+    return LaunchResult(
+        True,
+        f"已關閉：{profile.display_name}（process_names：{', '.join(names)}）",
+        profile_id,
+    )
 
 
 def _resolve_lnk_target(lnk: str | Path) -> Path | None:

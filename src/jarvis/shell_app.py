@@ -41,6 +41,10 @@ class JarvisShell:
         self._hotkey_listener = None
         self._busy = False
         self._countdown_left = 0
+        self._wake_stop = threading.Event()
+        self._wake_pause = threading.Event()
+        self._wake_thread: threading.Thread | None = None
+        self._wake_on = False
 
         frm = tk.Frame(self.root, padx=8, pady=8)
         frm.pack(fill=tk.BOTH, expand=True)
@@ -68,6 +72,8 @@ class JarvisShell:
         self.btn_send.pack(side=tk.LEFT)
         self.btn_listen = tk.Button(btn_row, text="語音", command=self._on_listen)
         self.btn_listen.pack(side=tk.LEFT, padx=6)
+        self.btn_wake = tk.Button(btn_row, text="聽候：關", command=self._toggle_wake)
+        self.btn_wake.pack(side=tk.LEFT, padx=6)
         tk.Button(btn_row, text="隱藏", command=self.hide).pack(side=tk.LEFT, padx=6)
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
@@ -118,6 +124,11 @@ class JarvisShell:
         self.btn_send.configure(state=state)
         self.btn_listen.configure(state=state)
         self.entry.configure(state=state)
+        # free mic for SenseVoice while busy; resume wake after
+        if busy:
+            self._wake_pause.set()
+        elif self._wake_on:
+            self._wake_pause.clear()
 
     def _ask_confirm(self, prompt: str) -> bool:
         return bool(messagebox.askyesno("JARVIS 確認", prompt, parent=self.root))
@@ -255,6 +266,13 @@ class JarvisShell:
                     self.set_status(text, kind=st)
                 elif kind == "busy":
                     self._set_busy(bool(payload))
+                elif kind == "wake":
+                    self.request_show()
+                    if not self._busy:
+                        self._on_listen()
+                elif kind == "wake_off":
+                    self._wake_on = False
+                    self.btn_wake.configure(text="聽候：關")
         except queue.Empty:
             pass
         self.root.after(100, self._drain_queue)
@@ -318,6 +336,54 @@ class JarvisShell:
         threading.Thread(target=icon.run, daemon=True).start()
         self._ui_queue.put(("log", "[ok] 系統匣已啟動（藍點＝運行中；紅點＝錄音中）"))
 
+    def _toggle_wake(self) -> None:
+        """UI toggle for hey_jarvis listen."""
+        if self._wake_on:
+            self.stop_wake()
+        else:
+            self.start_wake()
+
+    def start_wake(self) -> None:
+        """Background hey_jarvis → auto 語音."""
+        from jarvis.wake import wake_available, run_wake_loop
+
+        if self._wake_thread and self._wake_thread.is_alive():
+            return
+        if not wake_available():
+            self.append_log('[warn] 聽候未裝：pip install "jarvis-pc[wake]"')
+            self.btn_wake.configure(text="聽候：缺")
+            return
+        self._wake_stop.clear()
+        self._wake_pause.clear()
+        self._wake_on = True
+        self.btn_wake.configure(text="聽候：開")
+
+        def on_detect() -> None:
+            self._ui_queue.put(("wake", None))
+
+        def work() -> None:
+            try:
+                self._ui_queue.put(("log", "[ok] 聽候中 — Hey Jarvis 或 Jarvis（英）"))
+                run_wake_loop(
+                    on_detect,
+                    stop_event=self._wake_stop,
+                    pause_event=self._wake_pause,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._ui_queue.put(("log", f"[fail] 聽候錯誤：{exc}"))
+                self._ui_queue.put(("wake_off", None))
+
+        self._wake_thread = threading.Thread(target=work, daemon=True)
+        self._wake_thread.start()
+
+    def stop_wake(self) -> None:
+        """Stop wake loop and release mic."""
+        self._wake_on = False
+        self._wake_stop.set()
+        self._wake_pause.set()
+        self.btn_wake.configure(text="聽候：關")
+        self.append_log("[ok] 聽候已關")
+
     def run(self) -> None:
         """Block on Tk mainloop."""
         self.start_hotkey()
@@ -325,8 +391,10 @@ class JarvisShell:
         self.request_show()
         self.set_status("● 就緒（背景運行中）", kind="idle")
         self.append_log("JARVIS Shell 就緒。輸入 open CS2 / 開 Cursor …")
-        self.append_log("提示：撳「語音」會倒數 3 秒；系統匣藍＝運行、紅＝錄音。")
+        self.append_log("提示：講 Hey Jarvis → 自動錄音；或撳「語音」。")
+        self.start_wake()
         self.root.mainloop()
+        self.stop_wake()
         if self._hotkey_listener is not None:
             try:
                 self._hotkey_listener.stop()

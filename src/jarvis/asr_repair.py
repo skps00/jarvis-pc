@@ -420,20 +420,23 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
         if re.search(pat, t, flags=re.I):
             t = re.sub(pat, good, t, flags=re.I)
     t = _BROWSER_BAU_SAA.sub("browser", t)
-    # Learned aliases before force hacks (slots: verb + app_query)
+    # Force MC/Discord/WhatsApp garbles BEFORE alias（沙锅石 唔好被 learn 成裸 WhatsApp→開）
+    forced = _force_close_known(t)
+    if forced:
+        t = forced
+    # Learned / yaml aliases (slots: verb + app_query)
     alias_note = None
     try:
         from jarvis.app_index import apply_learned_alias
 
-        aliased, alias_note = apply_learned_alias(t)
+        aliased, alias_note = apply_learned_alias(
+            t, static_aliases=registry.stt_aliases
+        )
         if alias_note:
             t = normalize_utterance(aliased)
     except Exception:
         alias_note = None
 
-    forced = _force_close_known(t)
-    if forced:
-        t = forced
     t = normalize_utterance(t)
 
     # 對本機 app 索引做拼寫／粵拼近匹配（開／關 目標）+ learn alias

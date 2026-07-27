@@ -81,14 +81,37 @@ def _alias_key(raw: str) -> str:
     return re.sub(r"\s+", "", (raw or "").strip().lower())
 
 
-def get_stt_alias(raw: str, path: Path | None = None) -> str | None:
-    """Look up learned STT alias for a garbled app token."""
+def get_stt_alias(
+    raw: str,
+    path: Path | None = None,
+    *,
+    static: dict[str, str] | None = None,
+) -> str | None:
+    """Look up STT alias: memory first, then static (profiles.yaml)."""
     key = _alias_key(raw)
     if len(key) < 2:
         return None
     store = load_memory(path).get("stt_aliases") or {}
     val = store.get(key)
-    return str(val).strip() if val else None
+    if val:
+        return str(val).strip()
+    if static:
+        # keys may already be normalized, or raw yaml keys
+        hit = static.get(key) or static.get(raw.strip().lower())
+        if hit:
+            return str(hit).strip()
+        for sk, sv in static.items():
+            if _alias_key(sk) == key:
+                return str(sv).strip()
+    return None
+
+
+def list_stt_aliases(path: Path | None = None) -> dict[str, str]:
+    """Return copy of learned stt_aliases (insertion order)."""
+    store = load_memory(path).get("stt_aliases") or {}
+    if not isinstance(store, dict):
+        return {}
+    return {str(k): str(v) for k, v in store.items()}
 
 
 def learn_stt_alias(

@@ -6,6 +6,16 @@ defaults:
   restore_policy: role_layout
 allow_bare_name: false
 
+# Static STT garbles → canonical（memory.json learned overrides these）
+# 唔放 沙/散/山*石：嗰啲靠 asr_repair force（沙≈關）
+stt_aliases:
+  爱锅石: WhatsApp
+  愛鍋石: WhatsApp
+  what石: WhatsApp
+  wat石: WhatsApp
+  锅石: WhatsApp
+  鍋石: WhatsApp
+
 verb_kind_limits:
   play: [game, launcher_instance]
   還原: [browser_session]
