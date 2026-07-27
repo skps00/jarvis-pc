@@ -293,28 +293,40 @@ def _force_close_discord(text: str) -> str | None:
 
 def _force_whatsapp_open_close(text: str) -> str | None:
     """
-    Garbled WhatsApp (what石 / 山殼石 / 闩 石) -> canonical 開/閂 whatsapp.
+    Garbled WhatsApp (what石 / 山殼石 / 沙锅石 / 散木石) → 開/閂 whatsapp.
 
-    Heuristic keeps scope tight: short target + has 石/whatsapp-like token.
+    Heuristic: short utterance with 石, or verb+short target with 石/whatsapp token.
     """
     t = normalize_utterance(text)
     if not t:
         return None
-    m = re.match(
-        r"^(再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play|關閉|關掉|關上|關|閂|close|quit|kill|闩|山)\s+(.+)$",
-        t,
-        re.I,
+
+    # Bare / fused STT: 沙锅石、散木石、山鍋石、闩石（整句 ≤5，含石）
+    if "石" in t and len(t) <= 5 and not re.search(r"\s", t):
+        if re.match(r"^(再開|另開|多開|打開|開啟|啟動|開)", t):
+            return "開 whatsapp"
+        if re.match(
+            r"^(散|沙|傘|伞|蒜|算|山|三|閃|冂|闩|閂|關|关闭|關掉|關上|close|quit|kill|s)",
+            t,
+            re.I,
+        ):
+            return "閂 whatsapp"
+        # whole-token garble ending 石 (锅石／木石／what石)
+        if re.search(r"(what|wat|鍋|锅|殼|壳|木).{0,2}石$|^石$", t, re.I) or t.endswith("石"):
+            # ponytail: this SenseVoice family almost always close WhatsApp
+            return "閂 whatsapp"
+
+    close_verbs = (
+        r"關閉|關掉|關上|關|閂|close|quit|kill|闩|山|散|沙|傘|伞|蒜|算|三|閃|冂"
     )
+    open_verbs = r"再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play"
+    m = re.match(rf"^({open_verbs}|{close_verbs})\s+(.+)$", t, re.I)
     if m:
         verb = m.group(1)
         target = m.group(2).strip()
     else:
-        # no-space STT form: 山殼石 / 闩石 / 開what石
-        m2 = re.match(
-            r"^(開|關|閂|闩|山)(.+)$",
-            t,
-            re.I,
-        )
+        # no-space: 山殼石 / 闩石 / 散木石 / 開what石
+        m2 = re.match(rf"^({open_verbs}|{close_verbs})(.+)$", t, re.I)
         if not m2:
             return None
         verb = m2.group(1)
@@ -325,7 +337,7 @@ def _force_whatsapp_open_close(text: str) -> str | None:
         return None
     if not _WHATSAPP_LIKE.search(target):
         return None
-    if re.match(r"^(關閉|關掉|關上|關|閂|close|quit|kill|闩|山)$", verb, re.I):
+    if re.match(rf"^({close_verbs})$", verb, re.I):
         return "閂 whatsapp"
     return "開 whatsapp"
 
