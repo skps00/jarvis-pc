@@ -14,6 +14,7 @@ python -m pip install -e .
 
 python -m jarvis -c "開 Cursor"
 python -m jarvis serve
+# 或雙擊 JARVIS.vbs（無黑窗）；JARVIS.bat 同效果
 
 # 開機自啟
 python -m jarvis autostart on
@@ -31,10 +32,17 @@ python -m jarvis listen 3
 |------|------|
 | 規則開場 | `open`／`開`／倒裝／STT 錯字動詞 |
 | 新開 | `再開 X`／`開 new X`／`開新視窗 X` → 強制再開（Chrome=`--new-window`）；`開個 X` 只係普通開 |
-| 電源 | `關機`／`睡眠`／`shutdown`／`sleep` → **先確認**再執行 |
+| Steam 遊戲 | 已開再講「開」→ **確認後關閉**（`process_names`）；`再開` 仍強制 launch |
+| 關閉 | `關 CS`／`閂 MC`／`close Cursor` → **先確認**再關 |
+| 重開 | `restart CS`／`重開 CS`／`重啟 Chrome` → **確認**後關再開 |
+| 電源 | `關機`／`睡眠`／`重啟電腦`／`reboot` → **先確認**再執行 |
 | Chrome 還原 | `--restore-last-session`；已開則 focus；多窗冷開請用選單「結束」 |
 | Discover | 未知 `open xxx` → 開始功能表／Steam／Prism → 確認後寫入 profiles |
-| 查詢 | `幫我查…` 只字幕（LLM 稍後） |
+| 查詢／歧義 | 小 LLM（`.env`：`JARVIS_LLM_*`，預設 DeepSeek）；Hands 仍只信白名單 |
 | Ear | SenseVoice `yue`（需 `[ear]`） |
+
+```powershell
+copy .env.example .env   # 填 JARVIS_LLM_API_KEY=
+```
 
 見 [REMINDERS.md](REMINDERS.md)。

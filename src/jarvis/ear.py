@@ -88,6 +88,10 @@ def _hotword_string(extra: list[str] | None = None) -> str | None:
         "Minecraft",
         "開",
         "打開",
+        "關",
+        "閂",
+        "關閉",
+        "重開",
         "還原",
     ]
     if extra:

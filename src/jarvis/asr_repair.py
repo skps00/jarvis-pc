@@ -28,6 +28,15 @@ _CONFUSIONS: tuple[tuple[str, str], ...] = (
     ("再看", "再開"),  # ponytail: STT 常見；真「再看」指令極少
     ("令開", "另開"),
     ("亮開", "另開"),
+    # 閂／minecraft 常見 STT 變體（SenseVoice 成日寫錯字）
+    ("冂", "閂"),
+    ("闩", "閂"),
+    ("閞", "閂"),
+    ("macraft", "minecraft"),
+    ("ma craft", "minecraft"),
+    ("mycraft", "minecraft"),
+    ("mine craft", "minecraft"),
+    ("my craft", "minecraft"),
     ("開线", "開 CS"),
     ("开线", "開 CS"),
     ("開線", "開 CS"),
@@ -77,6 +86,23 @@ _FILLER = re.compile(
 _TRAIL_PARTICLES = re.compile(r"[嘅的了啦呀哦喔咧咯唓]+")
 # SenseVoice 常把 browser 寫成「包+沙系」；第二字每次漂
 _BROWSER_BAU_SAA = re.compile(r"包[耍刷搜沙洒灑紗莎啥撒傻廈厦]")
+_CLOSE_HINT = re.compile(
+    r"(閂|冂|闩|散|傘|伞|蒜|算|山|三|關閉|關掉|關上|\bclose\b|\bquit\b|\bkill\b|(?<![再另多重新])關)",
+    re.I,
+)
+# SenseVoice 常把「閂」(saan) 聽成散／s／三…；後接 MC 別名 → 強制關
+_MC_LIKE = re.compile(
+    r"(my\s*craft|macraft|mycraft|minecraft|\bmc\b|我的世界)",
+    re.I,
+)
+_SAAN_CLOSE_PREFIX = re.compile(
+    r"^(散|傘|伞|蒜|算|山|三|閃|冂|闩|閂|關|关闭|關掉|關上|san|saan|s|打)(?:\s+|$)",
+    re.I,
+)
+_CLEAR_OPEN_PREFIX = re.compile(
+    r"^(再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play|run)\b",
+    re.I,
+)
 _OPEN_PREFIX = re.compile(
     r"^(再開|另開|多開|開|打开|打開|開啟|啟動|open|launch|start|play)\s+(.+)$",
     re.I,
@@ -95,7 +121,14 @@ _TARGET_ALIASES: tuple[tuple[re.Pattern[str], str], ...] = (
 
 
 def _usable(intent_kind: str) -> bool:
-    return intent_kind in ("open_profile", "restore_battlefield", "query")
+    return intent_kind in (
+        "open_profile",
+        "close_profile",
+        "restart_profile",
+        "restore_battlefield",
+        "query",
+        "system_power",
+    )
 
 
 def _all_names(registry: Registry) -> list[str]:
@@ -125,6 +158,15 @@ def _command_templates(registry: Registry) -> list[str]:
         "再開",
         "另開",
         "多開",
+        "關",
+        "關閉",
+        "關掉",
+        "閂",
+        "close",
+        "quit",
+        "restart",
+        "重開",
+        "重啟",
     ]
     names = _all_names(registry)
     out: list[str] = []
@@ -198,6 +240,22 @@ def _fix_open_target(text: str, registry: Registry) -> str | None:
     return _rebuild_open(verb, best, mod)
 
 
+def _force_close_mc(text: str) -> str | None:
+    """If STT garbled 閂 + Minecraft target, force canonical close command."""
+    t = text.strip()
+    if not _MC_LIKE.search(t):
+        return None
+    if _CLEAR_OPEN_PREFIX.match(t):
+        return None
+    if _SAAN_CLOSE_PREFIX.match(t) or _CLOSE_HINT.search(t):
+        return "閂 minecraft"
+    # 「s my craft」／無動詞只得 mc 名：唔亂猜開
+    # 單字母／單字 + mc → 當閂
+    if re.match(r"^[a-zA-Z]{1,2}\s+", t) and _MC_LIKE.search(t):
+        return "閂 minecraft"
+    return None
+
+
 def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     """
     Return (text_for_router, note_or_None).
@@ -208,13 +266,14 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     if not raw:
         return raw, None
 
-    # 先跑 confusions：否則「開 knew window Chrome」會因 chrome substring
-    # 提早 usable（無 force_new）而跳過修正
     t = raw
     for bad, good in _CONFUSIONS:
         if bad.lower() in t.lower() or bad in t:
             t = re.sub(re.escape(bad), good, t, flags=re.I)
     t = _BROWSER_BAU_SAA.sub("browser", t)
+    forced = _force_close_mc(t)
+    if forced:
+        t = forced
     t = normalize_utterance(t)
 
     intent = apply_verb_kind_limits(route(t, registry), registry)
@@ -226,10 +285,21 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     t2 = _FILLER.sub("", t)
     t2 = _TRAIL_PARTICLES.sub("", t2)
     t2 = normalize_utterance(t2)
+    forced = _force_close_mc(t2) or _force_close_mc(raw)
+    if forced:
+        t2 = forced
 
-    rebuilt = _fix_open_target(t2, registry)
-    if rebuilt:
-        t2 = rebuilt
+    # 閂／關／散… 句唔好建成「開 X」
+    if not (
+        _CLOSE_HINT.search(t2)
+        or _CLOSE_HINT.search(raw)
+        or _SAAN_CLOSE_PREFIX.match(t2)
+        or _SAAN_CLOSE_PREFIX.match(raw)
+        or forced
+    ):
+        rebuilt = _fix_open_target(t2, registry)
+        if rebuilt:
+            t2 = rebuilt
 
     intent = apply_verb_kind_limits(route(t2, registry), registry)
     if _usable(intent.kind) and t2 != raw:
@@ -238,13 +308,27 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
         return t2, None
     t = t2
 
-    # Fuzzy against whitelist command templates (rapidfuzz comes with funasr stack)
     try:
         from rapidfuzz import fuzz, process
     except ImportError:
         return raw, None
 
     templates = _command_templates(registry)
+    mc_close_bias = bool(_MC_LIKE.search(t) or _MC_LIKE.search(raw)) and not (
+        _CLEAR_OPEN_PREFIX.match(t) or _CLEAR_OPEN_PREFIX.match(raw)
+    )
+    if (
+        mc_close_bias
+        or _CLOSE_HINT.search(t)
+        or _CLOSE_HINT.search(raw)
+        or _SAAN_CLOSE_PREFIX.match(raw)
+    ):
+        templates = [
+            x
+            for x in templates
+            if re.match(r"^(關|關閉|關掉|閂|close|quit|kill)(\s|$)", x, re.I)
+            or re.search(r"\s(關|關閉|關掉|閂|close|quit|kill)$", x, re.I)
+        ]
     if not templates:
         return raw, None
 
@@ -265,6 +349,9 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
         return raw, None
 
     best, score, _ = hit
+    # 最後閘：mc 關閉偏向時拒絕任何「開…」結果
+    if mc_close_bias and re.match(r"^(開|打開|開啟|open|launch|play)\b", best, re.I):
+        return raw, None
     intent = apply_verb_kind_limits(route(best, registry), registry)
     if not _usable(intent.kind):
         return raw, None

@@ -1,5 +1,113 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 16:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py
+- **變更摘要**：修 Prism／MC 關閉——用 JSON 攞 java PID（舊 `` `t `` 格式永遠空）。
+- **遇到的問題**：
+  - 問題1：close_profile 路由啱但「未在運行」；cmdline 有 MATCH、pids=[]
+  - 解決方案：`_java_processes` ConvertTo-Json → pid+cmdline
+  - 狀態：✅ 已解決
+- **備註**：ASR 已到 close；而家殺 process。
+
+## [2026-07-27 16:48:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{asr_repair,ear}.py, tests/test_router.py
+- **變更摘要**：閂誤聽族（散／s／san…）+ MC → 強制關；無明確開動詞唔准 fuzzy 成開；hotwords 加關／閂。
+- **遇到的問題**：
+  - 問題1：散／s／打 mycraft 一律模糊成開 minecraft
+  - 解決方案：`_force_close_mc`；mc 句無 open verb 只配 close templates；ear hotword
+  - 狀態：✅ 已解決
+- **備註**：講「關 MC」最穩；serve 已需重啟。
+
+## [2026-07-27 16:44:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：SenseVoice 閂→冂、minecraft→macraft 誤聽表；冂當關閉提示禁修成開。
+- **遇到的問題**：
+  - 問題1：raw=`冂 macraft` 仍模糊→開 minecraft
+  - 解決方案：confusion 冂→閂、macraft→minecraft；_CLOSE_HINT 含冂
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve 后再試（或 Ctrl+Alt+J 用已殺舊進程後新開嗰條）。
+
+## [2026-07-27 16:42:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.vbs, JARVIS.bat
+- **變更摘要**：釘死 pythoncore-3.14 pythonw；殺晒舊／錯 Python 嘅 serve 進程。
+- **遇到的問題**：
+  - 問題1：修完「閂」仍見模糊→開——兩條舊 serve（含 WindowsApps pythonw）跑緊舊碼
+  - 解決方案：Stop-Process；VBS 用絕對路徑 pythonw
+  - 狀態：✅ 已解決
+- **備註**：再開後試「閂 my craft」。
+
+## [2026-07-27 16:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,asr_repair,hands,engine}.py, tests/test_router.py
+- **變更摘要**：粵語「閂」＝關；mycraft→MC；fuzzy 唔再把閂修成開；Prism MC 可關（殺對應 java）。
+- **遇到的問題**：
+  - 問題1：raw=`閂 mycraft` → 模糊成`開 minecraft`只 focus
+  - 解決方案：閂入 close_verbs；close 偏向 fuzzy；MC close 按 instance_id 殺 java
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
+## [2026-07-27 13:52:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,hands,engine,asr_repair}.py, tests/test_router.py, README.md
+- **變更摘要**：restart／重開 CS＝確認後關再開；整句 reboot／重啟電腦＝系統重啟。
+- **遇到的問題**：無
+- **備註**：`重啟 CS`≠`重啟電腦`。
+
+## [2026-07-27 13:48:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,hands,engine,asr_repair,asr_fix}.py, config/profiles*.yaml, tests/test_router.py, README.md
+- **變更摘要**：支援「關 CS」／close — Always Yes 後依 process_names 關閉；asr_fix 改 shim 免再誤修成開。
+- **遇到的問題**：
+  - 問題1：關 CS 被舊 asr_fix 模糊成開 CS
+  - 解決方案：close_profile 算 usable；asr_fix→asr_repair
+  - 狀態：✅ 已解決
+- **備註**：關機仍優先於「關」；未設 process_names 會拒絕。
+
+## [2026-07-27 13:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, config/profiles*.yaml, tests/test_hands_mc.py, README.md
+- **變更摘要**：Steam 遊戲已開再講「開」→ Always Yes 關閉（toggle）；cs2 設 process_names。
+- **遇到的問題**：
+  - 問題1：CS 已開再「開 cs」又 steam:// 啟動一次
+  - 解決方案：偵測 process → 確認後 taskkill；force_new 仍再開
+  - 狀態：✅ 已解決
+- **備註**：要關先確認；拒＝唔殺。
+
+## [2026-07-27 13:20:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.vbs, JARVIS.bat
+- **變更摘要**：無黑窗啟動——VBS 用 pythonw WindowStyle=0；bat 只呼叫 wscript。
+- **遇到的問題**：無
+- **備註**：雙擊 JARVIS.vbs 最乾淨；bat 仍可能閃一下。
+
+## [2026-07-27 13:18:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.bat
+- **變更摘要**：bat 改純 ASCII＋CRLF；去掉中文 echo（UTF-8 令 cmd 拆爛指令）。
+- **遇到的問題**：
+  - 問題1：雙擊出現 `'cho'`／`'arvis'` 不是命令
+  - 解決方案：唔用中文；UTF-8 無 BOM
+  - 狀態：✅ 已解決
+- **備註**：再雙擊 JARVIS.bat。
+
+## [2026-07-27 13:16:00] 操作類型：新增
+
+- **文件路徑**：JARVIS.bat, README.md
+- **變更摘要**：雙擊開 JARVIS Shell（`python -m jarvis serve`）。
+- **遇到的問題**：無
+- **備註**：用 `%~dp0` 定位專案根；失敗會 pause。
+
+## [2026-07-27 12:52:00] 操作類型：新增
+
+- **文件路徑**：src/jarvis/brain.py, src/jarvis/engine.py, tests/test_brain.py, .env.example, README.md, REMINDERS.md
+- **變更摘要**：查詢小 LLM＋歧義 JSON（OpenAI-compat／預設 DeepSeek）；Hands 只信 registry 再解析。
+- **遇到的問題**：無
+- **備註**：無 key 時 query／歧義降級；明確開場唔過 LLM。
+
 ## [2026-07-27 12:42:00] 操作類型：新增
 
 - **文件路徑**：src/jarvis/{router,hands,engine}.py, tests/test_router.py, REMINDERS.md, README.md

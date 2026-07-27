@@ -73,8 +73,16 @@ def launch_profile(
     ltype = str(launch.get("type") or "")
     try:
         if ltype == "steam_app":
-            _launch_steam(launch)
-            msg = f"{'已新開' if force_new else '已啟動'}：{profile.display_name}"
+            msg = _launch_or_close_steam(
+                launch,
+                display_name=profile.display_name,
+                ask_confirm=ask_confirm,
+                force_new=force_new,
+            )
+            if msg.startswith("已取消"):
+                return LaunchResult(False, msg, profile_id)
+            if msg.startswith("已關閉"):
+                return LaunchResult(True, msg, profile_id)
         elif ltype == "prism_instance":
             msg = _launch_prism(launch, force_new=force_new)
             if profile.kind == "launcher_instance":
@@ -130,6 +138,77 @@ def _launch_steam(launch: dict) -> None:
     subprocess.Popen(["xdg-open", f"steam://rungameid/{app_id}"])
 
 
+def _process_names(launch: dict) -> list[str]:
+    raw = launch.get("process_names") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
+def _image_running(image: str) -> bool:
+    """True if tasklist finds image name (Windows)."""
+    if sys.platform != "win32":
+        return False
+    name = image if image.lower().endswith(".exe") else f"{image}.exe"
+    try:
+        out = subprocess.check_output(
+            ["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return name.lower() in out.lower()
+
+
+def _any_process_running(names: list[str]) -> bool:
+    return any(_image_running(n) for n in names)
+
+
+def _kill_images(names: list[str]) -> None:
+    """taskkill /F listed images. Raises OSError if all fail."""
+    if sys.platform != "win32":
+        raise OSError("關閉程序僅支援 Windows")
+    errors: list[str] = []
+    killed = False
+    for image in names:
+        name = image if image.lower().endswith(".exe") else f"{image}.exe"
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", name],
+                check=False,
+                capture_output=True,
+                text=True,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            killed = True
+        except OSError as exc:
+            errors.append(f"{name}: {exc}")
+    if not killed and errors:
+        raise OSError("; ".join(errors))
+
+
+def _launch_or_close_steam(
+    launch: dict,
+    *,
+    display_name: str,
+    ask_confirm: Callable[[str], bool] | None,
+    force_new: bool,
+) -> str:
+    """Launch via steam://; if already running (and not force_new) → confirm close."""
+    names = _process_names(launch)
+    if not force_new and names and _any_process_running(names):
+        prompt = f"「{display_name}」已開。確認關閉？"
+        ok = ask_confirm(prompt) if ask_confirm else False
+        if not ok:
+            return f"已取消關閉：{display_name}"
+        _kill_images(names)
+        return f"已關閉：{display_name}"
+    _launch_steam(launch)
+    return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+
+
 def _cmdline_matches_instance(cmdline: str, instance_id: str) -> bool:
     """True if a Java cmdline looks like this Prism instance."""
     if not cmdline or not instance_id:
@@ -147,6 +226,11 @@ def _cmdline_matches_instance(cmdline: str, instance_id: str) -> bool:
 
 def _java_command_lines() -> list[str]:
     """Collect javaw/java command lines on Windows."""
+    return [cmdline for _pid, cmdline in _java_processes()]
+
+
+def _java_processes() -> list[tuple[int, str]]:
+    """Return (pid, cmdline) for java/javaw on Windows."""
     if sys.platform != "win32":
         return []
     try:
@@ -157,7 +241,8 @@ def _java_command_lines() -> list[str]:
                 "-Command",
                 "Get-CimInstance Win32_Process -Filter "
                 "\"Name='javaw.exe' OR Name='java.exe'\" "
-                "| ForEach-Object { $_.CommandLine }",
+                "| Select-Object ProcessId, CommandLine "
+                "| ConvertTo-Json -Compress",
             ],
             text=True,
             stderr=subprocess.DEVNULL,
@@ -165,7 +250,29 @@ def _java_command_lines() -> list[str]:
         )
     except (OSError, subprocess.CalledProcessError):
         return []
-    return [line.strip() for line in out.splitlines() if line.strip()]
+    out = (out or "").strip()
+    if not out:
+        return []
+    import json
+
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    rows: list[tuple[int, str]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        try:
+            pid = int(item.get("ProcessId"))
+        except (TypeError, ValueError):
+            continue
+        cmdline = str(item.get("CommandLine") or "").strip()
+        if cmdline:
+            rows.append((pid, cmdline))
+    return rows
 
 
 def _minecraft_instance_running(instance_id: str) -> bool:
@@ -380,31 +487,195 @@ def resolve_default_mc(
     return None, "未設定 use_as_default_mc 的 Prism 實例"
 
 
+def _java_pids_for_instance(instance_id: str) -> list[int]:
+    """PIDs of java/javaw whose cmdline matches Prism instance_id."""
+    if not instance_id:
+        return []
+    return [
+        pid
+        for pid, cmdline in _java_processes()
+        if _cmdline_matches_instance(cmdline, instance_id)
+    ]
+
+
+def _kill_pids(pids: list[int]) -> None:
+    if sys.platform != "win32":
+        raise OSError("關閉程序僅支援 Windows")
+    if not pids:
+        raise OSError("無對應 process 可關")
+    for pid in pids:
+        subprocess.run(
+            ["taskkill", "/F", "/PID", str(pid)],
+            check=False,
+            capture_output=True,
+            text=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
+
+def close_profile(
+    registry: Registry,
+    profile_id: str,
+    *,
+    ask_confirm: Callable[[str], bool] | None = None,
+    memory_path: Path | None = None,
+) -> LaunchResult:
+    """Always Yes then taskkill process_names / Prism java / chrome default."""
+    if profile_id == "_pending_default_mc":
+        resolved, note = resolve_default_mc(
+            registry, force_last=False, memory_path=memory_path
+        )
+        if not resolved:
+            return LaunchResult(False, note or "未有可關嘅 MC")
+        profile_id = resolved
+
+    profile = registry.profiles.get(profile_id)
+    if profile is None:
+        return LaunchResult(False, f"未知 profile id：{profile_id}")
+    if not profile.enabled:
+        return LaunchResult(False, f"已停用：{profile.display_name}")
+
+    # check running before confirm（唔好問完先話未開）
+    ltype = str(profile.launch.get("type") or "")
+    if ltype == "prism_instance":
+        iid = str(profile.launch.get("instance_id") or "")
+        pids = _java_pids_for_instance(iid)
+        if not pids:
+            return LaunchResult(
+                False, f"「{profile.display_name}」未在運行", profile_id
+            )
+        ok = (
+            ask_confirm(f"確認關閉「{profile.display_name}」？")
+            if ask_confirm
+            else False
+        )
+        if not ok:
+            return LaunchResult(False, f"已取消關閉：{profile.display_name}", profile_id)
+        try:
+            _kill_pids(pids)
+        except OSError as exc:
+            return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
+        return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+
+    names = _close_process_names(profile)
+    if not names:
+        return LaunchResult(
+            False,
+            f"「{profile.display_name}」未設 process_names，唔知關邊個 process",
+            profile_id,
+        )
+    if not _any_process_running(names):
+        return LaunchResult(False, f"「{profile.display_name}」未在運行", profile_id)
+
+    ok = (
+        ask_confirm(f"確認關閉「{profile.display_name}」？") if ask_confirm else False
+    )
+    if not ok:
+        return LaunchResult(False, f"已取消關閉：{profile.display_name}", profile_id)
+    try:
+        _kill_images(names)
+    except OSError as exc:
+        return LaunchResult(False, f"關閉失敗：{exc}", profile_id)
+    return LaunchResult(True, f"已關閉：{profile.display_name}", profile_id)
+
+
+def _close_process_names(profile: Profile) -> list[str]:
+    names = _process_names(profile.launch)
+    if names:
+        return names
+    ltype = str(profile.launch.get("type") or "")
+    if ltype == "browser_restore":
+        return ["chrome.exe"]
+    if ltype == "app_exe" and profile.launch.get("exe"):
+        return [Path(str(profile.launch["exe"])).name]
+    return []
+
+
+def restart_profile(
+    registry: Registry,
+    profile_id: str,
+    *,
+    ask_confirm: Callable[[str], bool] | None = None,
+    memory_path: Path | None = None,
+) -> LaunchResult:
+    """Always Yes once: kill if running, then launch."""
+    import time
+
+    if profile_id == "_pending_default_mc":
+        resolved, note = resolve_default_mc(
+            registry, force_last=False, memory_path=memory_path
+        )
+        if not resolved:
+            return LaunchResult(False, note or "未有可重開嘅 MC")
+        profile_id = resolved
+
+    profile = registry.profiles.get(profile_id)
+    if profile is None:
+        return LaunchResult(False, f"未知 profile id：{profile_id}")
+    if not profile.enabled:
+        return LaunchResult(False, f"已停用：{profile.display_name}")
+
+    ok = ask_confirm(f"確認重開「{profile.display_name}」？") if ask_confirm else False
+    if not ok:
+        return LaunchResult(False, f"已取消重開：{profile.display_name}", profile_id)
+
+    ltype = str(profile.launch.get("type") or "")
+    try:
+        if ltype == "prism_instance":
+            iid = str(profile.launch.get("instance_id") or "")
+            pids = _java_pids_for_instance(iid)
+            if pids:
+                _kill_pids(pids)
+                time.sleep(1.5)
+        else:
+            names = _close_process_names(profile)
+            if names and _any_process_running(names):
+                _kill_images(names)
+                time.sleep(1.5)
+    except OSError as exc:
+        return LaunchResult(False, f"重開時關閉失敗：{exc}", profile_id)
+
+    launched = launch_profile(
+        registry,
+        profile_id,
+        ask_confirm=None,
+        memory_path=memory_path,
+        force_new=False,
+    )
+    if not launched.ok:
+        return LaunchResult(False, f"已關但啟動失敗：{launched.message}", profile_id)
+    return LaunchResult(True, f"已重開：{profile.display_name}", profile_id)
+
+
 def system_power(
     action: str,
     *,
     ask_confirm: Callable[[str], bool] | None = None,
 ) -> LaunchResult:
-    """Shutdown or sleep after Always Yes. No confirm → refuse (唔靜默關機)."""
-    if action not in ("shutdown", "sleep"):
+    """Shutdown / reboot / sleep after Always Yes. No confirm → refuse."""
+    if action not in ("shutdown", "sleep", "reboot"):
         return LaunchResult(False, f"未知電源動作：{action}")
     if sys.platform != "win32":
         return LaunchResult(False, "電源指令僅支援 Windows")
 
-    label = "關機" if action == "shutdown" else "睡眠"
+    label = {"shutdown": "關機", "sleep": "睡眠", "reboot": "重新開機"}[action]
     ok = ask_confirm(f"確認要{label}？（危險動作）") if ask_confirm else False
     if not ok:
         return LaunchResult(False, f"已取消{label}")
 
     try:
         if action == "shutdown":
-            # /t 0 即時；仍可喺確認窗取消
             subprocess.Popen(
                 ["shutdown", "/s", "/t", "0"],
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             return LaunchResult(True, "已下關機指令")
-        # SetSuspendState(Hibernate=False, ForceCritical=False, DisableWakeEvent=False)
+        if action == "reboot":
+            subprocess.Popen(
+                ["shutdown", "/r", "/t", "0"],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            return LaunchResult(True, "已下重新開機指令")
         ctypes.windll.powrprof.SetSuspendState(0, 0, 0)  # type: ignore[attr-defined]
         return LaunchResult(True, "已進入睡眠")
     except OSError as exc:
