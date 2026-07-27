@@ -8,6 +8,10 @@ allow_bare_name: false
 
 verb_kind_limits:
   play: [game, launcher_instance]
+  還原: [browser_session]
+  恢復: [browser_session]
+  restore: [browser_session]
+  resume: [browser_session]
 
 match_policy:
   min_name_chars: 2
@@ -17,41 +21,83 @@ match_policy:
 
 restore_phrases:
   - 還原戰場
+  - 還原上次戰場
   - 恢復戰場
+  - 回復戰場
   - 恢復上次佈局
+  - 恢復佈局
   - 還原桌面
+  - 回復桌面
   - resume battlefield
   - resume last
   - restore layout
   - restore battlefield
+  - restore desktop
 
 target_modifiers:
   - 上次
   - 上一次
   - last
   - previous
+  - "new window"
+  - 新視窗
+  - 再開
+  - 另開
+  - 多開
+  - another
+  - 一個新嘅
+  - 一個新
+  - 新嘅
+  - 新的
+  - new
+  - 新
 
 open_verbs:
-  - open
-  - launch
-  - start
-  - run
+  # longest / multi-word first is handled by router sort; keep readable groups
+  - "please open"
   - "switch on"
   - "swittch on"
+  - "swith on"
   - "turn on"
+  - "fire up"
+  - "bring up"
+  - "pull up"
+  - open
+  - launch
+  - lanuch
+  - start
+  - run
   - boot
   - play
-  - 開
+  - load
+  - resume
+  - restore
+  - 唔該開
+  - 幫我打開
+  - 幫我開
+  - 開返
+  - 開始
   - 啟動
   - 打開
   - 開啟
-  - 幫我開
+  - 進入
+  - 再開
+  - 另開
+  - 多開
+  - 開
+  - 還原
+  - 恢復
+  - 跑
 
 name_aliases:
   mc: _default_mc
   minecraft: _default_mc
   "我的世界": _default_mc
   ide: cursor
+  tabs: browser-main
+  session: browser-main
+  工作階段: browser-main
+  分頁: browser-main
 
 profiles:
   - id: cs2
@@ -60,7 +106,7 @@ profiles:
     enabled: true
     match:
       names: [CS, CS2, "Counter Strike", 特戰, 反恐]
-      locale_hints: ["cs"]
+      locale_hints: ["cs", "开线", "開線", "開线"]
     launch:
       type: steam_app
       app_id: "730"

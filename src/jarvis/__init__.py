@@ -1,3 +1,3 @@
-"""JARVIS — Just A Rather Very Intelligent System (Windows PC butler)."""
+"""Package version and public metadata."""
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"

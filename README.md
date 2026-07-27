@@ -2,25 +2,39 @@
 
 **Just A Rather Very Intelligent System**
 
-Windows 本機語音管家（builder）：熱鍵／系統匣細窗 → 粵英混 STT → 白名單開戰場。
+Windows 本機管家：熱鍵／系統匣細窗 → 打字或本機 SenseVoice → 白名單開戰場。
 
 設計定稿：`%USERPROFILE%\.gstack\projects\jarvis-pc\*-design-*.md`（Status: APPROVED）
 
-## v1 範圍
+## 快速開始
 
-- 熱鍵：`Ctrl+Alt+J`
-- 規則優先：`open/開/launch/…` + 已登錄名稱
-- Chrome：`--restore-last-session`（不送鍵）
-- Python 系統匣 + 細窗；無 TTS／HUD／Hermes-as-core
+```powershell
+cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
+python -m pip install -e .
 
-## 快速結構
+python -m jarvis -c "開 Cursor"
+python -m jarvis serve
 
+# 開機自啟
+python -m jarvis autostart on
+
+# 語音（可選，較大）
+python -m pip install -e ".[ear]"
+python -m jarvis listen 3
 ```
-config/          # profiles 範例（真實路徑勿提交密鑰）
-src/             # 應用程式碼（之後）
-tests/           # 測試
-```
 
-## 開發
+細窗：**Enter** 送出；**語音** 錄 3 秒；**Ctrl+Alt+J** 顯示／隱藏。
 
-（Hands CLI／STT 接線尚未開始——等「開始實作 v1」。）
+## 能力
+
+| 功能 | 說明 |
+|------|------|
+| 規則開場 | `open`／`開`／倒裝／STT 錯字動詞 |
+| 新開 | `再開 X`／`開 new X`／`開新視窗 X` → 強制再開（Chrome=`--new-window`）；`開個 X` 只係普通開 |
+| 電源 | `關機`／`睡眠`／`shutdown`／`sleep` → **先確認**再執行 |
+| Chrome 還原 | `--restore-last-session`；已開則 focus；多窗冷開請用選單「結束」 |
+| Discover | 未知 `open xxx` → 開始功能表／Steam／Prism → 確認後寫入 profiles |
+| 查詢 | `幫我查…` 只字幕（LLM 稍後） |
+| Ear | SenseVoice `yue`（需 `[ear]`） |
+
+見 [REMINDERS.md](REMINDERS.md)。
