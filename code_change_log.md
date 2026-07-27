@@ -1,5 +1,18 @@
 # 代碼變更與問題日誌
 
+## [2026-07-28 01:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{brain,hands,wake}.py, tests/test_brain.py, docs/train_wake_jarvis.md
+- **變更摘要**：Backlog4：無開動詞唔再盲改關（要有關提示先翻）；restore.role 硬佈局；wake 門檻 0.55→0.58。
+- **遇到的問題**：
+  - 問題1：Brain 無開動詞一律改關 → STT 漏「開」會誤關
+  - 解決方案：僅有 clear close hint 先 flip；否則 refuse
+  - 狀態：✅ 已解決
+  - 問題2：多螢幕只移 top-left、唔理 role
+  - 解決方案：primary_game 鋪滿；chat／ide／browser 分區
+  - 狀態：✅ 已解決
+- **備註**：自訓 jarvis.onnx 留明日（docs/train_wake_jarvis.md）。
+
 ## [2026-07-28 01:42:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/shell_app.py, src/jarvis/wake.py

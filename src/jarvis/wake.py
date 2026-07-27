@@ -11,9 +11,9 @@ from typing import Any
 # ~80ms @ 16kHz
 _CHUNK = 1280
 _SAMPLE_RATE = 16000
-DEFAULT_THRESHOLD = 0.55
+DEFAULT_THRESHOLD = 0.58
 # Must fall below this before next wake（防分數黏高狂錄）
-_REARM_BELOW = 0.25
+_REARM_BELOW = 0.28
 # After command/mic resume, ignore wakes this long
 _POST_RESUME_S = 2.0
 _COOLDOWN_S = 1.0

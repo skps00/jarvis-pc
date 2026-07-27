@@ -98,11 +98,46 @@ def test_resolve_ambiguous_mocked():
         }
     )
     with mock.patch("jarvis.brain._chat", return_value=fake):
-        intent = resolve_ambiguous("搞個 new Cursor 出嚟", r)
+        # 須有明確開動詞，否則 hard gate 會 refuse／改關
+        intent = resolve_ambiguous("搞個 open Cursor 出嚟", r)
     assert intent is not None
     assert intent.kind == "open_profile"
     assert intent.profile_id == "cursor"
     assert intent.force_new
+
+
+def test_resolve_ambiguous_no_verb_refuses():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "open_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "開 Cursor",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("Cursor", r)
+    assert intent is not None
+    assert intent.kind == "refuse"
+
+
+def test_resolve_ambiguous_close_hint_flips():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "open_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "開 Cursor",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("close Cursor", r)
+    assert intent is not None
+    assert intent.kind == "close_profile"
 
 
 def test_looks_ambiguous():
@@ -160,6 +195,8 @@ if __name__ == "__main__":
         test_intent_from_json_force_new_browser,
         test_intent_rejects_path_and_illegal_id,
         test_resolve_ambiguous_mocked,
+        test_resolve_ambiguous_no_verb_refuses,
+        test_resolve_ambiguous_close_hint_flips,
         test_looks_ambiguous,
         test_engine_query_without_key,
         test_engine_ambiguous_brain_then_dry_run,

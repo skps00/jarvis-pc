@@ -28,8 +28,10 @@ Copy-Item .\jarvis.onnx "$env:APPDATA\Jarvis\wake\jarvis.onnx"
 
 - 講 **Jarvis**（唔使 Hey）→ 開始錄音  
 - 嘈雜環境誤觸少過 STT 後備
+- 預設 OWW 門檻 **0.58**（再 arm 要掉到 **0.28**）；仍誤觸可再升 `DEFAULT_THRESHOLD`
 
 ## 備註
 
 - Windows 本機全套訓練要 WSL2 + GPU，唔建議；用 Colab。  
 - 未有自訂檔時：繼續用 hey_jarvis OWW + 英文 STT 後備。
+- 自訓完記得重啟 serve；有 `*.onnx` 會關 SenseVoice 文字後備。

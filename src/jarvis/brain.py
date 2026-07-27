@@ -25,6 +25,11 @@ _CLEAR_OPEN_ANY = re.compile(
     r"(再開|另開|多開|打開|開啟|啟動|\bopen\b|\blaunch\b|\bstart\b|\bplay\b|(?<![再另多])開)",
     re.I,
 )
+# 僅用於「無開動詞」閘：有明確關意先允許改關，否則 refuse（防漏「開」誤關）
+_CLEAR_CLOSE_ANY = re.compile(
+    r"(閂|冂|闩|關閉|關掉|關上|\bclose\b|\bquit\b|\bkill\b|(?<![再另多重新])關)",
+    re.I,
+)
 
 
 def _load_dotenv() -> None:
@@ -337,6 +342,11 @@ def has_clear_open_verb(text: str) -> bool:
     return bool(_CLEAR_OPEN_ANY.search(text or ""))
 
 
+def has_clear_close_verb(text: str) -> bool:
+    """True if utterance clearly asks to close/quit."""
+    return bool(_CLEAR_CLOSE_ANY.search(text or ""))
+
+
 def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
     """Ask small LLM for intent JSON; return gated Intent or None."""
     summary = _registry_summary(registry)
@@ -348,6 +358,7 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
         '"power_action":"shutdown|sleep|null","speak_caption":"短字幕"}'
     )
     open_ok = has_clear_open_verb(text)
+    close_ok = has_clear_close_verb(text)
     messages = [
         {
             "role": "system",
@@ -356,7 +367,9 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
                 "規則：target_raw／profile_id 必須對得上 profiles；不可發明 exe 路徑。\n"
                 "關／閂／close／shut（含 STT 亂碼如 |-] dico）→ close_profile，唔好 open_profile。\n"
                 "無明確開動詞（開／open／launch／打開）時，禁止 open_profile；宁可 refuse。\n"
+                "無開亦無關提示時，輸出 refuse，唔好猜開或關。\n"
                 f"本句是否有明確開動詞：{'yes' if open_ok else 'NO — do not open'}。\n"
+                f"本句是否有明確關動詞：{'yes' if close_ok else 'no'}。\n"
                 f"schema: {schema}\n"
                 f"profiles:\n{summary}"
             ),
@@ -368,10 +381,9 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
     intent = intent_from_llm_json(data, registry, raw_text=text)
     if intent is None:
         return None
-    # Hard gate: no clear open verb → never open
+    # Hard gate: no clear open verb → never open; flip to close only with close hint
     if intent.kind == "open_profile" and not open_ok:
-        if intent.profile_id or intent.target_raw:
-            # reinterpret as close
+        if close_ok and (intent.profile_id or intent.target_raw):
             target = intent.target_raw or intent.profile_id or ""
             flipped = apply_verb_kind_limits(route(f"關 {target}", registry), registry)
             if flipped.kind == "close_profile":
@@ -382,7 +394,7 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
                     profile_id=intent.profile_id,
                     open_verb="關",
                     target_raw=intent.target_raw,
-                    caption=f"關閉（STT 無開動詞，改關）（需確認）",
+                    caption="關閉（無開動詞，有關提示）（需確認）",
                 )
         return Intent(
             "refuse",
