@@ -69,6 +69,66 @@ def main(argv: list[str] | None = None) -> None:
         print("[fail] 無辨識文字")
         raise SystemExit(1)
 
+    if raw and raw[0] == "aliases":
+        from jarvis import memory as mem
+
+        sub = raw[1] if len(raw) > 1 else "list"
+        if sub == "clear":
+            mem.clear_stt_aliases()
+            print("[ok] 已清空 learned stt_aliases")
+            raise SystemExit(0)
+        learned = mem.list_stt_aliases()
+        if not learned:
+            print("(無 learned aliases)")
+        else:
+            for k, v in learned.items():
+                print(f"{k} → {v}")
+        try:
+            from jarvis.config import load_registry
+
+            static = load_registry().stt_aliases
+            if static:
+                print("--- profiles.yaml stt_aliases ---")
+                for k, v in static.items():
+                    print(f"{k} → {v}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] 讀 profiles 失敗：{exc}", file=sys.stderr)
+        raise SystemExit(0)
+
+    if raw and raw[0] == "wake":
+        from jarvis.wake import run_wake_loop, wake_available
+
+        if not wake_available():
+            print('[fail] pip install "jarvis-pc[wake]"', file=sys.stderr)
+            raise SystemExit(2)
+        print("[wake] 講 Hey Jarvis …（Ctrl+C 停）")
+        stop = __import__("threading").Event()
+        pause = __import__("threading").Event()
+
+        def _hit() -> None:
+            pause.set()
+            print("[wake] 聽到！開始錄音…")
+            from jarvis.ear import listen_once
+
+            try:
+                text = listen_once(seconds=4.0)
+            except RuntimeError as exc:
+                print(f"[fail] {exc}")
+                pause.clear()
+                return
+            print(f"[ear] {text!r}")
+            if text.strip():
+                run_utterance(text.strip())
+            pause.clear()
+
+        try:
+            run_wake_loop(_hit, stop_event=stop, pause_event=pause)
+        except KeyboardInterrupt:
+            stop.set()
+            pause.set()
+            print("\n[wake] 已停")
+        raise SystemExit(0)
+
     parser = argparse.ArgumentParser(prog="jarvis", description="JARVIS Hands + Shell")
     parser.add_argument("utterance", nargs="*", help="例如：open CS2 / 開 MC")
     parser.add_argument("--dry-run", action="store_true", help="只解析，不啟動")
@@ -84,6 +144,8 @@ def main(argv: list[str] | None = None) -> None:
         print("\n啟動介面：python -m jarvis serve")
         print("開機自啟：python -m jarvis autostart on|off|status")
         print("語音一次：python -m jarvis listen [秒]")
+        print("聽候測試：python -m jarvis wake")
+        print("別名：python -m jarvis aliases | aliases clear")
         raise SystemExit(2)
 
     try:

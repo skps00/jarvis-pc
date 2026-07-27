@@ -36,6 +36,7 @@ class Registry:
     profiles: dict[str, Profile]
     open_verbs: list[str]
     name_aliases: dict[str, str]
+    stt_aliases: dict[str, str]
     restore_phrases: list[str]
     target_modifiers: list[str]
     verb_kind_limits: dict[str, list[str]]
@@ -81,10 +82,18 @@ def load_registry(path: Path | None = None) -> Registry:
         )
 
     aliases = {str(k).lower(): str(v) for k, v in (raw.get("name_aliases") or {}).items()}
+    # static STT garbles → canonical label（learned memory overrides）
+    stt_raw = raw.get("stt_aliases") or {}
+    stt_aliases = {
+        "".join(str(k).strip().lower().split()): str(v).strip()
+        for k, v in (stt_raw.items() if isinstance(stt_raw, dict) else [])
+        if str(k).strip() and str(v).strip()
+    }
     return Registry(
         profiles=profiles,
         open_verbs=_as_str_list(raw.get("open_verbs")),
         name_aliases=aliases,
+        stt_aliases=stt_aliases,
         restore_phrases=_as_str_list(raw.get("restore_phrases")),
         target_modifiers=_as_str_list(raw.get("target_modifiers")),
         verb_kind_limits={

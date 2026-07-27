@@ -152,7 +152,9 @@ def test_close_shell_app_window_pid_fallback():
 def test_shell_app_focus_when_already_running():
     launch = {"type": "shell_app", "app_id": "X!App"}
     with mock.patch("jarvis.hands._window_pids_title_contains", return_value=[1]):
-        with mock.patch("jarvis.hands._focus_window_title_contains", return_value=True) as focus:
+        with mock.patch(
+            "jarvis.hands._focus_window_title_contains", return_value=(True, "")
+        ) as focus:
             with mock.patch("jarvis.hands._launch_shell_app") as launch_fn:
                 msg = _launch_or_focus_shell_app(
                     launch, display_name="WhatsApp", force_new=False
@@ -165,7 +167,10 @@ def test_shell_app_focus_when_already_running():
 def test_shell_app_launches_when_not_running():
     launch = {"type": "shell_app", "app_id": "X!App"}
     with mock.patch("jarvis.hands._window_pids_title_contains", return_value=[]):
-        with mock.patch("jarvis.hands._focus_window_title_contains", side_effect=[False, True]):
+        with mock.patch(
+            "jarvis.hands._focus_window_title_contains",
+            side_effect=[(False, ""), (True, "")],
+        ):
             with mock.patch("jarvis.hands._launch_shell_app") as launch_fn:
                 with mock.patch("jarvis.hands.time.sleep"):
                     msg = _launch_or_focus_shell_app(

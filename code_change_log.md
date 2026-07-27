@@ -1,5 +1,38 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 23:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：聽候收窄淨英文 Hey Jarvis／Jarvis；移除賈維斯／加維斯。
+- **遇到的問題**：
+  - 問題1：用戶只要英文 Jarvis
+  - 解決方案：_TEXT_WAKES 只留 jarvis／hey jarvis；UI 文案同步
+  - 狀態：✅ 已解決
+- **備註**：Hey Jarvis＝OWW；裸 Jarvis＝STT 後備。
+
+## [2026-07-27 23:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/wake.py, tests/test_wake.py
+- **變更摘要**：聽候加裸「Jarvis／賈維斯」：OWW Hey Jarvis + 短窗 STT 後備。
+- **遇到的問題**：
+  - 問題1：openWakeWord 預訓練無淨 Jarvis
+  - 解決方案：大聲短窗拷貝 → SenseVoice；命中 jarvis/賈維斯 等同 wake
+  - 狀態：✅ 已解決
+- **備註**：STT 路徑較慢／食 CPU；Hey Jarvis 仍係最快。
+
+## [2026-07-27 23:10:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{wake,ear,shell_app,hands,config,memory,app_index,__main__}.py, pyproject.toml, config/profiles.example.yaml, tests/
+- **變更摘要**：4 wake word 聽候；2 關閉路徑 caption；1 aliases CLI；3 yaml stt_aliases；5 多窗揀最上並標註。
+- **遇到的問題**：
+  - 問題1：唔想每次撳「語音」
+  - 解決方案：openwakeword `hey_jarvis` 背景聽；命中後 pause → 錄音 4s → 執行
+  - 狀態：✅ 已解決
+  - 問題2：關 app 唔知行邊條路徑
+  - 解決方案：成功訊息附（記住 PID／視窗標題／process_names／Prism java）
+  - 狀態：✅ 已解決
+- **備註**：`pip install "jarvis-pc[wake]"`；無套件則只留手動語音。多螢幕 layout 仍 soft。force WhatsApp／MC 在 alias 之前跑，避免 learned「沙锅石→WhatsApp」誤開。
+
 ## [2026-07-27 19:20:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/{memory,app_index,asr_repair}.py, tests/test_app_index.py
