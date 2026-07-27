@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
 from jarvis.engine import execute_utterance
 
 HOTKEY = "<ctrl>+<alt>+j"
+RECORD_SECONDS = 4
+# 聽候 CD（同 debounce／wake post-resume 對齊）
+WAKE_CD_SECONDS = 2
 
 
 def _make_icon_image(*, recording: bool = False):
@@ -31,7 +35,7 @@ class JarvisShell:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("JARVIS · 就緒")
-        self.root.geometry("440x320+80+80")
+        self.root.geometry("440x380+80+80")
         self.root.attributes("-topmost", True)
         # ponytail: withdraw until hotkey — reduces focus steal when idle
         self.root.withdraw()
@@ -45,6 +49,9 @@ class JarvisShell:
         self._wake_pause = threading.Event()
         self._wake_thread: threading.Thread | None = None
         self._wake_on = False
+        self._last_wake_ts = 0.0
+        self._cd_left = 0
+        self._timer_mode = ""  # "rec" | "cd" | ""
 
         frm = tk.Frame(self.root, padx=8, pady=8)
         frm.pack(fill=tk.BOTH, expand=True)
@@ -57,6 +64,17 @@ class JarvisShell:
             font=("Segoe UI", 11, "bold"),
         )
         self.status.pack(fill=tk.X, pady=(0, 4))
+
+        self.timer = tk.Label(
+            frm,
+            text="",
+            anchor="center",
+            fg="#c01c28",
+            font=("Segoe UI", 28, "bold"),
+            height=1,
+        )
+        self.timer.pack(fill=tk.X, pady=(0, 4))
+        self.timer.pack_forget()  # hide until recording
 
         tk.Label(frm, text="指令（Enter 送出）· Ctrl+Alt+J 顯示／隱藏").pack(anchor="w")
         self.entry = tk.Entry(frm)
@@ -124,11 +142,14 @@ class JarvisShell:
         self.btn_send.configure(state=state)
         self.btn_listen.configure(state=state)
         self.entry.configure(state=state)
-        # free mic for SenseVoice while busy; resume wake after
+        # free mic for SenseVoice while busy; always resume wake after
         if busy:
             self._wake_pause.set()
-        elif self._wake_on:
+        else:
             self._wake_pause.clear()
+            if self._wake_on:
+                self.append_log("[ok] 聽候 CD 開始")
+                self._start_wake_cd(WAKE_CD_SECONDS)
 
     def _ask_confirm(self, prompt: str) -> bool:
         return bool(messagebox.askyesno("JARVIS 確認", prompt, parent=self.root))
@@ -151,75 +172,118 @@ class JarvisShell:
                 self._ui_queue.put(
                     ("status", ("● 就緒" if result.ok else "● 失敗（見日誌）", "ok" if result.ok else "fail"))
                 )
+            except Exception as exc:  # noqa: BLE001
+                self._ui_queue.put(("log", f"[fail] {exc}"))
+                self._ui_queue.put(("status", ("● 失敗（見日誌）", "fail")))
             finally:
                 self._ui_queue.put(("busy", False))
 
         threading.Thread(target=work, daemon=True).start()
 
+    def _show_timer(self, seconds: int, *, mode: str = "rec") -> None:
+        """Show big countdown: REC n or CD n (UI thread)."""
+        self._timer_mode = mode
+        try:
+            self.timer.pack(fill=tk.X, pady=(0, 4), after=self.status)
+        except tk.TclError:
+            self.timer.pack(fill=tk.X, pady=(0, 4))
+        if mode == "cd":
+            self.timer.configure(text=f"CD {seconds}", fg="#e5a50a")
+        else:
+            self.timer.configure(text=f"REC {seconds}", fg="#c01c28")
+
+    def _hide_timer(self) -> None:
+        """Hide countdown label."""
+        self._timer_mode = ""
+        self._cd_left = 0
+        self.timer.configure(text="")
+        self.timer.pack_forget()
+
+    def _start_wake_cd(self, seconds: int) -> None:
+        """Visible cooldown until Hey Jarvis can fire again."""
+        self._cd_left = max(0, int(seconds))
+        if self._cd_left <= 0:
+            self._hide_timer()
+            self.set_status("● 聽候就緒", kind="ok")
+            return
+        self._show_timer(self._cd_left, mode="cd")
+        self.set_status(f"● 聽候 CD {self._cd_left}s", kind="busy")
+        self.root.after(1000, self._tick_wake_cd)
+
+    def _tick_wake_cd(self) -> None:
+        """Tick wake cooldown display."""
+        if self._busy or not self._wake_on:
+            return
+        if self._timer_mode == "rec":
+            return
+        self._cd_left -= 1
+        if self._cd_left > 0:
+            self._show_timer(self._cd_left, mode="cd")
+            self.set_status(f"● 聽候 CD {self._cd_left}s", kind="busy")
+            self.root.after(1000, self._tick_wake_cd)
+        else:
+            self._hide_timer()
+            self.set_status("● 聽候就緒 — 可講 Hey Jarvis", kind="ok")
+            self.append_log("[ok] 聽候就緒")
+
     def _on_listen(self) -> None:
-        """Record ~3s with visible countdown, then SenseVoice → execute."""
+        """Record with visible countdown, then SenseVoice → execute."""
         if self._busy:
             return
         self._set_busy(True)
-        self.append_log("[ear] 開始錄音 4 秒 — 而家講短指令（開 CS／開 Cursor）…")
-        self.set_status("● 錄音中 4 — 請講指令", kind="rec")
-        self._countdown_left = 4
+        secs = RECORD_SECONDS
+        self.append_log(f"[ear] 錄音 {secs}s — 倒數開始，請講短指令")
+        self._countdown_left = secs
+        self._show_timer(secs, mode="rec")
+        self.set_status(f"● 錄音中 {secs} — 請講指令", kind="rec")
         self.root.after(1000, self._tick_countdown)
 
         def work() -> None:
+            path = None
             try:
                 from jarvis.config import load_registry
                 from jarvis.ear import record_wav, transcribe_wav
 
-                path = record_wav(seconds=4.0)
-            except RuntimeError as exc:
-                self._ui_queue.put(("log", f"[fail] {exc}"))
-                self._ui_queue.put(("status", ("● 語音失敗", "fail")))
-                self._ui_queue.put(("busy", False))
-                return
-            except Exception as exc:  # noqa: BLE001
-                self._ui_queue.put(("log", f"[fail] 語音錯誤：{exc}"))
-                self._ui_queue.put(("status", ("● 語音失敗", "fail")))
-                self._ui_queue.put(("busy", False))
-                return
-
-            self._ui_queue.put(("status", ("● 辨識中（首次下載模型會較久）…", "busy")))
-            try:
+                path = record_wav(seconds=float(RECORD_SECONDS))
+                self._ui_queue.put(("timer_hide", None))
+                self._ui_queue.put(("status", ("● 辨識中（首次下載模型會較久）…", "busy")))
                 registry = load_registry()
                 hot = []
                 for p in registry.profiles.values():
                     hot.extend(p.names)
                     hot.extend(p.locale_hints)
                 text = transcribe_wav(path, language="yue", hotwords=hot)
+                self._ui_queue.put(("log", f"[ear] raw={text!r}"))
+                if not text.strip():
+                    self._ui_queue.put(("log", "[fail] 無辨識文字"))
+                    self._ui_queue.put(("status", ("● 無辨識文字", "fail")))
+                    return
+                self._ui_queue.put(("status", ("● 執行指令中…", "busy")))
+                result = execute_utterance(
+                    text.strip(), ask_confirm=self._ask_confirm_threadsafe
+                )
+                self._ui_queue.put(("result", result.lines))
+                self._ui_queue.put(
+                    (
+                        "status",
+                        ("● 就緒" if result.ok else "● 失敗（見日誌）", "ok" if result.ok else "fail"),
+                    )
+                )
             except RuntimeError as exc:
                 self._ui_queue.put(("log", f"[fail] {exc}"))
                 self._ui_queue.put(("status", ("● 語音失敗", "fail")))
-                self._ui_queue.put(("busy", False))
-                return
             except Exception as exc:  # noqa: BLE001
                 self._ui_queue.put(("log", f"[fail] 語音錯誤：{exc}"))
                 self._ui_queue.put(("status", ("● 語音失敗", "fail")))
-                self._ui_queue.put(("busy", False))
-                return
             finally:
-                try:
-                    path.unlink(missing_ok=True)
-                except OSError:
-                    pass
-
-            self._ui_queue.put(("log", f"[ear] raw={text!r}"))
-            if not text.strip():
-                self._ui_queue.put(("log", "[fail] 無辨識文字"))
-                self._ui_queue.put(("status", ("● 無辨識文字", "fail")))
+                if path is not None:
+                    try:
+                        path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                self._ui_queue.put(("timer_hide", None))
+                # critical: always unpause wake（否則只醒一次）
                 self._ui_queue.put(("busy", False))
-                return
-            self._ui_queue.put(("status", ("● 執行指令中…", "busy")))
-            result = execute_utterance(text.strip(), ask_confirm=self._ask_confirm_threadsafe)
-            self._ui_queue.put(("result", result.lines))
-            self._ui_queue.put(
-                ("status", ("● 就緒" if result.ok else "● 失敗（見日誌）", "ok" if result.ok else "fail"))
-            )
-            self._ui_queue.put(("busy", False))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -229,11 +293,15 @@ class JarvisShell:
             return
         self._countdown_left -= 1
         if self._countdown_left > 0:
-            self.set_status(f"● 錄音中 {self._countdown_left} — 請講指令", kind="rec")
+            left = self._countdown_left
+            self._show_timer(left, mode="rec")
+            self.set_status(f"● 錄音中 {left} — 請講指令", kind="rec")
+            self.append_log(f"[ear] …{left}")
             self.root.after(1000, self._tick_countdown)
         else:
-            # recording thread may still finish; next status comes from worker
+            self._show_timer(0, mode="rec")
             self.set_status("● 錄音結束，辨識中…", kind="busy")
+            self.append_log("[ear] 倒數完")
 
     def _ask_confirm_threadsafe(self, prompt: str) -> bool:
         """Ask Yes/No on the Tk thread from a worker."""
@@ -266,9 +334,21 @@ class JarvisShell:
                     self.set_status(text, kind=st)
                 elif kind == "busy":
                     self._set_busy(bool(payload))
+                elif kind == "timer_hide":
+                    self._hide_timer()
                 elif kind == "wake":
                     self.request_show()
-                    if not self._busy:
+                    now = time.time()
+                    # UI debounce：5 秒內唔好再開錄音
+                    if now - self._last_wake_ts < float(WAKE_CD_SECONDS):
+                        self._wake_pause.clear()
+                        left = max(0, int(WAKE_CD_SECONDS - (now - self._last_wake_ts)))
+                        self.append_log(f"[warn] 聽候略過（CD {left}s）")
+                    elif self._busy:
+                        self._wake_pause.clear()
+                        self.append_log("[warn] 聽候略過（忙緊）")
+                    else:
+                        self._last_wake_ts = now
                         self._on_listen()
                 elif kind == "wake_off":
                     self._wake_on = False
@@ -363,7 +443,12 @@ class JarvisShell:
 
         def work() -> None:
             try:
-                self._ui_queue.put(("log", "[ok] 聽候中 — Hey Jarvis 或 Jarvis（英）"))
+                self._ui_queue.put(
+                    (
+                        "log",
+                        "[ok] 聽候中 — Hey Jarvis（邊沿觸發，唔會連錄）",
+                    )
+                )
                 run_wake_loop(
                     on_detect,
                     stop_event=self._wake_stop,
