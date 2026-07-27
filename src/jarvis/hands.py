@@ -96,7 +96,9 @@ def launch_profile(
                 role=role,
             )
         elif ltype == "prism_instance":
-            msg = _launch_prism(launch, force_new=force_new)
+            msg = _launch_prism(
+                launch, force_new=force_new, monitor=mon, role=role
+            )
             if profile.kind == "launcher_instance":
                 data = mem.load_memory(memory_path)
                 data["last_prism_instance"] = str(launch.get("instance_id") or profile_id)
@@ -661,7 +663,13 @@ def _window_pids_title_contains(*needles: str) -> list[int]:
     return out
 
 
-def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
+def _launch_prism(
+    launch: dict,
+    *,
+    force_new: bool = False,
+    monitor: str | None = None,
+    role: str | None = None,
+) -> str:
     exe = Path(str(launch.get("prism_exe") or ""))
     instance_id = str(launch.get("instance_id") or "").strip()
     instance_name = str(launch.get("instance_name") or instance_id).strip()
@@ -672,7 +680,9 @@ def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
 
     if not force_new and _minecraft_instance_running(instance_id):
         needles = [instance_name, "Minecraft", instance_id.replace("_", " ")]
-        ok, note = _focus_window_title_contains(*needles)
+        ok, note = _focus_window_title_contains(
+            *needles, monitor=monitor, role=role
+        )
         if ok:
             return f"Minecraft（{instance_name}）已在執行；已切換至遊戲視窗{note}"
         return f"Minecraft（{instance_name}）已在執行；未搶到 focus（請 Alt+Tab）"
