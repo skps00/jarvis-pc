@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from jarvis.asr_fix import repair_asr_text
 from jarvis.brain import (
     answer_query,
+    has_clear_open_verb,
     llm_configured,
     looks_ambiguous,
     resolve_ambiguous,
@@ -65,8 +66,15 @@ def execute_utterance(
                 lines.append(f"[brain] 失敗：{exc}")
                 brain_intent = None
             if brain_intent and brain_intent.kind not in ("refuse", "unknown"):
-                lines.append(f"[brain] {brain_intent.kind} | {brain_intent.caption}")
-                intent = apply_verb_kind_limits(brain_intent, registry)
+                # belt: block open when original raw had no open verb
+                if brain_intent.kind == "open_profile" and not has_clear_open_verb(
+                    utterance
+                ) and not has_clear_open_verb(text):
+                    lines.append("[brain] 擋開：原文無開動詞（可能係關）")
+                    brain_intent = None
+                else:
+                    lines.append(f"[brain] {brain_intent.kind} | {brain_intent.caption}")
+                    intent = apply_verb_kind_limits(brain_intent, registry)
             elif brain_intent:
                 lines.append(f"[brain] {brain_intent.kind} | {brain_intent.caption}")
 

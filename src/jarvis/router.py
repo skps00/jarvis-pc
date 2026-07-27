@@ -482,7 +482,7 @@ def _resolve_target(target_raw: str, registry: Registry, *, verb: str) -> Intent
     if len(hits) > 1:
         ids = ", ".join(p.id for p in hits)
         return Intent("refuse", caption=f"多個候選：{ids}（請講清楚）", target_raw=raw)
-    return Intent("refuse", caption=f"未登錄「{raw}」（v1 不自動搜尋；見 REMINDERS.md）", target_raw=raw)
+    return Intent("refuse", caption=f"未登錄「{raw}」（可 Discover 本機 app）", target_raw=raw)
 
 
 def _check_verb_kind(verb: str, profile: Profile, raw: str) -> Intent:

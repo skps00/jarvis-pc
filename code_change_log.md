@@ -1,5 +1,117 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 18:06:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py
+- **變更摘要**：關閉 `shell_app` 時加視窗標題→PID fallback，修 WhatsApp「未在運行」誤判。
+- **遇到的問題**：
+  - 問題1：`close_profile` 已命中 WhatsApp，但 process_names 偵測不到而回「未在運行」
+  - 解決方案：若 launch.type=shell_app，先嘗試 enum windows 依 display_name 找 PID，再 `taskkill /PID`
+  - 狀態：✅ 已解決
+- **備註**：fallback 只在 shell_app 啟用，減少誤殺。
+
+## [2026-07-27 18:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：加 WhatsApp 誤聽專修（`what石`／`闩 石`／`山殼石`）到 `開/閂 whatsapp`。
+- **遇到的問題**：
+  - 問題1：語音 close WhatsApp 落成「闩 石」，被錯配成 superwhisper
+  - 解決方案：短目標 + 石/whatsapp token + 開關動詞 → 強制映射 whatsapp
+  - 狀態：✅ 已解決
+- **備註**：只在短目標情境啟用，減少誤傷。
+
+## [2026-07-27 17:54:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_app_index.py
+- **變更摘要**：裸 app 名自動補 `開`，修 `raw=whatsapp` 被判 unknown。
+- **遇到的問題**：
+  - 問題1：語音落 `whatsapp`（無動詞）→ router unknown，Discover 無法進入
+  - 解決方案：ASR 新增 `_maybe_prefix_open_for_bare_app`，高分命中即改成 `開 <App>`
+  - 狀態：✅ 已解決
+- **備註**：避免 query 句/關閉句誤改。
+
+## [2026-07-27 17:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/app_index.py, tests/test_app_index.py
+- **變更摘要**：加短查詢防誤命中長句標籤（如 What is new...）。
+- **遇到的問題**：
+  - 問題1：`開 what石` 被改寫到長句 App 名，路由走 query
+  - 解決方案：best match 前加 plausibility gate：短目標禁配長句／多詞標籤
+  - 狀態：✅ 已解決
+- **備註**：保留 WhatsApp 命中。
+
+## [2026-07-27 17:46:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/app_index.py, tests/test_app_index.py
+- **變更摘要**：加 mixed STT 拉丁骨架匹配，`what石` 可命中 `WhatsApp`。
+- **遇到的問題**：
+  - 問題1：ASR 輸出 `what石`，混中英字導致 score 低於門檻
+  - 解決方案：拼寫分數新增 `latin_skeleton` 比對與近似門檻；補回歸測試
+  - 狀態：✅ 已解決
+- **備註**：serve 需重啟載入新邏輯。
+
+## [2026-07-27 17:30:00] 操作類型：新增
+
+- **文件路徑**：src/jarvis/app_index.py, src/jarvis/{asr_repair,discover}.py, tests/test_app_index.py, pyproject.toml, requirements.txt
+- **變更摘要**：掃本機 app 建名索引；拼寫近匹配 + ToJyutping 粵拼對目標自動改寫。
+- **遇到的問題**：
+  - 問題1：手寫 whatapp 表唔 scale；粵語 STT 漢字／拼音對英文名難對
+  - 解決方案：StartApps／捷徑／profiles 索引；SequenceMatcher + 粵拼（去調）pair score；repair 改寫 開／關 目標
+  - 狀態：✅ 已解決
+- **備註**：依賴 ToJyutping；索引 TTL 5 分鐘。
+
+## [2026-07-27 17:22:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{asr_repair,discover}.py, tests/test_discover.py
+- **變更摘要**：whatapp→whatsapp；Discover 名稱近音／少字母仍可命中。
+- **遇到的問題**：
+  - 問題1：raw=`开 whatapp`，score=0，Discover 無候選
+  - 解決方案：ASR confusion + SequenceMatcher ≥0.86 當近匹配
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
+## [2026-07-27 17:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{discover,hands,persist}.py, tests/test_discover.py, REMINDERS.md, README.md
+- **變更摘要**：Discover 加 Desktop／Local Programs／Get-StartApps（含 Store）；shell_app 啟動並可寫入 profiles。
+- **遇到的問題**：
+  - 問題1：開 WhatsApp 未登錄且 Start Menu 無 .lnk → 0 候選
+  - 解決方案：Get-StartApps + shell:AppsFolder\\AppID；Desktop／Local\\Programs 一齊掃
+  - 狀態：✅ 已解決
+- **備註**：StartApps 列表 cache 5 分鐘。
+
+## [2026-07-27 17:12:00] 操作類型：修改
+
+
+- **文件路徑**：src/jarvis/{memory,hands}.py, tests/test_hands_mc.py
+- **變更摘要**：開 app 時記 PID 入 memory；關／重開優先 taskkill 嗰啲 PID。
+- **遇到的問題**：
+  - 問題1：無 process_names／lnk 慢啟動時關唔到
+  - 解決方案：launch 前後 snapshot image PIDs；profile_pids 持久化；close 先殺記住
+  - 狀態：✅ 已解決
+- **備註**：browser／prism 仍用原規則；Steam 關時清 pid 紀錄。
+
+## [2026-07-27 17:10:00] 操作類型：修改
+
+
+- **文件路徑**：src/jarvis/{asr_repair,brain,engine}.py, tests/test_router.py
+- **變更摘要**：關 Discord 誤聽唔再開；Latin confusion 用詞界，避 discordrd。
+- **遇到的問題**：
+  - 問題1：講 close Discord，raw=`|-] dico`，Brain 開咗 Discord
+  - 解決方案：ASR force close；brain 無開動詞禁 open／改關；engine 擋；disco⊂discord 詞界
+  - 狀態：✅ 已解決
+- **備註**：開 Discord 要講「開」。serve 要重載先食新碼。
+
+## [2026-07-27 17:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hands,persist}.py, config/profiles.yaml
+- **變更摘要**：app_lnk 關閉時解析 .lnk→exe 名；Discover 寫入 process_names；Discord 補 Discord.exe。
+- **遇到的問題**：
+  - 問題1：閂 Discord 路由啱但「未設 process_names」
+  - 解決方案：_resolve_lnk_target；persist 寫 process_names
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
 ## [2026-07-27 16:50:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py

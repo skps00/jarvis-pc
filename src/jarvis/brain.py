@@ -21,6 +21,10 @@ from jarvis.router import (
 _ENV_LOADED = False
 _PATH_LIKE = re.compile(r"[\\/].*\.(exe|bat|cmd|ps1|lnk)$", re.I)
 _JSON_BLOB = re.compile(r"\{[\s\S]*\}")
+_CLEAR_OPEN_ANY = re.compile(
+    r"(再開|另開|多開|打開|開啟|啟動|\bopen\b|\blaunch\b|\bstart\b|\bplay\b|(?<![再另多])開)",
+    re.I,
+)
 
 
 def _load_dotenv() -> None:
@@ -189,6 +193,8 @@ def intent_from_llm_json(data: dict[str, Any], registry: Registry, *, raw_text: 
     kind = str(data.get("intent") or "unknown").strip()
     allowed = {
         "open_profile",
+        "close_profile",
+        "restart_profile",
         "restore_battlefield",
         "query",
         "system_power",
@@ -222,6 +228,49 @@ def intent_from_llm_json(data: dict[str, Any], registry: Registry, *, raw_text: 
 
     if kind == "query":
         return Intent("query", caption=speak or f"查詢：{raw_text}", target_raw=raw_text)
+
+    if kind == "close_profile":
+        # reuse open resolve then flip
+        if target_raw:
+            local = apply_verb_kind_limits(route(f"關 {target_raw}", registry), registry)
+            if local.kind == "close_profile":
+                if speak:
+                    local.caption = speak
+                return local
+        if profile_id and (
+            profile_id == "_pending_default_mc"
+            or (profile_id in registry.profiles and registry.profiles[profile_id].enabled)
+        ):
+            name = (
+                "Minecraft"
+                if profile_id == "_pending_default_mc"
+                else registry.profiles[profile_id].display_name
+            )
+            return Intent(
+                "close_profile",
+                profile_id=profile_id,
+                open_verb="關",
+                target_raw=target_raw or profile_id,
+                caption=speak or f"關閉 {name}（需確認）",
+            )
+        return Intent("refuse", caption=speak or "唔知關邊個")
+
+    if kind == "restart_profile":
+        if target_raw:
+            local = apply_verb_kind_limits(route(f"重開 {target_raw}", registry), registry)
+            if local.kind == "restart_profile":
+                if speak:
+                    local.caption = speak
+                return local
+        if profile_id and profile_id in registry.profiles and registry.profiles[profile_id].enabled:
+            return Intent(
+                "restart_profile",
+                profile_id=profile_id,
+                open_verb="重開",
+                target_raw=target_raw or profile_id,
+                caption=speak or f"重開 {registry.profiles[profile_id].display_name}（需確認）",
+            )
+        return Intent("refuse", caption=speak or "唔知重開邊個")
 
     if kind == "system_power":
         if power not in ("shutdown", "sleep"):
@@ -283,22 +332,31 @@ def intent_from_llm_json(data: dict[str, Any], registry: Registry, *, raw_text: 
     return None
 
 
+def has_clear_open_verb(text: str) -> bool:
+    """True if utterance clearly asks to open/launch."""
+    return bool(_CLEAR_OPEN_ANY.search(text or ""))
+
+
 def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
     """Ask small LLM for intent JSON; return gated Intent or None."""
     summary = _registry_summary(registry)
     schema = (
-        '{"intent":"open_profile|restore_battlefield|query|system_power|refuse|unknown",'
+        '{"intent":"open_profile|close_profile|restart_profile|restore_battlefield|'
+        'query|system_power|refuse|unknown",'
         '"target_raw":"string|null","profile_id":"id from list or null",'
         '"force_new":false,"force_last_mc":false,'
         '"power_action":"shutdown|sleep|null","speak_caption":"短字幕"}'
     )
+    open_ok = has_clear_open_verb(text)
     messages = [
         {
             "role": "system",
             "content": (
                 "你是 JARVIS 意圖解析器。只輸出一個 JSON 物件，不要 markdown。\n"
-                "規則：target_raw／profile_id 必須對得上 profiles；不可發明 exe 路徑；"
-                "force_new=true 表示再開／新視窗；開戰場用 open_profile。\n"
+                "規則：target_raw／profile_id 必須對得上 profiles；不可發明 exe 路徑。\n"
+                "關／閂／close／shut（含 STT 亂碼如 |-] dico）→ close_profile，唔好 open_profile。\n"
+                "無明確開動詞（開／open／launch／打開）時，禁止 open_profile；宁可 refuse。\n"
+                f"本句是否有明確開動詞：{'yes' if open_ok else 'NO — do not open'}。\n"
                 f"schema: {schema}\n"
                 f"profiles:\n{summary}"
             ),
@@ -307,4 +365,28 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
     ]
     raw = _chat(messages, json_mode=True)
     data = _parse_json_obj(raw)
-    return intent_from_llm_json(data, registry, raw_text=text)
+    intent = intent_from_llm_json(data, registry, raw_text=text)
+    if intent is None:
+        return None
+    # Hard gate: no clear open verb → never open
+    if intent.kind == "open_profile" and not open_ok:
+        if intent.profile_id or intent.target_raw:
+            # reinterpret as close
+            target = intent.target_raw or intent.profile_id or ""
+            flipped = apply_verb_kind_limits(route(f"關 {target}", registry), registry)
+            if flipped.kind == "close_profile":
+                return flipped
+            if intent.profile_id:
+                return Intent(
+                    "close_profile",
+                    profile_id=intent.profile_id,
+                    open_verb="關",
+                    target_raw=intent.target_raw,
+                    caption=f"關閉（STT 無開動詞，改關）（需確認）",
+                )
+        return Intent(
+            "refuse",
+            caption="聽唔清開定關，請講「開 X」或「關 X」",
+            target_raw=text,
+        )
+    return intent

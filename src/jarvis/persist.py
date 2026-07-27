@@ -17,6 +17,18 @@ def _slug(label: str) -> str:
     return (s or "app")[:40]
 
 
+def _guess_process_names(label: str, extra: list[str] | None = None) -> list[str]:
+    names: list[str] = []
+    if extra:
+        names.extend(extra)
+    label = (label or "").strip()
+    if label and re.match(r"^[A-Za-z0-9][\w .-]*$", label):
+        exe = label if label.lower().endswith(".exe") else f"{label}.exe"
+        if exe not in names:
+            names.append(exe)
+    return names
+
+
 def commit_candidate(
     candidate: Candidate,
     path: Path | None = None,
@@ -54,10 +66,38 @@ def commit_candidate(
         }
         kind = "launcher_instance"
         names = [candidate.label, str(hint.get("instance_id"))]
-    elif ltype == "app_exe" and hint.get("lnk"):
-        launch = {"type": "app_lnk", "lnk": str(hint.get("lnk"))}
+    elif ltype == "shell_app" and hint.get("app_id"):
+        launch = {
+            "type": "shell_app",
+            "app_id": str(hint.get("app_id")),
+            "process_names": _guess_process_names(candidate.label),
+        }
         kind = "app"
         names = [candidate.label]
+    elif ltype in ("app_exe", "app_lnk") and hint.get("lnk"):
+        lnk = str(hint.get("lnk"))
+        launch = {"type": "app_lnk", "lnk": lnk}
+        kind = "app"
+        names = [candidate.label]
+        try:
+            from jarvis.hands import _resolve_lnk_target
+
+            target = _resolve_lnk_target(lnk)
+            if target and target.name:
+                launch["process_names"] = [target.name]
+            else:
+                launch["process_names"] = _guess_process_names(candidate.label)
+        except Exception:
+            launch["process_names"] = _guess_process_names(candidate.label)
+    elif ltype == "app_exe" and hint.get("exe"):
+        exe = Path(str(hint.get("exe")))
+        launch = {
+            "type": "app_exe",
+            "exe": str(exe),
+            "process_names": [exe.name],
+        }
+        kind = "app"
+        names = [candidate.label, exe.stem]
     else:
         raise ValueError(f"未支援 discover launch：{hint}")
 

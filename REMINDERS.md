@@ -26,7 +26,17 @@ python -m jarvis listen 3
 
 ## ✅ v1.1 — Discover & Confirm（已接）
 
-未知 `open xxx` → 搜尋開始功能表／Steam／Prism → Yes 則啟動並寫入 `profiles.yaml`。
+未知 `open xxx` → 搜尋：
+
+- Start Menu `.lnk`
+- Desktop `.lnk`
+- `%LOCALAPPDATA%\Programs` exe
+- `Get-StartApps`（含 Store／UWP，例如 WhatsApp）
+- Steam／Prism
+
+Yes → 啟動並寫入 `profiles.yaml`（`shell_app` 用 `shell:AppsFolder\AppID`）。
+
+開／關目標會對本機 app 索引做 **拼寫近匹配 + 粵拼（ToJyutping）** 自動改寫（例如 whatapp→WhatsApp、漢字／jyutping→中文名）。
 
 查詢句見下方「查詢小 LLM」。
 
