@@ -25,9 +25,25 @@ _CLEAR_OPEN_ANY = re.compile(
     r"(再開|另開|多開|打開|開啟|啟動|\bopen\b|\blaunch\b|\bstart\b|\bplay\b|(?<![再另多])開)",
     re.I,
 )
-# 僅用於「無開動詞」閘：有明確關意先允許改關，否則 refuse（防漏「開」誤關）
+# Close hint for hard-gate / open→close flip. Bare「關」須避「關於／無關／關係／開關」.
 _CLEAR_CLOSE_ANY = re.compile(
-    r"(閂|冂|闩|關閉|關掉|關上|\bclose\b|\bquit\b|\bkill\b|(?<![再另多重新])關)",
+    r"(閂|冂|闩|關閉|關掉|關上|"
+    r"\bclose\b|\bquit\b|\bkill\b|\bshut\b|"
+    r"(?<![再另多重新無有不開])關(?![於係鍵注心聯稅機]))",
+    re.I,
+)
+# Restart app (not PC). Lexical evidence for restart_profile gate.
+_CLEAR_RESTART_ANY = re.compile(
+    r"(重新開啟|重新打開|重新開|重開|重啟|\brestart\b|\breboot\b)",
+    re.I,
+)
+# Power / sleep — mirror router._POWER_PHRASES (substring OK for STT filler).
+_CLEAR_POWER_ANY = re.compile(
+    r"(關機|关机|關電腦|關掉電腦|shut\s*down|shutdown|power\s*off|"
+    r"turn\s+off\s+(computer|pc)|重新開機|重啟電腦|重啟機|"
+    r"restart\s+(computer|pc)|reboot(\s+now)?|"
+    r"進入睡眠|睡眠模式|休眠|hibernate|go\s+to\s+sleep|"
+    r"(?<![a-z])sleep(?![a-z])|睡覺|瞓覺|去瞓)",
     re.I,
 )
 
@@ -61,18 +77,28 @@ def _load_dotenv() -> None:
 
 
 def llm_configured() -> bool:
-    """True when an API key is available."""
+    """True when an API key is available (settings.json or env)."""
     _load_dotenv()
-    return bool(os.environ.get("JARVIS_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+    return bool(_api_key())
 
 
 def _api_key() -> str:
     _load_dotenv()
+    from jarvis.settings import load_settings
+
+    s = load_settings()
+    if s.llm_api_key:
+        return s.llm_api_key
     return (os.environ.get("JARVIS_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
 
 
 def _base_url() -> str:
     _load_dotenv()
+    from jarvis.settings import load_settings
+
+    s = load_settings()
+    if s.llm_base_url:
+        return s.llm_base_url.rstrip("/")
     return (
         os.environ.get("JARVIS_LLM_BASE_URL") or "https://api.deepseek.com"
     ).rstrip("/")
@@ -80,6 +106,11 @@ def _base_url() -> str:
 
 def _model() -> str:
     _load_dotenv()
+    from jarvis.settings import load_settings
+
+    s = load_settings()
+    if s.llm_model:
+        return s.llm_model
     return os.environ.get("JARVIS_LLM_MODEL") or "deepseek-chat"
 
 
@@ -98,11 +129,13 @@ def _registry_summary(registry: Registry) -> str:
 
 def _chat(messages: list[dict[str, str]], *, json_mode: bool = True) -> str:
     """Call OpenAI-compatible chat completions; return assistant text."""
+    from jarvis.settings import openai_chat_url
+
     key = _api_key()
     if not key:
-        raise RuntimeError("未設定 JARVIS_LLM_API_KEY（或 OPENAI_API_KEY）")
+        raise RuntimeError("未設定 LLM API Key（設定頁或 JARVIS_LLM_API_KEY）")
 
-    url = f"{_base_url()}/v1/chat/completions"
+    url = openai_chat_url(_base_url())
     body: dict[str, Any] = {
         "model": _model(),
         "messages": messages,
@@ -343,8 +376,18 @@ def has_clear_open_verb(text: str) -> bool:
 
 
 def has_clear_close_verb(text: str) -> bool:
-    """True if utterance clearly asks to close/quit."""
+    """True if utterance clearly asks to close/quit (not 關於／無關)."""
     return bool(_CLEAR_CLOSE_ANY.search(text or ""))
+
+
+def has_clear_restart_verb(text: str) -> bool:
+    """True if utterance clearly asks to restart an app."""
+    return bool(_CLEAR_RESTART_ANY.search(text or ""))
+
+
+def has_clear_power_verb(text: str) -> bool:
+    """True if utterance clearly asks shutdown／reboot／sleep."""
+    return bool(_CLEAR_POWER_ANY.search(text or ""))
 
 
 def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
@@ -359,6 +402,8 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
     )
     open_ok = has_clear_open_verb(text)
     close_ok = has_clear_close_verb(text)
+    restart_ok = has_clear_restart_verb(text)
+    power_ok = has_clear_power_verb(text)
     messages = [
         {
             "role": "system",
@@ -367,9 +412,13 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
                 "規則：target_raw／profile_id 必須對得上 profiles；不可發明 exe 路徑。\n"
                 "關／閂／close／shut（含 STT 亂碼如 |-] dico）→ close_profile，唔好 open_profile。\n"
                 "無明確開動詞（開／open／launch／打開）時，禁止 open_profile；宁可 refuse。\n"
+                "無明確關動詞時，禁止 close_profile；無重開動詞時，禁止 restart_profile；"
+                "無關機／睡眠等電源提示時，禁止 system_power。\n"
                 "無開亦無關提示時，輸出 refuse，唔好猜開或關。\n"
                 f"本句是否有明確開動詞：{'yes' if open_ok else 'NO — do not open'}。\n"
-                f"本句是否有明確關動詞：{'yes' if close_ok else 'no'}。\n"
+                f"本句是否有明確關動詞：{'yes' if close_ok else 'NO — do not close'}。\n"
+                f"本句是否有明確重開動詞：{'yes' if restart_ok else 'NO — do not restart'}。\n"
+                f"本句是否有明確電源指令：{'yes' if power_ok else 'NO — do not system_power'}。\n"
                 f"schema: {schema}\n"
                 f"profiles:\n{summary}"
             ),
@@ -399,6 +448,24 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
         return Intent(
             "refuse",
             caption="聽唔清開定關，請講「開 X」或「關 X」",
+            target_raw=text,
+        )
+    if intent.kind == "close_profile" and not close_ok:
+        return Intent(
+            "refuse",
+            caption="聽唔清關閉意圖，請講「關 X」",
+            target_raw=text,
+        )
+    if intent.kind == "restart_profile" and not restart_ok:
+        return Intent(
+            "refuse",
+            caption="聽唔清重開意圖，請講「重開 X」",
+            target_raw=text,
+        )
+    if intent.kind == "system_power" and not power_ok:
+        return Intent(
+            "refuse",
+            caption="聽唔清電源指令，請講「關機」或「睡眠」",
             target_raw=text,
         )
     return intent
