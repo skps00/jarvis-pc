@@ -17,6 +17,7 @@ from jarvis.hands import (
     _launch_or_focus_steam,
     _launch_or_focus_shell_app,
     _remember_launch_pids,
+    _role_layout_rect,
     close_profile,
 )
 
@@ -187,6 +188,20 @@ def test_shell_app_launches_when_not_running():
     launch_fn.assert_called_once()
 
 
+def test_role_layout_rect():
+    work = (100, 50, 1100, 850)  # 1000x800
+    x, y, w, h, how = _role_layout_rect(
+        work, "primary_game", keep_w=400, keep_h=300
+    )
+    assert (x, y, w, h, how) == (100, 50, 1000, 800, "鋪滿")
+    x, y, w, h, how = _role_layout_rect(work, "chat", keep_w=400, keep_h=300)
+    assert how == "右半" and w == 500 and x == 600
+    x, y, w, h, how = _role_layout_rect(work, "ide", keep_w=400, keep_h=300)
+    assert how == "左2/3" and w == 666 and x == 100
+    x, y, w, h, how = _role_layout_rect(work, "aux", keep_w=400, keep_h=300)
+    assert (x, y, w, h, how) == (100, 50, 400, 300, "角")
+
+
 if __name__ == "__main__":
     test_cmdline_matches_instance()
     test_steam_focus_when_running()
@@ -198,4 +213,5 @@ if __name__ == "__main__":
     test_close_shell_app_window_pid_fallback()
     test_shell_app_focus_when_already_running()
     test_shell_app_launches_when_not_running()
+    test_role_layout_rect()
     print("all passed")

@@ -51,6 +51,8 @@ def main(argv: list[str] | None = None) -> None:
         else:
             print("開機自啟：" + ("已啟用" if auto.is_enabled() else "未啟用"))
             print(f"路徑：{auto.startup_path()}")
+            if auto.has_legacy_cmd():
+                print("[warn] 仍有舊 JARVIS.cmd（會彈黑窗）→ 跑：python -m jarvis autostart on")
         raise SystemExit(0)
 
     if raw and raw[0] == "listen":

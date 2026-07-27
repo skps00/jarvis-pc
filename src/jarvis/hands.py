@@ -81,6 +81,8 @@ def launch_profile(
         _close_process_names(profile) if ltype in _PID_TRACK_TYPES else []
     )
     before_pids = _pids_for_images(track_names) if track_names else set()
+    mon = str(profile.restore.get("monitor") or "") or None
+    role = str(profile.restore.get("role") or "") or None
     try:
         if ltype == "steam_app":
             msg = _launch_or_focus_steam(
@@ -90,10 +92,13 @@ def launch_profile(
                 force_new=force_new,
                 profile_id=profile_id,
                 memory_path=memory_path,
-                monitor=str(profile.restore.get("monitor") or "") or None,
+                monitor=mon,
+                role=role,
             )
         elif ltype == "prism_instance":
-            msg = _launch_prism(launch, force_new=force_new)
+            msg = _launch_prism(
+                launch, force_new=force_new, monitor=mon, role=role
+            )
             if profile.kind == "launcher_instance":
                 data = mem.load_memory(memory_path)
                 data["last_prism_instance"] = str(launch.get("instance_id") or profile_id)
@@ -105,14 +110,16 @@ def launch_profile(
                 launch,
                 display_name=profile.display_name,
                 force_new=force_new,
-                monitor=str(profile.restore.get("monitor") or "") or None,
+                monitor=mon,
+                role=role,
             )
         elif ltype == "browser_restore":
             msg = _launch_chrome_restore(
                 launch,
                 ask_confirm=ask_confirm,
                 force_new=force_new,
-                monitor=str(profile.restore.get("monitor") or "") or None,
+                monitor=mon,
+                role=role,
             )
             _touch_battlefield(registry, profile_id, memory_path)
             return LaunchResult(True, msg, profile_id)
@@ -121,14 +128,16 @@ def launch_profile(
                 launch,
                 display_name=profile.display_name,
                 force_new=force_new,
-                monitor=str(profile.restore.get("monitor") or "") or None,
+                monitor=mon,
+                role=role,
             )
         elif ltype == "shell_app":
             msg = _launch_or_focus_shell_app(
                 launch,
                 display_name=profile.display_name,
                 force_new=force_new,
-                monitor=str(profile.restore.get("monitor") or "") or None,
+                monitor=mon,
+                role=role,
             )
         elif ltype == "script_file":
             _launch_script(launch)
@@ -344,6 +353,7 @@ def _launch_or_focus_steam(
     profile_id: str | None = None,
     memory_path: Path | None = None,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> str:
     """Launch via steam://; if already running (and not force_new) → focus window."""
     _ = ask_confirm, profile_id, memory_path
@@ -351,7 +361,9 @@ def _launch_or_focus_steam(
     if not force_new and names and _any_process_running(names):
         needles = _steam_focus_needles(display_name)
         if needles:
-            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            ok, note = _focus_window_title_contains(
+                *needles, monitor=monitor, role=role
+            )
             if ok:
                 return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
@@ -493,11 +505,43 @@ def _focus_hwnd(hwnd: int) -> bool:
     return True
 
 
+def _role_layout_rect(
+    work: tuple[int, int, int, int],
+    role: str | None,
+    *,
+    keep_w: int,
+    keep_h: int,
+) -> tuple[int, int, int, int, str]:
+    """
+    Map restore.role → (x, y, w, h, note_suffix) inside work area.
+
+    primary_game fills; chat/ide/browser split; else keep size at top-left.
+    """
+    left, top, right, bottom = work
+    max_w = max(100, right - left)
+    max_h = max(100, bottom - top)
+    r = (role or "").strip().lower()
+    if r in ("primary_game", "game"):
+        return left, top, max_w, max_h, "鋪滿"
+    if r in ("chat_or_map", "chat"):
+        w = max(100, max_w // 2)
+        return left + max_w - w, top, w, max_h, "右半"
+    if r == "ide":
+        w = max(100, (max_w * 2) // 3)
+        return left, top, w, max_h, "左2/3"
+    if r in ("browser", "browser_session"):
+        w = max(100, (max_w * 2) // 3)
+        return left + max_w - w, top, w, max_h, "右2/3"
+    w = min(max(100, keep_w), max_w)
+    h = min(max(100, keep_h), max_h)
+    return left, top, w, h, "角"
+
+
 def _monitor_work_areas() -> list[tuple[int, int, int, int]]:
     """
     Return work-area rects (left, top, right, bottom), primary first.
 
-    Soft multi-monitor support for restore.monitor.
+    Multi-monitor support for restore.monitor + restore.role.
     """
     if sys.platform != "win32":
         return []
@@ -547,9 +591,13 @@ def _monitor_work_areas() -> list[tuple[int, int, int, int]]:
     return primary + others
 
 
-def _place_hwnd_on_monitor(hwnd: int, monitor: str) -> str:
+def _place_hwnd_on_monitor(
+    hwnd: int,
+    monitor: str,
+    role: str | None = None,
+) -> str:
     """
-    Move window top-left onto primary/secondary work area (keep size).
+    Place window onto primary/secondary by restore.role layout.
 
     Returns short note or empty.
     """
@@ -573,23 +621,20 @@ def _place_hwnd_on_monitor(hwnd: int, monitor: str) -> str:
     rect = wintypes.RECT()
     if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
         return ""
-    w = int(rect.right - rect.left)
-    h = int(rect.bottom - rect.top)
-    # keep on-screen: clamp size into work area
-    max_w = max(100, box[2] - box[0])
-    max_h = max(100, box[3] - box[1])
-    w = min(w, max_w)
-    h = min(h, max_h)
-    user32.MoveWindow(hwnd, box[0], box[1], w, h, True)
-    return f"；已移去{label}"
+    keep_w = int(rect.right - rect.left)
+    keep_h = int(rect.bottom - rect.top)
+    x, y, w, h, how = _role_layout_rect(box, role, keep_w=keep_w, keep_h=keep_h)
+    user32.MoveWindow(hwnd, x, y, w, h, True)
+    return f"；已移去{label}（{how}）"
 
 
 def _focus_window_title_contains(
     *needles: str,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> tuple[bool, str]:
     """
-    Focus Z-order topmost matching window; optional move to monitor.
+    Focus Z-order topmost matching window; optional move to monitor+role.
 
     Returns (ok, note). note explains multi-window pick / monitor move.
     """
@@ -603,7 +648,7 @@ def _focus_window_title_contains(
         note = f"；多窗×{len(wins)}揀最上「{short}」"
     ok = _focus_hwnd(hwnd)
     if ok and monitor:
-        note += _place_hwnd_on_monitor(hwnd, monitor)
+        note += _place_hwnd_on_monitor(hwnd, monitor, role=role)
     return ok, note
 
 
@@ -618,7 +663,13 @@ def _window_pids_title_contains(*needles: str) -> list[int]:
     return out
 
 
-def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
+def _launch_prism(
+    launch: dict,
+    *,
+    force_new: bool = False,
+    monitor: str | None = None,
+    role: str | None = None,
+) -> str:
     exe = Path(str(launch.get("prism_exe") or ""))
     instance_id = str(launch.get("instance_id") or "").strip()
     instance_name = str(launch.get("instance_name") or instance_id).strip()
@@ -629,7 +680,9 @@ def _launch_prism(launch: dict, *, force_new: bool = False) -> str:
 
     if not force_new and _minecraft_instance_running(instance_id):
         needles = [instance_name, "Minecraft", instance_id.replace("_", " ")]
-        ok, note = _focus_window_title_contains(*needles)
+        ok, note = _focus_window_title_contains(
+            *needles, monitor=monitor, role=role
+        )
         if ok:
             return f"Minecraft（{instance_name}）已在執行；已切換至遊戲視窗{note}"
         return f"Minecraft（{instance_name}）已在執行；未搶到 focus（請 Alt+Tab）"
@@ -655,13 +708,16 @@ def _launch_or_focus_exe(
     display_name: str,
     force_new: bool = False,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> str:
     """Launch exe; if process_names already running → focus (not second copy)."""
     names = _process_names(launch)
     if not force_new and names and _any_process_running(names):
         needles = (display_name,) if display_name.strip() else ()
         if needles:
-            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            ok, note = _focus_window_title_contains(
+                *needles, monitor=monitor, role=role
+            )
             if ok:
                 return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
@@ -709,11 +765,14 @@ def _launch_or_focus_shell_app(
     display_name: str,
     force_new: bool = False,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> str:
     """Launch shell_app; if already open (and not force_new) just focus window."""
     needles = _shell_app_focus_needles(display_name)
     if not force_new and needles and _window_pids_title_contains(*needles):
-        ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+        ok, note = _focus_window_title_contains(
+            *needles, monitor=monitor, role=role
+        )
         if ok:
             return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
@@ -725,7 +784,9 @@ def _launch_or_focus_shell_app(
     # Wait for window then focus (Store apps start slow)
     deadline = time.time() + 4.0
     while time.time() < deadline:
-        ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+        ok, note = _focus_window_title_contains(
+            *needles, monitor=monitor, role=role
+        )
         if ok:
             return f"{'已新開' if force_new else '已啟動'}：{display_name}{note}"
         time.sleep(0.25)
@@ -750,13 +811,16 @@ def _launch_or_focus_lnk(
     display_name: str,
     force_new: bool = False,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> str:
     """Open .lnk; if process_names running → focus."""
     names = _process_names(launch)
     if not force_new and names and _any_process_running(names):
         needles = (display_name,) if display_name.strip() else ()
         if needles:
-            ok, note = _focus_window_title_contains(*needles, monitor=monitor)
+            ok, note = _focus_window_title_contains(
+                *needles, monitor=monitor, role=role
+            )
             if ok:
                 return f"{display_name} 已在執行；已切換至視窗{note}"
         return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
@@ -770,6 +834,7 @@ def _launch_chrome_restore(
     *,
     force_new: bool = False,
     monitor: str | None = None,
+    role: str | None = None,
 ) -> str:
     """Cold-start restore, focus if running, or --new-window when force_new."""
     _ = ask_confirm
@@ -785,7 +850,7 @@ def _launch_chrome_restore(
     if _chrome_running():
         # ponytail: 唔問殺 process；設計＝已開只 focus。多窗揀 Z-order 最上
         ok, note = _focus_window_title_contains(
-            "google chrome", "- chrome", monitor=monitor
+            "google chrome", "- chrome", monitor=monitor, role=role
         )
         if ok:
             return f"Chrome 已在執行；已切換至現有視窗{note or '（多窗揀最上）'}"
@@ -837,7 +902,7 @@ def restore_battlefield(
     ask_confirm: Callable[[str], bool] | None = None,
     memory_path: Path | None = None,
 ) -> LaunchResult:
-    """Open last_battlefield profile if set (role layout is soft / later)."""
+    """Open last_battlefield profile if set (role layout via restore.role)."""
     data = mem.load_memory(memory_path)
     pid = data.get("last_battlefield")
     if not pid:

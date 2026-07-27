@@ -1,5 +1,120 @@
 # 代碼變更與問題日誌
 
+## [2026-07-28 07:55:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/brain.py, tests/test_brain.py, code_change_log.md
+- **變更摘要**：/review A：close／restart／system_power 硬閘；「關」唔再誤觸「關於／無關／關係」。
+- **遇到的問題**：
+  - 問題1：open 有閘、close／power 無 → LLM 可無證據關／關機
+  - 解決方案：對稱 lexical hard gate
+  - 狀態：✅ 已解決
+  - 問題2：單字「關」匹配「關於」
+  - 解決方案：負向前後看（無／開… + 於／係…）
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 07:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{shell_app,hands,brain}.py, code_change_log.md
+- **變更摘要**：/review AUTO-FIX：busy 時設定重啟聽候保持 pause；join timeout 警告；Prism focus 傳 monitor/role；close 詞加 shut。
+- **遇到的問題**：
+  - 問題1：存設定重開 wake 會 clear pause，錄音中搶 mic
+  - 解決方案：restart 後若 `_busy` 再 set pause
+  - 狀態：✅ 已解決
+  - 問題2：Prism 路徑漏 role layout
+  - 解決方案：`_launch_prism(..., monitor=, role=)`
+  - 狀態：✅ 已解決
+- **備註**：ASK 待答：close/power hard gate；「關」誤觸「關於」。
+
+## [2026-07-28 07:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：修設定存檔後聽候可能唔再開（stop 未 join 就 start）；列模型／檢測改背景線程防 Tk 凍；門檻範圍存檔前校驗。
+- **遇到的問題**：
+  - 問題1：apply_settings → stop_wake → start_wake；舊 thread 仍 alive 時 start 直接 return，聽候變關
+  - 解決方案：stop_wake join(timeout)；再 clear event 再開
+  - 狀態：✅ 已解決
+  - 問題2：list_models／probe 喺 UI 線程，timeout 可卡數十秒（Tk 常見坑）
+  - 解決方案：worker thread + root.after 回 UI
+  - 狀態：✅ 已解決
+- **備註**：審核方法：單元測試 + 探索式邊界 + 網上 desktop/Tk checklist。
+
+## [2026-07-28 07:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：補完 SettingsWindow（先前 StrReplace 失敗）；Tabs＋隱藏 ASR 雲端欄＋檢測連線；加 preset_from_label／probe 單測。
+- **遇到的問題**：
+  - 問題1：SettingsWindow 大塊 replace 對唔上舊字串，UI 仍係單頁
+  - 解決方案：整段 class 用檔案拼接覆寫；跑 test_settings
+  - 狀態：✅ 已解決
+- **備註**：對齊：Cherry 檢測／列模型；Hermes Key→model；OpenClaw 分頁；Claude Code／Codex 清晰 model id。
+
+## [2026-07-28 07:25:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,shell_app}.py, code_change_log.md
+- **變更摘要**：設定頁對齊 Cherry／Hermes／OpenClaw：Notebook 分頁、SenseVoice 隱藏雲端欄、檢測連線、中文 Preset；參考 Claude Code／Codex 模型揀選清晰度。
+- **遇到的問題**：
+  - 問題1：一長形式難用；SenseVoice 仍見雲端欄
+  - 解決方案：Tab＋條件顯示＋probe_connection（UI 07:35 才真正落地）
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 07:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,ear,brain,shell_app}.py, tests/test_settings.py, .env.example
+- **變更摘要**：設定通用化——ASR/LLM 可選 model；API 列模型；Ollama／自訂模型；舊 mimo 欄位相容遷移。
+- **遇到的問題**：
+  - 問題1：寫死 mimo-v2.5-asr／單一供應商
+  - 解決方案：openai_audio + asr_model；LLM preset＋list_models；custom_models
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 07:15:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{settings,ear,brain,shell_app,wake}.py, tests/test_settings.py, .env.example
+- **變更摘要**：Tk 設定頁 + AppData settings.json；ASR SenseVoice｜MiMo 可切；LLM／聽候／錄音／開機自啟可改。
+- **遇到的問題**：
+  - 問題1：設定散落 .env 同硬編碼常數
+  - 解決方案：統一 settings.json（優先於 .env）
+  - 狀態：✅ 已解決
+- **備註**：第一版唔改 profiles、唔做 TTS。
+
+## [2026-07-28 07:05:00] 操作類型：修改 | 新增
+
+- **文件路徑**：src/jarvis/{autostart,__main__}.py, tests/test_autostart.py, code_change_log.md
+- **變更摘要**：修 autostart：legacy .cmd 算已啟用；disable 淨清 .cmd 唔再誤報；status 警告舊腳本；加單測。
+- **遇到的問題**：
+  - 問題1：開機彈 CMD（Startup JARVIS.cmd + python.exe）
+  - 解決方案：改 silent VBS + pythonw；enable 清舊 cmd
+  - 狀態：✅ 已解決
+  - 問題2：disable 只剩 .cmd 時會講「本來就未開啟」
+  - 解決方案：先記 had_vbs/had_cmd 再刪
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 07:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/autostart.py
+- **變更摘要**：開機自啟改寫 silent `JARVIS.vbs`（pythonw，WindowStyle=0）；清舊 `JARVIS.cmd`。
+- **遇到的問題**：
+  - 問題1：重開機 Jarvis 跟住彈 CMD
+  - 解決方案：Startup 唔再用 `python.exe` 嘅 `.cmd`；改 VBS + pythonw
+  - 狀態：✅ 已解決
+- **備註**：跑一次 `python -m jarvis autostart on` 覆寫 Startup。
+
+## [2026-07-28 01:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{brain,hands,wake}.py, tests/test_brain.py, docs/train_wake_jarvis.md
+- **變更摘要**：Backlog4：無開動詞唔再盲改關（要有關提示先翻）；restore.role 硬佈局；wake 門檻 0.55→0.58。
+- **遇到的問題**：
+  - 問題1：Brain 無開動詞一律改關 → STT 漏「開」會誤關
+  - 解決方案：僅有 clear close hint 先 flip；否則 refuse
+  - 狀態：✅ 已解決
+  - 問題2：多螢幕只移 top-left、唔理 role
+  - 解決方案：primary_game 鋪滿；chat／ide／browser 分區
+  - 狀態：✅ 已解決
+- **備註**：自訓 jarvis.onnx 留明日（docs/train_wake_jarvis.md）。
+
 ## [2026-07-28 01:42:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/shell_app.py, src/jarvis/wake.py

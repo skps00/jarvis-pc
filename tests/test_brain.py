@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from jarvis.brain import (
+    has_clear_close_verb,
+    has_clear_power_verb,
     intent_from_llm_json,
     llm_configured,
     looks_ambiguous,
@@ -98,11 +100,123 @@ def test_resolve_ambiguous_mocked():
         }
     )
     with mock.patch("jarvis.brain._chat", return_value=fake):
-        intent = resolve_ambiguous("搞個 new Cursor 出嚟", r)
+        # 須有明確開動詞，否則 hard gate 會 refuse／改關
+        intent = resolve_ambiguous("搞個 open Cursor 出嚟", r)
     assert intent is not None
     assert intent.kind == "open_profile"
     assert intent.profile_id == "cursor"
     assert intent.force_new
+
+
+def test_resolve_ambiguous_no_verb_refuses():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "open_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "開 Cursor",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("Cursor", r)
+    assert intent is not None
+    assert intent.kind == "refuse"
+
+
+def test_resolve_ambiguous_close_hint_flips():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "open_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "開 Cursor",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("close Cursor", r)
+    assert intent is not None
+    assert intent.kind == "close_profile"
+
+
+def test_close_verb_skips_guanyu_false_positives():
+    assert has_clear_close_verb("關 Cursor")
+    assert has_clear_close_verb("關閉 Cursor")
+    assert has_clear_close_verb("shut Cursor")
+    assert not has_clear_close_verb("關於 Cursor")
+    assert not has_clear_close_verb("無關 Cursor")
+    assert not has_clear_close_verb("關係")
+    assert not has_clear_close_verb("開關")
+
+
+def test_resolve_ambiguous_guanyu_does_not_flip_close():
+    """「關於」唔再當 close hint → 無開動詞就 refuse，唔好誤關。"""
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "open_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "開",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("關於 Cursor", r)
+    assert intent is not None
+    assert intent.kind == "refuse"
+
+
+def test_resolve_ambiguous_close_without_verb_refuses():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "close_profile",
+            "target_raw": "Cursor",
+            "profile_id": "cursor",
+            "force_new": False,
+            "speak_caption": "關",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("Cursor", r)
+    assert intent is not None
+    assert intent.kind == "refuse"
+
+
+def test_resolve_ambiguous_power_without_cue_refuses():
+    assert not has_clear_power_verb("Cursor")
+    assert has_clear_power_verb("關機")
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "system_power",
+            "power_action": "shutdown",
+            "speak_caption": "關機",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("Cursor", r)
+    assert intent is not None
+    assert intent.kind == "refuse"
+
+
+def test_resolve_ambiguous_power_with_cue_ok():
+    r = _reg()
+    fake = json.dumps(
+        {
+            "intent": "system_power",
+            "power_action": "shutdown",
+            "speak_caption": "關機",
+        }
+    )
+    with mock.patch("jarvis.brain._chat", return_value=fake):
+        intent = resolve_ambiguous("關機", r)
+    assert intent is not None
+    assert intent.kind == "system_power"
 
 
 def test_looks_ambiguous():
@@ -160,6 +274,13 @@ if __name__ == "__main__":
         test_intent_from_json_force_new_browser,
         test_intent_rejects_path_and_illegal_id,
         test_resolve_ambiguous_mocked,
+        test_resolve_ambiguous_no_verb_refuses,
+        test_resolve_ambiguous_close_hint_flips,
+        test_close_verb_skips_guanyu_false_positives,
+        test_resolve_ambiguous_guanyu_does_not_flip_close,
+        test_resolve_ambiguous_close_without_verb_refuses,
+        test_resolve_ambiguous_power_without_cue_refuses,
+        test_resolve_ambiguous_power_with_cue_ok,
         test_looks_ambiguous,
         test_engine_query_without_key,
         test_engine_ambiguous_brain_then_dry_run,
