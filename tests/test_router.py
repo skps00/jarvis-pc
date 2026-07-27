@@ -259,7 +259,13 @@ def test_whatsapp_garbled_open_close():
     reg = load_registry(real)
     if "whatsapp" not in reg.profiles:
         return
-    for raw, expected in (("開 what石", "open_profile"), ("闩 石", "close_profile")):
+    for raw, expected in (
+        ("開 what石", "open_profile"),
+        ("闩 石", "close_profile"),
+        ("沙锅石", "close_profile"),
+        ("散木石", "close_profile"),
+        ("山鍋石", "close_profile"),
+    ):
         fixed, note = repair_asr_text(raw, reg)
         i = apply_verb_kind_limits(route(fixed, reg), reg)
         assert i.kind == expected, (raw, fixed, note, i)
