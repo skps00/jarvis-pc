@@ -26,9 +26,19 @@ python -m jarvis listen 3
 
 ## ✅ v1.1 — Discover & Confirm（已接）
 
-未知 `open xxx` → 搜尋開始功能表／Steam／Prism → Yes 則啟動並寫入 `profiles.yaml`。
+未知 `open xxx` → 搜尋：
 
-查詢句（幫我查／怎樣／what is…）→ 只字幕（LLM 稍後）。
+- Start Menu `.lnk`
+- Desktop `.lnk`
+- `%LOCALAPPDATA%\Programs` exe
+- `Get-StartApps`（含 Store／UWP，例如 WhatsApp）
+- Steam／Prism
+
+Yes → 啟動並寫入 `profiles.yaml`（`shell_app` 用 `shell:AppsFolder\AppID`）。
+
+開／關目標會對本機 app 索引做 **拼寫近匹配 + 粵拼（ToJyutping）** 自動改寫（例如 whatapp→WhatsApp、漢字／jyutping→中文名）。
+
+查詢句見下方「查詢小 LLM」。
 
 ---
 
@@ -43,9 +53,16 @@ python -m jarvis listen 3
 
 ---
 
-## ⏳ 之後 — 查詢小 LLM
+## ✅ 查詢小 LLM + 歧義 JSON
 
-接上小模型 JSON；而家 query 只字幕唔答內容。
+```powershell
+copy .env.example .env
+# 填 JARVIS_LLM_API_KEY=（預設 DeepSeek；換 BASE_URL／MODEL 可用 GLM）
+```
+
+- `幫我查…`／`怎樣…` → 小模型短答字幕（唔開 app）
+- 規則 refuse／unknown 且像開場 → LLM JSON → registry 再解析 → Hands
+- 無 key：開場仍用規則；查詢只 stub 字幕
 
 ---
 

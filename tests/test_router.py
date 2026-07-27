@@ -194,6 +194,89 @@ def test_system_power_route():
     assert i_open.kind == "open_profile"
 
 
+def test_close_cs():
+    r = _reg()
+    i = route("關 CS", r)
+    assert i.kind == "close_profile"
+    assert i.profile_id == "cs2"
+    i2 = route("close CS2", r)
+    assert i2.kind == "close_profile" and i2.profile_id == "cs2"
+    # 關機唔好變 close
+    assert route("關機", r).kind == "system_power"
+
+
+def test_close_saan_mycraft():
+    """粵語閂誤聽族 + MC 唔好修成開。"""
+    from jarvis.asr_repair import repair_asr_text
+
+    r = _reg()
+    for raw in (
+        "閂 mycraft 。",
+        "閂 my craft 。",
+        "冂 macraft 。",
+        "散 mycraft。",
+        "s my craft 。",
+        "打 mycraft 。",
+    ):
+        fixed, note = repair_asr_text(raw, r)
+        i = apply_verb_kind_limits(route(fixed, r), r)
+        assert i.kind == "close_profile", (raw, fixed, note, i)
+        assert not fixed.startswith("開"), (raw, fixed)
+        assert "打開" not in fixed, (raw, fixed)
+
+
+def test_close_garbled_discord():
+    """關 Discord 誤聽 |-] dico 唔好變開。"""
+    from jarvis.asr_repair import repair_asr_text
+
+    r = _reg()
+    # profiles.example may lack discord — use real profiles if present
+    from jarvis.config import load_registry
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    real = root / "config" / "profiles.yaml"
+    reg = load_registry(real) if real.is_file() else r
+    if "discord" not in reg.profiles:
+        return
+    for raw in ("|-] dico 。", "闩 disco", "關 discord"):
+        fixed, note = repair_asr_text(raw, reg)
+        i = apply_verb_kind_limits(route(fixed, reg), reg)
+        assert i.kind == "close_profile", (raw, fixed, note, i)
+        assert i.profile_id == "discord", (raw, fixed, i)
+
+
+def test_whatsapp_garbled_open_close():
+    """what石 / 闩 石 should map to WhatsApp when profile exists."""
+    from jarvis.asr_repair import repair_asr_text
+    from jarvis.config import load_registry
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    real = root / "config" / "profiles.yaml"
+    if not real.is_file():
+        return
+    reg = load_registry(real)
+    if "whatsapp" not in reg.profiles:
+        return
+    for raw, expected in (("開 what石", "open_profile"), ("闩 石", "close_profile")):
+        fixed, note = repair_asr_text(raw, reg)
+        i = apply_verb_kind_limits(route(fixed, reg), reg)
+        assert i.kind == expected, (raw, fixed, note, i)
+        assert i.profile_id == "whatsapp", (raw, fixed, i)
+
+
+def test_restart_cs():
+    r = _reg()
+    i = route("restart CS", r)
+    assert i.kind == "restart_profile" and i.profile_id == "cs2"
+    i2 = route("重開 CS2", r)
+    assert i2.kind == "restart_profile" and i2.profile_id == "cs2"
+    assert route("重啟電腦", r).kind == "system_power"
+    assert route("重啟電腦", r).power_action == "reboot"
+    assert route("reboot", r).power_action == "reboot"
+
+
 def test_system_power_needs_confirm():
     from jarvis.hands import system_power
 
@@ -231,6 +314,11 @@ if __name__ == "__main__":
         test_asr_repair_force_new,
         test_asr_browser_chutlei,
         test_system_power_route,
+        test_close_cs,
+        test_close_saan_mycraft,
+        test_close_garbled_discord,
+        test_whatsapp_garbled_open_close,
+        test_restart_cs,
         test_system_power_needs_confirm,
         test_discover_score_helpers,
     ):

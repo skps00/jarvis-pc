@@ -1,5 +1,225 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 18:06:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py
+- **變更摘要**：關閉 `shell_app` 時加視窗標題→PID fallback，修 WhatsApp「未在運行」誤判。
+- **遇到的問題**：
+  - 問題1：`close_profile` 已命中 WhatsApp，但 process_names 偵測不到而回「未在運行」
+  - 解決方案：若 launch.type=shell_app，先嘗試 enum windows 依 display_name 找 PID，再 `taskkill /PID`
+  - 狀態：✅ 已解決
+- **備註**：fallback 只在 shell_app 啟用，減少誤殺。
+
+## [2026-07-27 18:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：加 WhatsApp 誤聽專修（`what石`／`闩 石`／`山殼石`）到 `開/閂 whatsapp`。
+- **遇到的問題**：
+  - 問題1：語音 close WhatsApp 落成「闩 石」，被錯配成 superwhisper
+  - 解決方案：短目標 + 石/whatsapp token + 開關動詞 → 強制映射 whatsapp
+  - 狀態：✅ 已解決
+- **備註**：只在短目標情境啟用，減少誤傷。
+
+## [2026-07-27 17:54:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_app_index.py
+- **變更摘要**：裸 app 名自動補 `開`，修 `raw=whatsapp` 被判 unknown。
+- **遇到的問題**：
+  - 問題1：語音落 `whatsapp`（無動詞）→ router unknown，Discover 無法進入
+  - 解決方案：ASR 新增 `_maybe_prefix_open_for_bare_app`，高分命中即改成 `開 <App>`
+  - 狀態：✅ 已解決
+- **備註**：避免 query 句/關閉句誤改。
+
+## [2026-07-27 17:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/app_index.py, tests/test_app_index.py
+- **變更摘要**：加短查詢防誤命中長句標籤（如 What is new...）。
+- **遇到的問題**：
+  - 問題1：`開 what石` 被改寫到長句 App 名，路由走 query
+  - 解決方案：best match 前加 plausibility gate：短目標禁配長句／多詞標籤
+  - 狀態：✅ 已解決
+- **備註**：保留 WhatsApp 命中。
+
+## [2026-07-27 17:46:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/app_index.py, tests/test_app_index.py
+- **變更摘要**：加 mixed STT 拉丁骨架匹配，`what石` 可命中 `WhatsApp`。
+- **遇到的問題**：
+  - 問題1：ASR 輸出 `what石`，混中英字導致 score 低於門檻
+  - 解決方案：拼寫分數新增 `latin_skeleton` 比對與近似門檻；補回歸測試
+  - 狀態：✅ 已解決
+- **備註**：serve 需重啟載入新邏輯。
+
+## [2026-07-27 17:30:00] 操作類型：新增
+
+- **文件路徑**：src/jarvis/app_index.py, src/jarvis/{asr_repair,discover}.py, tests/test_app_index.py, pyproject.toml, requirements.txt
+- **變更摘要**：掃本機 app 建名索引；拼寫近匹配 + ToJyutping 粵拼對目標自動改寫。
+- **遇到的問題**：
+  - 問題1：手寫 whatapp 表唔 scale；粵語 STT 漢字／拼音對英文名難對
+  - 解決方案：StartApps／捷徑／profiles 索引；SequenceMatcher + 粵拼（去調）pair score；repair 改寫 開／關 目標
+  - 狀態：✅ 已解決
+- **備註**：依賴 ToJyutping；索引 TTL 5 分鐘。
+
+## [2026-07-27 17:22:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{asr_repair,discover}.py, tests/test_discover.py
+- **變更摘要**：whatapp→whatsapp；Discover 名稱近音／少字母仍可命中。
+- **遇到的問題**：
+  - 問題1：raw=`开 whatapp`，score=0，Discover 無候選
+  - 解決方案：ASR confusion + SequenceMatcher ≥0.86 當近匹配
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
+## [2026-07-27 17:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{discover,hands,persist}.py, tests/test_discover.py, REMINDERS.md, README.md
+- **變更摘要**：Discover 加 Desktop／Local Programs／Get-StartApps（含 Store）；shell_app 啟動並可寫入 profiles。
+- **遇到的問題**：
+  - 問題1：開 WhatsApp 未登錄且 Start Menu 無 .lnk → 0 候選
+  - 解決方案：Get-StartApps + shell:AppsFolder\\AppID；Desktop／Local\\Programs 一齊掃
+  - 狀態：✅ 已解決
+- **備註**：StartApps 列表 cache 5 分鐘。
+
+## [2026-07-27 17:12:00] 操作類型：修改
+
+
+- **文件路徑**：src/jarvis/{memory,hands}.py, tests/test_hands_mc.py
+- **變更摘要**：開 app 時記 PID 入 memory；關／重開優先 taskkill 嗰啲 PID。
+- **遇到的問題**：
+  - 問題1：無 process_names／lnk 慢啟動時關唔到
+  - 解決方案：launch 前後 snapshot image PIDs；profile_pids 持久化；close 先殺記住
+  - 狀態：✅ 已解決
+- **備註**：browser／prism 仍用原規則；Steam 關時清 pid 紀錄。
+
+## [2026-07-27 17:10:00] 操作類型：修改
+
+
+- **文件路徑**：src/jarvis/{asr_repair,brain,engine}.py, tests/test_router.py
+- **變更摘要**：關 Discord 誤聽唔再開；Latin confusion 用詞界，避 discordrd。
+- **遇到的問題**：
+  - 問題1：講 close Discord，raw=`|-] dico`，Brain 開咗 Discord
+  - 解決方案：ASR force close；brain 無開動詞禁 open／改關；engine 擋；disco⊂discord 詞界
+  - 狀態：✅ 已解決
+- **備註**：開 Discord 要講「開」。serve 要重載先食新碼。
+
+## [2026-07-27 17:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hands,persist}.py, config/profiles.yaml
+- **變更摘要**：app_lnk 關閉時解析 .lnk→exe 名；Discover 寫入 process_names；Discord 補 Discord.exe。
+- **遇到的問題**：
+  - 問題1：閂 Discord 路由啱但「未設 process_names」
+  - 解決方案：_resolve_lnk_target；persist 寫 process_names
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
+## [2026-07-27 16:50:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py
+- **變更摘要**：修 Prism／MC 關閉——用 JSON 攞 java PID（舊 `` `t `` 格式永遠空）。
+- **遇到的問題**：
+  - 問題1：close_profile 路由啱但「未在運行」；cmdline 有 MATCH、pids=[]
+  - 解決方案：`_java_processes` ConvertTo-Json → pid+cmdline
+  - 狀態：✅ 已解決
+- **備註**：ASR 已到 close；而家殺 process。
+
+## [2026-07-27 16:48:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{asr_repair,ear}.py, tests/test_router.py
+- **變更摘要**：閂誤聽族（散／s／san…）+ MC → 強制關；無明確開動詞唔准 fuzzy 成開；hotwords 加關／閂。
+- **遇到的問題**：
+  - 問題1：散／s／打 mycraft 一律模糊成開 minecraft
+  - 解決方案：`_force_close_mc`；mc 句無 open verb 只配 close templates；ear hotword
+  - 狀態：✅ 已解決
+- **備註**：講「關 MC」最穩；serve 已需重啟。
+
+## [2026-07-27 16:44:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：SenseVoice 閂→冂、minecraft→macraft 誤聽表；冂當關閉提示禁修成開。
+- **遇到的問題**：
+  - 問題1：raw=`冂 macraft` 仍模糊→開 minecraft
+  - 解決方案：confusion 冂→閂、macraft→minecraft；_CLOSE_HINT 含冂
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve 后再試（或 Ctrl+Alt+J 用已殺舊進程後新開嗰條）。
+
+## [2026-07-27 16:42:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.vbs, JARVIS.bat
+- **變更摘要**：釘死 pythoncore-3.14 pythonw；殺晒舊／錯 Python 嘅 serve 進程。
+- **遇到的問題**：
+  - 問題1：修完「閂」仍見模糊→開——兩條舊 serve（含 WindowsApps pythonw）跑緊舊碼
+  - 解決方案：Stop-Process；VBS 用絕對路徑 pythonw
+  - 狀態：✅ 已解決
+- **備註**：再開後試「閂 my craft」。
+
+## [2026-07-27 16:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,asr_repair,hands,engine}.py, tests/test_router.py
+- **變更摘要**：粵語「閂」＝關；mycraft→MC；fuzzy 唔再把閂修成開；Prism MC 可關（殺對應 java）。
+- **遇到的問題**：
+  - 問題1：raw=`閂 mycraft` → 模糊成`開 minecraft`只 focus
+  - 解決方案：閂入 close_verbs；close 偏向 fuzzy；MC close 按 instance_id 殺 java
+  - 狀態：✅ 已解決
+- **備註**：重啟 serve。
+
+## [2026-07-27 13:52:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,hands,engine,asr_repair}.py, tests/test_router.py, README.md
+- **變更摘要**：restart／重開 CS＝確認後關再開；整句 reboot／重啟電腦＝系統重啟。
+- **遇到的問題**：無
+- **備註**：`重啟 CS`≠`重啟電腦`。
+
+## [2026-07-27 13:48:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{router,hands,engine,asr_repair,asr_fix}.py, config/profiles*.yaml, tests/test_router.py, README.md
+- **變更摘要**：支援「關 CS」／close — Always Yes 後依 process_names 關閉；asr_fix 改 shim 免再誤修成開。
+- **遇到的問題**：
+  - 問題1：關 CS 被舊 asr_fix 模糊成開 CS
+  - 解決方案：close_profile 算 usable；asr_fix→asr_repair
+  - 狀態：✅ 已解決
+- **備註**：關機仍優先於「關」；未設 process_names 會拒絕。
+
+## [2026-07-27 13:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, config/profiles*.yaml, tests/test_hands_mc.py, README.md
+- **變更摘要**：Steam 遊戲已開再講「開」→ Always Yes 關閉（toggle）；cs2 設 process_names。
+- **遇到的問題**：
+  - 問題1：CS 已開再「開 cs」又 steam:// 啟動一次
+  - 解決方案：偵測 process → 確認後 taskkill；force_new 仍再開
+  - 狀態：✅ 已解決
+- **備註**：要關先確認；拒＝唔殺。
+
+## [2026-07-27 13:20:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.vbs, JARVIS.bat
+- **變更摘要**：無黑窗啟動——VBS 用 pythonw WindowStyle=0；bat 只呼叫 wscript。
+- **遇到的問題**：無
+- **備註**：雙擊 JARVIS.vbs 最乾淨；bat 仍可能閃一下。
+
+## [2026-07-27 13:18:00] 操作類型：修改
+
+- **文件路徑**：JARVIS.bat
+- **變更摘要**：bat 改純 ASCII＋CRLF；去掉中文 echo（UTF-8 令 cmd 拆爛指令）。
+- **遇到的問題**：
+  - 問題1：雙擊出現 `'cho'`／`'arvis'` 不是命令
+  - 解決方案：唔用中文；UTF-8 無 BOM
+  - 狀態：✅ 已解決
+- **備註**：再雙擊 JARVIS.bat。
+
+## [2026-07-27 13:16:00] 操作類型：新增
+
+- **文件路徑**：JARVIS.bat, README.md
+- **變更摘要**：雙擊開 JARVIS Shell（`python -m jarvis serve`）。
+- **遇到的問題**：無
+- **備註**：用 `%~dp0` 定位專案根；失敗會 pause。
+
+## [2026-07-27 12:52:00] 操作類型：新增
+
+- **文件路徑**：src/jarvis/brain.py, src/jarvis/engine.py, tests/test_brain.py, .env.example, README.md, REMINDERS.md
+- **變更摘要**：查詢小 LLM＋歧義 JSON（OpenAI-compat／預設 DeepSeek）；Hands 只信 registry 再解析。
+- **遇到的問題**：無
+- **備註**：無 key 時 query／歧義降級；明確開場唔過 LLM。
+
 ## [2026-07-27 12:42:00] 操作類型：新增
 
 - **文件路徑**：src/jarvis/{router,hands,engine}.py, tests/test_router.py, REMINDERS.md, README.md

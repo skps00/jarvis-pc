@@ -13,6 +13,7 @@ dependencies = [
   "pystray>=0.19.5,<0.20",
   "Pillow>=10.0.0,<12",
   "pynput>=1.7.6,<2",
+  "ToJyutping>=3.0,<4",
 ]
 
 [project.optional-dependencies]

@@ -12,7 +12,7 @@ from jarvis.config import Profile, Registry
 class Intent:
     """Structured result of local routing (Hands never trusts free paths)."""
 
-    kind: str  # open_profile | restore_battlefield | refuse | unknown | query | system_power
+    kind: str  # open_profile | close_profile | restart_profile | restore_battlefield | refuse | unknown | query | system_power
     profile_id: str | None = None
     open_verb: str | None = None
     target_raw: str | None = None
@@ -20,7 +20,7 @@ class Intent:
     caption: str = ""
     force_last_mc: bool = False
     force_new: bool = False
-    power_action: str | None = None  # shutdown | sleep
+    power_action: str | None = None  # shutdown | sleep | reboot
 
 
 _TAIL_PARTICLES = re.compile(r"(啦|啊|先|please|plz)\s*$", re.I)
@@ -48,6 +48,25 @@ _FORCE_NEW_MODIFIERS = frozenset(
     }
 )
 _FORCE_NEW_VERBS = frozenset({"再開", "另開", "多開"})
+_CLOSE_VERBS = (
+    "關閉",
+    "關掉",
+    "關上",
+    "close",
+    "quit",
+    "kill",
+    "閂",
+    "關",
+)
+_RESTART_VERBS = (
+    "重新開啟",
+    "重新打開",
+    "重新開",
+    "restart",
+    "reboot",
+    "重開",
+    "重啟",
+)
 
 # 整句電源指令（唔用「關」開頭亂配，避免「關 Chrome」）
 _POWER_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -66,6 +85,19 @@ _POWER_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
             "關機啦",
             "關機",
             "关机",
+        ),
+    ),
+    (
+        "reboot",
+        (
+            "restart computer",
+            "restart pc",
+            "reboot now",
+            "reboot",
+            "重新開機",
+            "重啟電腦",
+            "重啟機",
+            "重启电脑",
         ),
     ),
     (
@@ -103,6 +135,15 @@ _ASR_SIMP_TO_TRAD: tuple[tuple[str, str], ...] = (
     ("浏览器", "瀏覽器"),
     ("战场", "戰場"),
     ("上次", "上次"),
+    ("关闭", "關閉"),
+    ("关掉", "關掉"),
+    ("关上", "關上"),
+    ("重启电脑", "重啟電腦"),
+    ("重新开机", "重新開機"),
+    ("重启", "重啟"),
+    ("重开", "重開"),
+    ("关机", "關機"),
+    ("关", "關"),
     ("开", "開"),
     ("请", "請"),
     ("个", "個"),
@@ -137,10 +178,20 @@ def route(text: str, registry: Registry) -> Intent:
     if q:
         return Intent("query", caption=q, target_raw=original)
 
-    # 0b) system power（Always Yes 喺 Hands）
+    # 0b) system power（Always Yes 喺 Hands）— 必須早於「關 xxx」
     power = _match_power(original)
     if power:
         return power
+
+    # 0c) close profile（關 CS／close Chrome）
+    close_intent = _match_close(original, registry)
+    if close_intent:
+        return close_intent
+
+    # 0d) restart profile（restart CS／重開 Chrome）— 早於普通 open
+    restart_intent = _match_restart(original, registry)
+    if restart_intent:
+        return restart_intent
 
     # 1) restore phrases (longest first)
     for phrase in sorted(registry.restore_phrases, key=len, reverse=True):
@@ -232,7 +283,12 @@ def _match_power(text: str) -> Intent | None:
         for phrase in sorted(phrases, key=len, reverse=True):
             p = phrase.lower()
             if lower == p or lower == p + "啦" or lower == p + "啊":
-                label = "關機" if action == "shutdown" else "睡眠"
+                if action == "shutdown":
+                    label = "關機"
+                elif action == "reboot":
+                    label = "重新開機"
+                else:
+                    label = "睡眠"
                 return Intent(
                     "system_power",
                     power_action=action,
@@ -242,11 +298,84 @@ def _match_power(text: str) -> Intent | None:
     return None
 
 
+def _match_close(text: str, registry: Registry) -> Intent | None:
+    """關／close + registered target → close_profile."""
+    verb, rest, inverted = _split_verb(text, list(_CLOSE_VERBS))
+    if verb is None:
+        return None
+    # 避免「關機」漏網（理論上 power 已截）
+    if rest.strip() in ("機", "电脑", "電腦") or text.replace(" ", "") in ("關機", "关机"):
+        return None
+    rest = _CLASSIFIER_GE.sub("", rest.strip()).strip()
+    if inverted and not rest:
+        rest = text  # shouldn't happen
+    if not rest:
+        return Intent("refuse", open_verb=verb, caption="有關閉動詞但無目標")
+    resolved = _resolve_target(rest, registry, verb="close")
+    if resolved.kind != "open_profile" or not resolved.profile_id:
+        return Intent(
+            "refuse",
+            open_verb=verb,
+            target_raw=rest,
+            caption=resolved.caption or f"未登錄「{rest}」，唔知關邊個",
+        )
+    pid = resolved.profile_id
+    if pid == "_pending_default_mc":
+        name = "Minecraft"
+    else:
+        name = registry.profiles[pid].display_name
+    return Intent(
+        "close_profile",
+        profile_id=pid,
+        open_verb=verb,
+        target_raw=rest,
+        caption=f"關閉 {name}（需確認）",
+    )
+
+
+def _match_restart(text: str, registry: Registry) -> Intent | None:
+    """restart／重開 + target → restart_profile（唔係重啟電腦）."""
+    verb, rest, _inverted = _split_verb(text, list(_RESTART_VERBS))
+    if verb is None:
+        return None
+    rest = _CLASSIFIER_GE.sub("", rest.strip()).strip()
+    if not rest:
+        return Intent("refuse", open_verb=verb, caption="有重開動詞但無目標（重啟電腦請講「重啟電腦」）")
+    # 目標係「電腦／機」→ 交俾 power（理論上整句已截）
+    if rest.lower() in ("computer", "pc", "電腦", "电脑", "機", "机"):
+        return Intent(
+            "system_power",
+            power_action="reboot",
+            caption="重新開機（需確認）",
+            target_raw=text,
+        )
+    resolved = _resolve_target(rest, registry, verb="restart")
+    if resolved.kind != "open_profile" or not resolved.profile_id:
+        return Intent(
+            "refuse",
+            open_verb=verb,
+            target_raw=rest,
+            caption=resolved.caption or f"未登錄「{rest}」，唔知重開邊個",
+        )
+    pid = resolved.profile_id
+    if pid == "_pending_default_mc":
+        name = "Minecraft"
+    else:
+        name = registry.profiles[pid].display_name
+    return Intent(
+        "restart_profile",
+        profile_id=pid,
+        open_verb=verb,
+        target_raw=rest,
+        caption=f"重開 {name}（需確認）",
+    )
+
+
 def _match_query(text: str) -> str | None:
     """Return query caption if utterance looks like a read-only question."""
     lower = text.lower()
     if any(m in lower for m in _QUERY_MARKERS):
-        return f"查詢（暫未接 LLM）：{text} — 只顯示字幕，唔執行 Hands"
+        return f"查詢：{text}"
     return None
 
 
@@ -353,7 +482,7 @@ def _resolve_target(target_raw: str, registry: Registry, *, verb: str) -> Intent
     if len(hits) > 1:
         ids = ", ".join(p.id for p in hits)
         return Intent("refuse", caption=f"多個候選：{ids}（請講清楚）", target_raw=raw)
-    return Intent("refuse", caption=f"未登錄「{raw}」（v1 不自動搜尋；見 REMINDERS.md）", target_raw=raw)
+    return Intent("refuse", caption=f"未登錄「{raw}」（可 Discover 本機 app）", target_raw=raw)
 
 
 def _check_verb_kind(verb: str, profile: Profile, raw: str) -> Intent:

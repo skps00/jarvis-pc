@@ -28,6 +28,22 @@ _CONFUSIONS: tuple[tuple[str, str], ...] = (
     ("再看", "再開"),  # ponytail: STT 常見；真「再看」指令極少
     ("令開", "另開"),
     ("亮開", "另開"),
+    # 閂／minecraft 常見 STT 變體（SenseVoice 成日寫錯字）
+    ("冂", "閂"),
+    ("闩", "閂"),
+    ("閞", "閂"),
+    ("macraft", "minecraft"),
+    ("ma craft", "minecraft"),
+    ("mycraft", "minecraft"),
+    ("mine craft", "minecraft"),
+    ("my craft", "minecraft"),
+    ("desktopco", "discord"),
+    ("discordco", "discord"),
+    ("dico", "discord"),
+    ("disco", "discord"),
+    ("whatapp", "whatsapp"),
+    ("whats app", "whatsapp"),
+    ("watapp", "whatsapp"),
     ("開线", "開 CS"),
     ("开线", "開 CS"),
     ("開線", "開 CS"),
@@ -77,6 +93,36 @@ _FILLER = re.compile(
 _TRAIL_PARTICLES = re.compile(r"[嘅的了啦呀哦喔咧咯唓]+")
 # SenseVoice 常把 browser 寫成「包+沙系」；第二字每次漂
 _BROWSER_BAU_SAA = re.compile(r"包[耍刷搜沙洒灑紗莎啥撒傻廈厦]")
+_CLOSE_HINT = re.compile(
+    r"(閂|冂|闩|散|傘|伞|蒜|算|山|三|關閉|關掉|關上|\bclose\b|\bquit\b|\bkill\b|(?<![再另多重新])關)",
+    re.I,
+)
+# SenseVoice 常把「閂」(saan) 聽成散／s／三…；後接 MC 別名 → 強制關
+_MC_LIKE = re.compile(
+    r"(my\s*craft|macraft|mycraft|minecraft|\bmc\b|我的世界)",
+    re.I,
+)
+_DISCORD_LIKE = re.compile(
+    r"\b(dico|disco|discord|discordco|desktopco)\b",
+    re.I,
+)
+_WHATSAPP_LIKE = re.compile(
+    r"\b(whatsapp|whatapp|watapp|whats\s*app)\b|石",
+    re.I,
+)
+_GARBLED_PREFIX = re.compile(r"[|\]\[\-_]{1,}|^\W+$")
+_SAAN_CLOSE_PREFIX = re.compile(
+    r"^(散|傘|伞|蒜|算|山|三|閃|冂|闩|閂|關|关闭|關掉|關上|san|saan|s|打)(?:\s+|$)",
+    re.I,
+)
+_CLEAR_OPEN_PREFIX = re.compile(
+    r"^(再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play|run)\b",
+    re.I,
+)
+_CLEAR_OPEN_ANY = re.compile(
+    r"(再開|另開|多開|打開|開啟|啟動|\bopen\b|\blaunch\b|\bstart\b|\bplay\b|(?<![再另多])開)",
+    re.I,
+)
 _OPEN_PREFIX = re.compile(
     r"^(再開|另開|多開|開|打开|打開|開啟|啟動|open|launch|start|play)\s+(.+)$",
     re.I,
@@ -95,7 +141,14 @@ _TARGET_ALIASES: tuple[tuple[re.Pattern[str], str], ...] = (
 
 
 def _usable(intent_kind: str) -> bool:
-    return intent_kind in ("open_profile", "restore_battlefield", "query")
+    return intent_kind in (
+        "open_profile",
+        "close_profile",
+        "restart_profile",
+        "restore_battlefield",
+        "query",
+        "system_power",
+    )
 
 
 def _all_names(registry: Registry) -> list[str]:
@@ -125,6 +178,15 @@ def _command_templates(registry: Registry) -> list[str]:
         "再開",
         "另開",
         "多開",
+        "關",
+        "關閉",
+        "關掉",
+        "閂",
+        "close",
+        "quit",
+        "restart",
+        "重開",
+        "重啟",
     ]
     names = _all_names(registry)
     out: list[str] = []
@@ -198,6 +260,115 @@ def _fix_open_target(text: str, registry: Registry) -> str | None:
     return _rebuild_open(verb, best, mod)
 
 
+def _force_close_mc(text: str) -> str | None:
+    """If STT garbled 閂 + Minecraft target, force canonical close command."""
+    t = text.strip()
+    if not _MC_LIKE.search(t):
+        return None
+    if _CLEAR_OPEN_ANY.search(t):
+        return None
+    if _SAAN_CLOSE_PREFIX.match(t) or _CLOSE_HINT.search(t):
+        return "閂 minecraft"
+    if re.match(r"^[a-zA-Z]{1,2}\s+", t) and _MC_LIKE.search(t):
+        return "閂 minecraft"
+    return None
+
+
+def _force_close_discord(text: str) -> str | None:
+    """Garbled 關 Discord (dico／|-]) → 閂 Discord; bare open needs 開."""
+    t = text.strip()
+    if not _DISCORD_LIKE.search(t):
+        return None
+    if _CLEAR_OPEN_ANY.search(t):
+        return None
+    if (
+        _SAAN_CLOSE_PREFIX.match(t)
+        or _CLOSE_HINT.search(t)
+        or _GARBLED_PREFIX.search(t)
+        or re.match(r"^[\W_|\]\[]*.*\b(dico|disco|discord)", t, re.I)
+    ):
+        return "閂 Discord"
+    return None
+
+
+def _force_whatsapp_open_close(text: str) -> str | None:
+    """
+    Garbled WhatsApp (what石 / 山殼石 / 闩 石) -> canonical 開/閂 whatsapp.
+
+    Heuristic keeps scope tight: short target + has 石/whatsapp-like token.
+    """
+    t = normalize_utterance(text)
+    if not t:
+        return None
+    m = re.match(
+        r"^(再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play|關閉|關掉|關上|關|閂|close|quit|kill|闩|山)\s+(.+)$",
+        t,
+        re.I,
+    )
+    if m:
+        verb = m.group(1)
+        target = m.group(2).strip()
+    else:
+        # no-space STT form: 山殼石 / 闩石 / 開what石
+        m2 = re.match(
+            r"^(開|關|閂|闩|山)(.+)$",
+            t,
+            re.I,
+        )
+        if not m2:
+            return None
+        verb = m2.group(1)
+        target = m2.group(2).strip()
+    if not target:
+        return None
+    if len(target) > 6:
+        return None
+    if not _WHATSAPP_LIKE.search(target):
+        return None
+    if re.match(r"^(關閉|關掉|關上|關|閂|close|quit|kill|闩|山)$", verb, re.I):
+        return "閂 whatsapp"
+    return "開 whatsapp"
+
+
+def _force_close_known(text: str) -> str | None:
+    return (
+        _force_close_mc(text)
+        or _force_close_discord(text)
+        or _force_whatsapp_open_close(text)
+    )
+
+
+def _keep_confusion(raw: str, t: str) -> tuple[str, str | None]:
+    """If confusions fixed text but still not a usable command, keep the fix."""
+    if t != raw:
+        return t, f"ASR 修正：{raw!r} → {t!r}"
+    return raw, None
+
+
+def _maybe_prefix_open_for_bare_app(text: str, registry: Registry) -> tuple[str, str | None]:
+    """Bare app target (no verb) -> prefix 開 when installed-app match is strong."""
+    t = text.strip()
+    if not t:
+        return t, None
+    # already has command-like verb
+    if _OPEN_PREFIX.match(t) or _CLEAR_OPEN_PREFIX.search(t) or _CLOSE_HINT.search(t):
+        return t, None
+    # pure query-ish phrases should stay query/unknown
+    if re.search(r"[?？]|(點樣|怎樣|咩係|什麼是|how to|what is)", t, re.I):
+        return t, None
+    try:
+        from jarvis.app_index import best_label_match
+
+        hit = best_label_match(t, registry, min_score=78.0)
+    except Exception:
+        hit = None
+    if not hit:
+        return t, None
+    label, score = hit
+    rebuilt = f"開 {label}"
+    return rebuilt, f"app 補開（{score:.0f}%）：{t!r} → {rebuilt!r}"
+
+
 def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     """
     Return (text_for_router, note_or_None).
@@ -208,28 +379,69 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     if not raw:
         return raw, None
 
-    # 先跑 confusions：否則「開 knew window Chrome」會因 chrome substring
-    # 提早 usable（無 force_new）而跳過修正
     t = raw
     for bad, good in _CONFUSIONS:
-        if bad.lower() in t.lower() or bad in t:
-            t = re.sub(re.escape(bad), good, t, flags=re.I)
+        # Latin aliases need word edges — else disco⊂discord → discordrd
+        if re.search(r"[A-Za-z]", bad):
+            pat = rf"(?<![A-Za-z0-9]){re.escape(bad)}(?![A-Za-z0-9])"
+        else:
+            pat = re.escape(bad)
+        if re.search(pat, t, flags=re.I):
+            t = re.sub(pat, good, t, flags=re.I)
     t = _BROWSER_BAU_SAA.sub("browser", t)
+    forced = _force_close_known(t)
+    if forced:
+        t = forced
     t = normalize_utterance(t)
+
+    # 對本機 app 索引做拼寫／粵拼近匹配（開／關 目標）
+    try:
+        from jarvis.app_index import rewrite_command_target
+
+        rewritten, app_note = rewrite_command_target(t, registry)
+        if app_note:
+            t = normalize_utterance(rewritten)
+    except Exception:
+        app_note = None
 
     intent = apply_verb_kind_limits(route(t, registry), registry)
     if _usable(intent.kind):
+        note = None
         if t != raw:
-            return t, f"ASR 修正：{raw!r} → {t!r}"
-        return t, None
+            note = f"ASR 修正：{raw!r} → {t!r}"
+            if app_note:
+                note = f"{note}；{app_note}"
+        return t, note
+    # No open verb but target sounds like known app -> assume "開 <app>"
+    t_open, open_note = _maybe_prefix_open_for_bare_app(t, registry)
+    if t_open != t:
+        intent2 = apply_verb_kind_limits(route(t_open, registry), registry)
+        if _usable(intent2.kind):
+            note = f"ASR 修正：{raw!r} → {t_open!r}"
+            if app_note:
+                note = f"{note}；{app_note}"
+            if open_note:
+                note = f"{note}；{open_note}"
+            return t_open, note
 
     t2 = _FILLER.sub("", t)
     t2 = _TRAIL_PARTICLES.sub("", t2)
     t2 = normalize_utterance(t2)
+    forced = _force_close_known(t2) or _force_close_known(raw)
+    if forced:
+        t2 = forced
 
-    rebuilt = _fix_open_target(t2, registry)
-    if rebuilt:
-        t2 = rebuilt
+    # 閂／關／散… 句唔好建成「開 X」
+    if not (
+        _CLOSE_HINT.search(t2)
+        or _CLOSE_HINT.search(raw)
+        or _SAAN_CLOSE_PREFIX.match(t2)
+        or _SAAN_CLOSE_PREFIX.match(raw)
+        or forced
+    ):
+        rebuilt = _fix_open_target(t2, registry)
+        if rebuilt:
+            t2 = rebuilt
 
     intent = apply_verb_kind_limits(route(t2, registry), registry)
     if _usable(intent.kind) and t2 != raw:
@@ -238,15 +450,33 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
         return t2, None
     t = t2
 
-    # Fuzzy against whitelist command templates (rapidfuzz comes with funasr stack)
     try:
         from rapidfuzz import fuzz, process
     except ImportError:
-        return raw, None
+        return _keep_confusion(raw, t)
 
     templates = _command_templates(registry)
+    mc_close_bias = bool(_MC_LIKE.search(t) or _MC_LIKE.search(raw)) and not (
+        _CLEAR_OPEN_ANY.search(t) or _CLEAR_OPEN_ANY.search(raw)
+    )
+    discord_close_bias = bool(_DISCORD_LIKE.search(t) or _DISCORD_LIKE.search(raw)) and not (
+        _CLEAR_OPEN_ANY.search(t) or _CLEAR_OPEN_ANY.search(raw)
+    )
+    if (
+        mc_close_bias
+        or discord_close_bias
+        or _CLOSE_HINT.search(t)
+        or _CLOSE_HINT.search(raw)
+        or _SAAN_CLOSE_PREFIX.match(raw)
+    ):
+        templates = [
+            x
+            for x in templates
+            if re.match(r"^(關|關閉|關掉|閂|close|quit|kill)(\s|$)", x, re.I)
+            or re.search(r"\s(關|關閉|關掉|閂|close|quit|kill)$", x, re.I)
+        ]
     if not templates:
-        return raw, None
+        return _keep_confusion(raw, t)
 
     hit = process.extractOne(
         t,
@@ -262,10 +492,15 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
             score_cutoff=65,
         )
     if not hit:
-        return raw, None
+        return _keep_confusion(raw, t)
 
     best, score, _ = hit
+    # 最後閘：mc 關閉偏向時拒絕任何「開…」結果
+    if (mc_close_bias or discord_close_bias) and re.match(
+        r"^(開|打開|開啟|open|launch|play)\b", best, re.I
+    ):
+        return _keep_confusion(raw, t)
     intent = apply_verb_kind_limits(route(best, registry), registry)
     if not _usable(intent.kind):
-        return raw, None
+        return _keep_confusion(raw, t)
     return best, f"ASR 模糊匹配（{score:.0f}%）：{raw!r} → {best!r}"

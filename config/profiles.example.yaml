@@ -110,6 +110,7 @@ profiles:
     launch:
       type: steam_app
       app_id: "730"
+      process_names: [cs2.exe]
     restore:
       role: primary_game
       monitor: primary
