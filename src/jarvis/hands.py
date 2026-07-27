@@ -114,8 +114,11 @@ def launch_profile(
             _launch_lnk(launch)
             msg = f"{'已新開' if force_new else '已啟動'}：{profile.display_name}"
         elif ltype == "shell_app":
-            _launch_shell_app(launch)
-            msg = f"{'已新開' if force_new else '已啟動'}：{profile.display_name}"
+            msg = _launch_or_focus_shell_app(
+                launch,
+                display_name=profile.display_name,
+                force_new=force_new,
+            )
         elif ltype == "script_file":
             _launch_script(launch)
             msg = f"已啟動：{profile.display_name}"
@@ -407,6 +410,7 @@ def _focus_window_title_contains(*needles: str) -> bool:
     if sys.platform != "win32" or not needles:
         return False
     user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
     hits = [n.lower() for n in needles if n]
     found = False
 
@@ -423,8 +427,22 @@ def _focus_window_title_contains(*needles: str) -> bool:
             # ponytail: 只最小化先 SW_RESTORE；否則會把全螢幕／最大化拆成細窗
             if user32.IsIconic(hwnd):
                 user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            else:
+                user32.ShowWindow(hwnd, 5)  # SW_SHOW
             user32.BringWindowToTop(hwnd)
-            user32.SetForegroundWindow(hwnd)
+            # Background agents often blocked from SetForegroundWindow — attach FG thread
+            fg = user32.GetForegroundWindow()
+            if fg:
+                tid_fg = user32.GetWindowThreadProcessId(fg, None)
+                tid_self = kernel32.GetCurrentThreadId()
+                if tid_fg and tid_self and tid_fg != tid_self:
+                    user32.AttachThreadInput(tid_self, tid_fg, True)
+                    user32.SetForegroundWindow(hwnd)
+                    user32.AttachThreadInput(tid_self, tid_fg, False)
+                else:
+                    user32.SetForegroundWindow(hwnd)
+            else:
+                user32.SetForegroundWindow(hwnd)
             found = True
             return False
         return True
@@ -517,6 +535,38 @@ def _launch_shell_app(launch: dict) -> None:
         ["explorer.exe", f"shell:AppsFolder\\{app_id}"],
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
+
+
+def _shell_app_focus_needles(display_name: str) -> tuple[str, ...]:
+    """Window-title needles for focus; prefer profile display_name only."""
+    name = (display_name or "").strip()
+    return (name,) if name else ()
+
+
+def _launch_or_focus_shell_app(
+    launch: dict,
+    *,
+    display_name: str,
+    force_new: bool = False,
+) -> str:
+    """Launch shell_app; if already open (and not force_new) just focus window."""
+    needles = _shell_app_focus_needles(display_name)
+    if not force_new and needles and _window_pids_title_contains(*needles):
+        if _focus_window_title_contains(*needles):
+            return f"{display_name} 已在執行；已切換至視窗"
+        return f"{display_name} 已在執行；未搶到 focus（請 Alt+Tab）"
+
+    _launch_shell_app(launch)
+    if not needles:
+        return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+
+    # Wait for window then focus (Store apps start slow)
+    deadline = time.time() + 4.0
+    while time.time() < deadline:
+        if _focus_window_title_contains(*needles):
+            return f"{'已新開' if force_new else '已啟動'}：{display_name}"
+        time.sleep(0.25)
+    return f"{'已新開' if force_new else '已啟動'}：{display_name}（未搶到 focus）"
 
 
 def _launch_lnk(launch: dict) -> None:

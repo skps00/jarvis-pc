@@ -36,7 +36,7 @@ python -m jarvis listen 3
 
 Yes → 啟動並寫入 `profiles.yaml`（`shell_app` 用 `shell:AppsFolder\AppID`）。
 
-開／關目標會對本機 app 索引做 **拼寫近匹配 + 粵拼（ToJyutping）** 自動改寫（例如 whatapp→WhatsApp、漢字／jyutping→中文名）。
+開／關目標會對本機 app 索引做 **拼寫近匹配 + 粵拼（ToJyutping）** 自動改寫；成功後寫入 `stt_aliases`（學習誤聽，如 `爱锅石`→WhatsApp）。
 
 查詢句見下方「查詢小 LLM」。
 

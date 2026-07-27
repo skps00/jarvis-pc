@@ -296,50 +296,64 @@ def _force_whatsapp_open_close(text: str) -> str | None:
     Garbled WhatsApp (what石 / 山殼石 / 沙锅石 / 散木石) → 開/閂 whatsapp.
 
     Heuristic: short utterance with 石, or verb+short target with 石/whatsapp token.
+    On hit, learn STT alias so next time goes through slots/alias path.
     """
     t = normalize_utterance(text)
     if not t:
         return None
 
+    result: str | None = None
+    learn_from: str | None = None
+
     # Bare / fused STT: 沙锅石、散木石、山鍋石、闩石（整句 ≤5，含石）
     if "石" in t and len(t) <= 5 and not re.search(r"\s", t):
         if re.match(r"^(再開|另開|多開|打開|開啟|啟動|開)", t):
-            return "開 whatsapp"
-        if re.match(
+            result = "開 whatsapp"
+            learn_from = t
+        elif re.match(
             r"^(散|沙|傘|伞|蒜|算|山|三|閃|冂|闩|閂|關|关闭|關掉|關上|close|quit|kill|s)",
             t,
             re.I,
         ):
-            return "閂 whatsapp"
-        # whole-token garble ending 石 (锅石／木石／what石)
-        if re.search(r"(what|wat|鍋|锅|殼|壳|木).{0,2}石$|^石$", t, re.I) or t.endswith("石"):
-            # ponytail: this SenseVoice family almost always close WhatsApp
-            return "閂 whatsapp"
+            result = "閂 whatsapp"
+            learn_from = t
+        elif re.search(r"(what|wat|鍋|锅|殼|壳|木|爱|愛).{0,2}石$|^石$", t, re.I) or t.endswith(
+            "石"
+        ):
+            result = "開 whatsapp"
+            learn_from = t
 
-    close_verbs = (
-        r"關閉|關掉|關上|關|閂|close|quit|kill|闩|山|散|沙|傘|伞|蒜|算|三|閃|冂"
-    )
-    open_verbs = r"再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play"
-    m = re.match(rf"^({open_verbs}|{close_verbs})\s+(.+)$", t, re.I)
-    if m:
-        verb = m.group(1)
-        target = m.group(2).strip()
-    else:
-        # no-space: 山殼石 / 闩石 / 散木石 / 開what石
-        m2 = re.match(rf"^({open_verbs}|{close_verbs})(.+)$", t, re.I)
-        if not m2:
+    if result is None:
+        close_verbs = (
+            r"關閉|關掉|關上|關|閂|close|quit|kill|闩|山|散|沙|傘|伞|蒜|算|三|閃|冂"
+        )
+        open_verbs = r"再開|另開|多開|打開|開啟|啟動|開|open|launch|start|play"
+        m = re.match(rf"^({open_verbs}|{close_verbs})\s+(.+)$", t, re.I)
+        if m:
+            verb = m.group(1)
+            target = m.group(2).strip()
+        else:
+            m2 = re.match(rf"^({open_verbs}|{close_verbs})(.+)$", t, re.I)
+            if not m2:
+                return None
+            verb = m2.group(1)
+            target = m2.group(2).strip()
+        if not target or len(target) > 6 or not _WHATSAPP_LIKE.search(target):
             return None
-        verb = m2.group(1)
-        target = m2.group(2).strip()
-    if not target:
-        return None
-    if len(target) > 6:
-        return None
-    if not _WHATSAPP_LIKE.search(target):
-        return None
-    if re.match(rf"^({close_verbs})$", verb, re.I):
-        return "閂 whatsapp"
-    return "開 whatsapp"
+        if re.match(rf"^({close_verbs})$", verb, re.I):
+            result = "閂 whatsapp"
+        else:
+            result = "開 whatsapp"
+        learn_from = target
+
+    if result and learn_from:
+        try:
+            from jarvis.memory import learn_stt_alias
+
+            learn_stt_alias(learn_from, "WhatsApp")
+        except Exception:
+            pass
+    return result
 
 
 def _force_close_known(text: str) -> str | None:
@@ -370,6 +384,7 @@ def _maybe_prefix_open_for_bare_app(text: str, registry: Registry) -> tuple[str,
         return t, None
     try:
         from jarvis.app_index import best_label_match
+        from jarvis.memory import learn_stt_alias
 
         hit = best_label_match(t, registry, min_score=78.0)
     except Exception:
@@ -377,6 +392,10 @@ def _maybe_prefix_open_for_bare_app(text: str, registry: Registry) -> tuple[str,
     if not hit:
         return t, None
     label, score = hit
+    try:
+        learn_stt_alias(t, label)
+    except Exception:
+        pass
     rebuilt = f"開 {label}"
     return rebuilt, f"app 補開（{score:.0f}%）：{t!r} → {rebuilt!r}"
 
@@ -401,12 +420,23 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
         if re.search(pat, t, flags=re.I):
             t = re.sub(pat, good, t, flags=re.I)
     t = _BROWSER_BAU_SAA.sub("browser", t)
+    # Learned aliases before force hacks (slots: verb + app_query)
+    alias_note = None
+    try:
+        from jarvis.app_index import apply_learned_alias
+
+        aliased, alias_note = apply_learned_alias(t)
+        if alias_note:
+            t = normalize_utterance(aliased)
+    except Exception:
+        alias_note = None
+
     forced = _force_close_known(t)
     if forced:
         t = forced
     t = normalize_utterance(t)
 
-    # 對本機 app 索引做拼寫／粵拼近匹配（開／關 目標）
+    # 對本機 app 索引做拼寫／粵拼近匹配（開／關 目標）+ learn alias
     try:
         from jarvis.app_index import rewrite_command_target
 
@@ -415,6 +445,11 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
             t = normalize_utterance(rewritten)
     except Exception:
         app_note = None
+
+    if alias_note and not app_note:
+        app_note = alias_note
+    elif alias_note and app_note:
+        app_note = f"{alias_note}；{app_note}"
 
     intent = apply_verb_kind_limits(route(t, registry), registry)
     if _usable(intent.kind):
