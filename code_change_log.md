@@ -1,5 +1,45 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 19:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{memory,app_index,asr_repair}.py, tests/test_app_index.py
+- **變更摘要**：語音槽位 verb+app_query；成功命中寫入 stt_aliases（學習誤聽）。
+- **遇到的問題**：
+  - 問題1：大量 app／誤聽唔能靠硬編碼與 hotword 擴表
+  - 解決方案：parse_command_slots；alias 先查後 fuzzy；force WhatsApp／近匹配成功後 learn
+  - 狀態：✅ 已解決
+- **備註**：alias 存 %APPDATA%\\Jarvis\\memory.json；上限 300。
+
+## [2026-07-27 19:12:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py
+- **變更摘要**：刪 `_shell_app_focus_needles` 內多餘 WhatsApp 硬編碼（用 display_name 即可）。
+- **遇到的問題**：
+  - 問題1：focus needles 重複寫 whatsapp
+  - 解決方案：只留 display_name
+  - 狀態：✅ 已解決
+- **備註**：ASR `石`／whatapp 別名仍係專用表（同 Discord／MC 一族）。
+
+## [2026-07-27 19:08:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py, tests/test_hands_mc.py, src/jarvis/asr_repair.py
+- **變更摘要**：shell_app 開時若已運行只 focus；新開後 poll 視窗再搶 focus（WhatsApp）。
+- **遇到的問題**：
+  - 問題1：開 WhatsApp 成功但視窗唔置前
+  - 解決方案：`_launch_or_focus_shell_app` + AttachThreadInput 強化 SetForegroundWindow
+  - 狀態：✅ 已解決
+- **備註**：同分支一併修 `爱锅石` 預設開。
+
+## [2026-07-27 19:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py
+- **變更摘要**：無明確關前綴嘅 `*石`（如 `爱锅石`）改預設開 WhatsApp，唔好當關。
+- **遇到的問題**：
+  - 問題1：講開 WhatsApp，raw=`爱锅石` → 被修成閂 → 確認取消
+  - 解決方案：散/闩/山/沙…先關；其餘短 `*石` 預設開
+  - 狀態：✅ 已解決
+- **備註**：關要講出關動詞／散／闩／山 等。
+
 ## [2026-07-27 19:00:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/asr_repair.py, tests/test_router.py

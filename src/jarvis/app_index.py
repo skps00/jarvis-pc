@@ -9,6 +9,8 @@ from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from jarvis.config import Registry
 
 _HAN = re.compile(r"[\u4e00-\u9fff]")
@@ -25,6 +27,19 @@ _VERB_TARGET = re.compile(
     r")\s+(.+)$",
     re.I,
 )
+_CLOSE_VERBS = frozenset(
+    {
+        "關閉",
+        "關掉",
+        "關上",
+        "關",
+        "閂",
+        "close",
+        "quit",
+        "kill",
+    }
+)
+_RESTART_VERBS = frozenset({"重開", "重啟", "restart", "reboot", "重新開", "重新開啟", "重新打開"})
 
 
 @dataclass(frozen=True)
@@ -242,24 +257,98 @@ def _label_plausible_for_query(query: str, label: str) -> bool:
     return True
 
 
-def rewrite_command_target(text: str, registry: Registry | None = None) -> tuple[str, str | None]:
-    """
-    If text is「開／關 X」, fuzzy／粵拼 resolve X against installed apps.
+@dataclass(frozen=True)
+class CommandSlots:
+    """Verb + app query slots from a short command utterance."""
 
-    Returns (new_text, note_or_None). Preserves force_new modifiers (new window／新…).
+    verb: str
+    app_query: str
+    verb_kind: str  # open | close | restart
+
+
+def parse_command_slots(text: str) -> CommandSlots | None:
+    """
+    Split「動詞 + 目標」into slots.
+
+    Does not resolve the app — only structural parse.
     """
     t = (text or "").strip()
     m = _VERB_TARGET.match(t)
     if not m:
-        return t, None
-    verb, target = m.group(1), m.group(2).strip()
-    if not target:
+        return None
+    verb = m.group(1)
+    query = m.group(2).strip()
+    if not query:
+        return None
+    vlow = verb.lower()
+    if verb in _CLOSE_VERBS or vlow in {x.lower() for x in _CLOSE_VERBS}:
+        kind = "close"
+    elif verb in _RESTART_VERBS or vlow in {x.lower() for x in _RESTART_VERBS}:
+        kind = "restart"
+    else:
+        kind = "open"
+    return CommandSlots(verb=verb, app_query=query, verb_kind=kind)
+
+
+def apply_learned_alias(
+    text: str,
+    *,
+    memory_path: Path | None = None,
+) -> tuple[str, str | None]:
+    """Replace app_query (or bare token) using learned stt_aliases."""
+    from jarvis import memory as mem
+
+    t = (text or "").strip()
+    if not t:
         return t, None
 
+    slots = parse_command_slots(t)
+    if slots:
+        prefix, core = _split_force_new_prefix(slots.app_query)
+        hit = mem.get_stt_alias(core, memory_path)
+        if hit and _norm(hit) != _norm(core):
+            new_q = f"{prefix} {hit}".strip() if prefix else hit
+            new = f"{slots.verb} {new_q}"
+            return new, f"alias：{core!r} → {hit!r}"
+        return t, None
+
+    # bare token
+    hit = mem.get_stt_alias(t, memory_path)
+    if hit and _norm(hit) != _norm(t):
+        return hit, f"alias：{t!r} → {hit!r}"
+    return t, None
+
+
+def rewrite_command_target(
+    text: str,
+    registry: Registry | None = None,
+    *,
+    memory_path: Path | None = None,
+    learn: bool = True,
+) -> tuple[str, str | None]:
+    """
+    If text is「開／關 X」, resolve X via alias then fuzzy／粵拼 app index.
+
+    On successful fuzzy match, optionally learn alias (garbled → label).
+    """
+    from jarvis import memory as mem
+
+    t = (text or "").strip()
+    slots = parse_command_slots(t)
+    if not slots:
+        return t, None
+
+    verb, target = slots.verb, slots.app_query
     # 唔好食掉「new window Chrome」→ 只對最後 app 段做近匹配
     prefix, core = _split_force_new_prefix(target)
     if not core:
         return t, None
+
+    aliased = mem.get_stt_alias(core, memory_path)
+    if aliased and _norm(aliased) != _norm(core):
+        new_target = f"{prefix} {aliased}".strip() if prefix else aliased
+        new = f"{verb} {new_target}"
+        return new, f"alias：{core!r} → {aliased!r}"
 
     hit = best_label_match(core, registry)
     if not hit:
@@ -267,6 +356,8 @@ def rewrite_command_target(text: str, registry: Registry | None = None) -> tuple
     label, score = hit
     if _norm(label) == _norm(core):
         return t, None
+    if learn:
+        mem.learn_stt_alias(core, label, memory_path)
     new_target = f"{prefix} {label}".strip() if prefix else label
     new = f"{verb} {new_target}"
     return new, f"app 近匹配（{score:.0f}%）：{core!r} → {label!r}"
