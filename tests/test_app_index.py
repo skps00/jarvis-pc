@@ -128,6 +128,31 @@ def test_force_whatsapp_learns_alias():
         assert learn.call_args[0][1] == "WhatsApp"
 
 
+def test_force_whatsapp_close_bare_skips_alias_learn():
+    """Bare close garbles must not learn as WhatsApp (would reopen next time)."""
+    with mock.patch("jarvis.memory.learn_stt_alias") as learn:
+        from jarvis.asr_repair import _force_whatsapp_open_close
+
+        out = _force_whatsapp_open_close("沙锅石")
+        assert out == "閂 whatsapp"
+        learn.assert_not_called()
+
+
+def test_close_garble_not_reopened_after_bad_alias():
+    """Even if 沙锅石 was wrongly learned as WhatsApp, repair must still close."""
+    cfg = ROOT / "config" / "profiles.yaml"
+    reg = load_registry(cfg if cfg.is_file() else (ROOT / "config" / "profiles.example.yaml"))
+    with mock.patch("jarvis.app_index.apply_learned_alias") as alias:
+        alias.return_value = ("WhatsApp", "alias：'沙锅石' → 'WhatsApp'")
+        with mock.patch(
+            "jarvis.app_index.best_label_match",
+            return_value=("WhatsApp", 95.0),
+        ):
+            fixed, _note = repair_asr_text("沙锅石", reg)
+    assert fixed.lower().startswith("閂"), fixed
+    assert "whatsapp" in fixed.lower()
+
+
 if __name__ == "__main__":
     test_spelling_whatapp()
     test_jyutping_han_substring()
@@ -140,4 +165,6 @@ if __name__ == "__main__":
     test_short_query_blocks_sentence_label()
     test_asr_bare_app_autoprefix_open()
     test_force_whatsapp_learns_alias()
+    test_force_whatsapp_close_bare_skips_alias_learn()
+    test_close_garble_not_reopened_after_bad_alias()
     print("all passed")

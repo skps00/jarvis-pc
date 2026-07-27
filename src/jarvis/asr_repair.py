@@ -350,7 +350,11 @@ def _force_whatsapp_open_close(text: str) -> str | None:
         try:
             from jarvis.memory import learn_stt_alias
 
-            learn_stt_alias(learn_from, "WhatsApp")
+            # Bare close garbles (沙锅石) must not learn as bare "WhatsApp":
+            # apply_learned_alias would strip close intent and bare-app open
+            # would reopen. Verb+target still learns the target alone.
+            if not (result.startswith("閂") and learn_from == t):
+                learn_stt_alias(learn_from, "WhatsApp")
         except Exception:
             pass
     return result
@@ -459,6 +463,13 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
             if app_note:
                 note = f"{note}；{app_note}"
         return t, note
+    # Alias may have stripped close garble (沙锅石→WhatsApp); prefer raw close
+    forced_raw = _force_close_known(raw)
+    if forced_raw and forced_raw.startswith("閂"):
+        note = f"ASR 修正：{raw!r} → {forced_raw!r}"
+        if app_note:
+            note = f"{note}；{app_note}"
+        return forced_raw, note
     # No open verb but target sounds like known app -> assume "開 <app>"
     t_open, open_note = _maybe_prefix_open_for_bare_app(t, registry)
     if t_open != t:

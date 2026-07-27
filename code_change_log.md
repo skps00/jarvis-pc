@@ -1,5 +1,14 @@
 # 代碼變更與問題日誌
 
+## [2026-07-27 14:59:40] 操作類型：修改
+- **文件路徑**：src/jarvis/asr_repair.py, tests/test_app_index.py
+- **變更摘要**：bare close WhatsApp garble（沙锅石）唔再學成 bare WhatsApp alias；補開前若 raw 仍 force 閂則優先關。
+- **遇到的問題**：
+  - 問題1：第一次關成功後 alias 把 沙锅石→WhatsApp，下次變開
+  - 解決方案：close bare 跳過 learn；repair 在 bare-app 補開前用 raw 再跑 force-close
+  - 狀態：✅ 已解決
+- **備註**：open bare（爱锅石）同 verb+target 仍會 learn。
+
 ## [2026-07-27 19:20:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/{memory,app_index,asr_repair}.py, tests/test_app_index.py
