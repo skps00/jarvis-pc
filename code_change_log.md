@@ -765,3 +765,57 @@
   - 解決方案：先做初始 commit 再 move。
   - 狀態：✅ 已解決
 - **備註**：對應 gstack 設計 APPROVED。
+
+## [2026-07-28 15:30:01] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, src/jarvis/settings.py, tests/test_wake.py, docs/train_wake_jarvis.md, code_change_log.md
+- **變更摘要**：hybrid 聽候：有自訓 jarvis.onnx 只載 custom OWW；加短窗 STT 後備認「Jarvis」；UI／預設門檻改 Jarvis 導向
+- **遇到的問題**：
+  - 問題1：Colab simple onnx 分數近 0，淨講 Jarvis 唔醒；有 onnx 時又關咗 STT 後備
+  - 解決方案：custom-only OWW + RMS 觸發短窗 SenseVoice／cloud ASR + text_is_wake；thr 預設 0.35
+  - 狀態：✅ 已解決
+- **備註**：之後可用自己聲重訓加強 onnx；STT 後備保證今日可用
+
+## [2026-07-28 15:38:38] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, tests/test_wake.py, code_change_log.md
+- **變更摘要**：修 hybrid：恢復 hey_jarvis+custom 雙載；加強 STT 後備；清雙 serve 搶咪
+- **遇到的問題**：
+  - 問題1：custom-only 令 Hey Jarvis 完全失效；自訓分數近 0；雙 pythonw serve 搶 mic
+  - 解決方案：paths 永遠 bundled+custom；STT 窗加長／降 RMS；殺重複 serve 只留一個
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 15:42:39] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, code_change_log.md
+- **變更摘要**：STT 後備改用 mic ring buffer（唔再講完先錄）；修正晚錄導致 ASR 垃圾字
+- **遇到的問題**：
+  - 問題1：wake_debug 顯示 stt_pending 有跑但 text=office/dras/he 等，OWW≈0；用戶以為 log 壞
+  - 解決方案：保留最近 ~2s PCM，觸發時直接轉 wav 轉錄；說明 log 路徑正常
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 15:51:58] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, tests/test_wake.py, code_change_log.md
+- **變更摘要**：STT 認 SenseVoice 把 Jarvis 聽成 daws/draaws/drivers；寫 wake_status.txt 人可讀；降 STT 誤觸
+- **遇到的問題**：
+  - 問題1：用戶以為 log 唔 work；實際 oww_fire 有中但 STT ok=False（draaws/daws）
+  - 解決方案：fuzzy text_is_wake；wake_status.txt 一行狀態；STT 提高 RMS
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 15:55:50] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, code_change_log.md
+- **變更摘要**：修 wake 搶咪 race：OWW 命中後先關 InputStream 再 on_detect／錄音
+- **遇到的問題**：
+  - 問題1：oww_fire 有中但用戶覺 Jarvis 唔 work——on_detect 喺 mic stream 未關就開錄音
+  - 解決方案：fire_pending；stream 關閉 + 短 delay 先 dispatch
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-07-28 16:08:35] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, code_change_log.md
+- **變更摘要**：淨 Jarvis：STT 後備先 en 再 yue；自訓 onnx 分數近 0 時唔阻 STT；放寬短英文命中
+- **遇到的問題**：
+  - 問題1：Hey Jarvis(OWW) 得；淨 Jarvis 時 SenseVoice yue 出中文亂碼，fuzzy 唔中；custom onnx≈0.001
+  - 解決方案：wake STT 雙語序 en→yue；短 ASCII 近似 jarvis 用 edit distance
+  - 狀態：✅ 已解決
+- **備註**：長期仍應自己聲重訓 onnx

@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from jarvis import settings as settings_mod
 from jarvis.brain import (
     has_clear_close_verb,
     has_clear_power_verb,
@@ -22,22 +24,54 @@ from jarvis.brain import (
 from jarvis.config import load_registry
 from jarvis.engine import execute_utterance
 from jarvis.router import apply_verb_kind_limits, route
+from jarvis.settings import Settings, invalidate_settings_cache, save_settings
 
 
 def _reg():
     return load_registry(ROOT / "config" / "profiles.example.yaml")
 
 
+def _isolated_settings(tmp: Path):
+    """Point settings.json at a temp dir so AppData keys never leak into tests."""
+    return mock.patch.multiple(
+        settings_mod,
+        SETTINGS_DIR=tmp,
+        SETTINGS_PATH=tmp / "settings.json",
+    )
+
+
 def test_llm_configured_false_without_key():
     import jarvis.brain as brain
 
-    with mock.patch.object(brain, "_load_dotenv", lambda: None):
-        with mock.patch.dict(
-            os.environ,
-            {"JARVIS_LLM_API_KEY": "", "OPENAI_API_KEY": ""},
-            clear=False,
-        ):
-            assert llm_configured() is False
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        with _isolated_settings(tmp):
+            invalidate_settings_cache()
+            save_settings(Settings(llm_api_key=""))
+            with mock.patch.object(brain, "_load_dotenv", lambda: None):
+                with mock.patch.dict(
+                    os.environ,
+                    {"JARVIS_LLM_API_KEY": "", "OPENAI_API_KEY": ""},
+                    clear=False,
+                ):
+                    assert llm_configured() is False
+            invalidate_settings_cache()
+
+
+def test_llm_configured_true_from_isolated_settings():
+    """Positive path: settings.json key counts, without touching real AppData."""
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        with _isolated_settings(tmp):
+            invalidate_settings_cache()
+            save_settings(Settings(llm_api_key="sk-test-only"))
+            with mock.patch.dict(
+                os.environ,
+                {"JARVIS_LLM_API_KEY": "", "OPENAI_API_KEY": ""},
+                clear=False,
+            ):
+                assert llm_configured() is True
+            invalidate_settings_cache()
 
 
 def test_intent_from_json_force_new_browser():
@@ -271,6 +305,7 @@ def test_engine_query_with_mocked_llm():
 if __name__ == "__main__":
     for fn in (
         test_llm_configured_false_without_key,
+        test_llm_configured_true_from_isolated_settings,
         test_intent_from_json_force_new_browser,
         test_intent_rejects_path_and_illegal_id,
         test_resolve_ambiguous_mocked,

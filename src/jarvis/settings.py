@@ -60,7 +60,7 @@ class Settings:
     llm_model: str = DEFAULT_LLM_MODEL
     custom_models: list[str] = field(default_factory=list)
 
-    wake_threshold: float = 0.58
+    wake_threshold: float = 0.35
     wake_cd_seconds: float = 2.0
     record_seconds: float = 4.0
 
@@ -144,7 +144,7 @@ def _clamp(s: Settings) -> Settings:
     try:
         s.wake_threshold = float(s.wake_threshold)
     except (TypeError, ValueError):
-        s.wake_threshold = 0.58
+        s.wake_threshold = 0.35
     s.wake_threshold = max(0.1, min(0.99, s.wake_threshold))
     try:
         s.wake_cd_seconds = float(s.wake_cd_seconds)
