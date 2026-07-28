@@ -699,7 +699,7 @@ class JarvisShell:
         self.timer.pack_forget()
 
     def _start_wake_cd(self, seconds: int) -> None:
-        """Visible cooldown until Hey Jarvis can fire again."""
+        """Visible cooldown until Jarvis can fire again."""
         self._cd_left = max(0, int(seconds))
         if self._cd_left <= 0:
             self._hide_timer()
@@ -722,7 +722,7 @@ class JarvisShell:
             self.root.after(1000, self._tick_wake_cd)
         else:
             self._hide_timer()
-            self.set_status("● 聽候就緒 — 可講 Hey Jarvis", kind="ok")
+            self.set_status("● 聽候就緒 — 可講 Jarvis", kind="ok")
             self.append_log("[ok] 聽候就緒")
 
     def _on_listen(self) -> None:
@@ -744,6 +744,8 @@ class JarvisShell:
                 from jarvis.ear import record_wav, transcribe_path
                 from jarvis.settings import load_settings
 
+                # Wake released mic ~0.25s earlier; small extra settle
+                time.sleep(0.15)
                 cfg = load_settings()
                 path = record_wav(seconds=float(self._record_seconds))
                 self._ui_queue.put(("timer_hide", None))
@@ -856,6 +858,7 @@ class JarvisShell:
                         self.append_log("[warn] 聽候略過（忙緊）")
                     else:
                         self._last_wake_ts = now
+                        self.append_log("[ok] 聽到 Jarvis — 請講指令（開／關…）")
                         self._on_listen()
                 elif kind == "wake_off":
                     self._wake_on = False
@@ -932,15 +935,20 @@ class JarvisShell:
         self._ui_queue.put(("log", "[ok] 系統匣已啟動（藍點＝運行中；紅點＝錄音中）"))
 
     def _toggle_wake(self) -> None:
-        """UI toggle for hey_jarvis listen."""
+        """UI toggle for Jarvis listen (OWW + STT hybrid)."""
         if self._wake_on:
             self.stop_wake()
         else:
             self.start_wake()
 
     def start_wake(self) -> None:
-        """Background hey_jarvis → auto 語音."""
-        from jarvis.wake import wake_available, run_wake_loop
+        """Background Jarvis wake → auto 語音."""
+        from jarvis.wake import (
+            has_custom_jarvis_model,
+            recommended_threshold,
+            run_wake_loop,
+            wake_available,
+        )
 
         if self._wake_thread and self._wake_thread.is_alive():
             return
@@ -953,7 +961,11 @@ class JarvisShell:
         self._wake_on = True
         self.btn_wake.configure(text="聽候：開")
         thr = float(self._wake_threshold)
+        # Soften high thr when custom onnx present (Colab simple scores low)
+        if has_custom_jarvis_model() and thr > recommended_threshold():
+            thr = recommended_threshold()
         cd = float(self._wake_cd)
+        mode = "hey+custom+STT" if has_custom_jarvis_model() else "hey_jarvis+STT"
 
         def on_detect() -> None:
             self._ui_queue.put(("wake", None))
@@ -963,7 +975,7 @@ class JarvisShell:
                 self._ui_queue.put(
                     (
                         "log",
-                        f"[ok] 聽候中 — Hey Jarvis（thr={thr} CD={cd}s）",
+                        f"[ok] 聽候中 — Jarvis（{mode} thr={thr} CD={cd}s）",
                     )
                 )
                 run_wake_loop(
@@ -972,6 +984,7 @@ class JarvisShell:
                     post_resume_s=cd,
                     stop_event=self._wake_stop,
                     pause_event=self._wake_pause,
+                    text_wake=True,
                 )
             except Exception as exc:  # noqa: BLE001
                 self._ui_queue.put(("log", f"[fail] 聽候錯誤：{exc}"))
@@ -1002,7 +1015,7 @@ class JarvisShell:
         self.request_show()
         self.set_status("● 就緒（背景運行中）", kind="idle")
         self.append_log("JARVIS Shell 就緒。輸入 open CS2 / 開 Cursor …")
-        self.append_log("提示：講 Hey Jarvis → 自動錄音；或撳「語音」／「設定」。")
+        self.append_log("提示：講 Jarvis → 自動錄音；或撳「語音」／「設定」。")
         cfg = load_settings()
         self.append_log(
             f"[ok] 設定：ASR={cfg.asr_provider} REC={self._record_seconds}s "
