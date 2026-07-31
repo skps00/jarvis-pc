@@ -1,60 +1,92 @@
-# 自訓英文 wake「jarvis」（openWakeWord）
+# 自訓英文 wake「jarvis」（最準路徑）
 
-預訓練只有 **Hey Jarvis**。要淨講 **Jarvis** → 自訓 ONNX + **STT 後備**（hybrid）。
+目標：淨講 **Jarvis** 就醒。預訓練只有 **Hey Jarvis**。
 
-`%APPDATA%\Jarvis\wake\jarvis.onnx`
+模型路徑：`%APPDATA%\Jarvis\wake\jarvis.onnx`
 
-（可多個 `*.onnx`；檔名含 `jarvis` 會自動載入。）
+---
 
-## 聽候點解（hybrid）
+## 最準做法（推薦）：自己聲 1000+ + TTS trainer
 
-1. **OWW**：同時載 **hey_jarvis**（Hey Jarvis）+ 自訓 `jarvis.onnx`（若有）
-2. **STT 後備**：咪有聲但 OWW 分數唔夠 → 短錄音 → SenseVoice／cloud ASR 認 `jarvis`／`hey jarvis`／賈維斯
-3. 門檻預設約 **0.35**（設定頁可改）
+官方 Simple Colab = 淨合成音 → 對你咪／口音弱（已驗證分數≈0）。  
+**要準：大量自己聲 + Kokoro TTS 混訓**（真實聲通常加權更高）。
 
-> 唔好開兩個 `jarvis serve`（會搶 mic）。日誌：`聽候中 — Jarvis（hey+custom+STT …）`；除錯：`%APPDATA%\Jarvis\wake_debug.log`
+### Step A — 本機錄音（目標 1000）
 
-## 最快：Google Colab（約 1 小時）
-
-1. 開官方 notebook：  
-   https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb?usp=sharing
-2. Target phrase 填：`jarvis`（或 `hey jarvis` 若只要加強）
-3. Runtime → **GPU** → Run all，等訓練完
-4. 下載產生嘅 `.onnx`（通常喺 notebook 輸出／Files 面板）
-5. 安裝到 Jarvis（PowerShell，喺 repo 根目錄）：
+1. **先關** Jarvis serve（搶咪會錄空）
+2. Repo 根目錄：
 
 ```powershell
-.\scripts\install_wake_onnx.ps1 -SourcePath $env:USERPROFILE\Downloads\jarvis.onnx
+.\scripts\record_jarvis_wake.ps1 -Target 1000
 ```
 
-或手動：
+或：
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:APPDATA\Jarvis\wake"
-Copy-Item .\jarvis.onnx "$env:APPDATA\Jarvis\wake\jarvis.onnx"
+python scripts\record_jarvis_wake.py --target 1000 --seconds 2.0
 ```
 
-6. **重啟** serve（關舊 `pythonw`／tray → 再開 `JARVIS.vbs` 或 `python -m jarvis serve`）
-   - 日誌應見：`聽候中 — Jarvis（custom+STT …）`
-   - 設定頁門檻會套用（預設約 **0.35**）
+3. 每次 **Enter** → 倒數 → 講 **「Jarvis」**（自然、短）
+4. 鍵：`r` 重錄上一段｜`p` 回放｜`s` 進度｜`q` 離開
+5. 輸出目錄：
 
-## Colab 小抄
+`%APPDATA%\Jarvis\wake_recordings\my_real_samples\`  
+檔名：`jarvis_0001.wav` …（16 kHz mono，同 CoreWorx `my_real_samples/`）
 
-| 步驟 | 做咩 |
-|--|--|
-| GPU | Runtime → Change runtime type → T4／任何 GPU |
-| Phrase | `jarvis`（細楷，短） |
-| 跑完 | 睇有冇 `.onnx` 下載掣／Files |
-| 失敗 | Runtime 斷線就再 Run all；唔好用 CPU |
+**錄音提示：** 快慢、大細聲、遠近、轉頭；可分幾日錄，腳本會接續編號。
 
-## 驗收
+### Step B — 訓練（CoreWorxLab + Docker + NVIDIA GPU）
 
-- 講 **Jarvis**（唔使 Hey）→ 開始錄音
-- 跟住講帶開動詞指令（例「開 Cursor」）
-- 仍遲鈍：設定降門檻（例 0.25）；誤觸多就升（例 0.45）
+需要：NVIDIA GPU、Docker + NVIDIA Container Toolkit、約 20GB 碟。
+
+```powershell
+git clone https://github.com/CoreWorxLab/openwakeword-training.git
+cd openwakeword-training
+```
+
+把錄音資料夾放進／複製成 repo 內 `my_real_samples\`（內容係你啲 `jarvis_*.wav`）。
+
+```powershell
+docker compose build trainer
+docker compose run --rm trainer ./setup-data.sh
+docker compose run --rm trainer python train.py --wake-word "jarvis" --data-dir /app/data
+```
+
+訓練可能 **數小時**。完成後取：
+
+`my_custom_model/jarvis.onnx`（或同等路徑下嘅 `.onnx`）
+
+> 無本地 GPU：可用有 GPU 嘅雲機跑同一 Docker；唔建議再靠官方 Simple Colab 淨 TTS。
+
+### Step C — 安裝到 Jarvis
+
+```powershell
+cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
+.\scripts\install_wake_onnx.ps1 -SourcePath .\path\to\jarvis.onnx
+```
+
+重啟 serve（關 tray → 再開 `JARVIS.vbs`／`pythonw -m jarvis serve`）。
+
+### Step D — 驗收
+
+- 淨講 **Jarvis** → 自動錄音
+- 跟住 **「開 Cursor」**（要有開動詞）
+- **Hey Jarvis** 仍應可用（內建 hey_jarvis）
+- 誤觸多 → 設定升門檻（0.45–0.55）；太鈍 → 降（0.3）
+- 除錯：`%APPDATA%\Jarvis\wake_debug.log`／`wake_status.txt`
+
+---
+
+## 聽候點解（而家 main）
+
+1. **OWW**：`hey_jarvis` + 自訂 `jarvis.onnx`（若有）
+2. **STT 後備**：OWW 唔夠分時短窗 ASR（淨 Jarvis 過渡用；有強 onnx 後可少靠）
+3. 唔好開兩個 `jarvis serve`（搶 mic）
+
+---
 
 ## 備註
 
-- Windows 本機全套訓練要 WSL2 + GPU，唔建議；用 Colab。
-- 想更準：錄自己聲 50–300 段再訓（見社群 openwakeword-training），再覆蓋 onnx。
-- 檔名／stem 要含 `jarvis`（例 `jarvis.onnx`、`my_jarvis_v1.onnx`）。
+- 檔名／stem 要含 `jarvis`（例 `jarvis.onnx`）
+- 負樣本唔好用同音近義（官方／CoreWorx：用 hello／alexa 等明顯唔同句）
+- 第一次可先 300 段試跑；**1000+ 通常更準、更穩**

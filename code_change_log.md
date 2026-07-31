@@ -819,3 +819,12 @@
   - 解決方案：wake STT 雙語序 en→yue；短 ASCII 近似 jarvis 用 edit distance
   - 狀態：✅ 已解決
 - **備註**：長期仍應自己聲重訓 onnx
+
+## [2026-07-28 21:20:30] 操作類型：新增 | 修改
+- **文件路徑**：scripts/record_jarvis_wake.py, scripts/record_jarvis_wake.ps1, docs/train_wake_jarvis.md, code_change_log.md
+- **變更摘要**：本機 Jarvis wake 錄音腳本（預設目標 1000 段、16kHz）；文件改最準路徑（自己聲+TTS trainer）
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：輸出 %APPDATA%\Jarvis\wake_recordings\my_real_samples\（CoreWorx 相容）
