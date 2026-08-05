@@ -7,6 +7,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, ttk
+from typing import Any
 
 from jarvis.engine import execute_utterance
 from jarvis.settings import (
@@ -18,6 +19,7 @@ from jarvis.settings import (
     PRESET_LABELS,
     Settings,
     apply_llm_preset,
+    list_input_devices,
     list_models,
     load_settings,
     preset_from_label,
@@ -27,6 +29,45 @@ from jarvis.settings import (
 )
 
 HOTKEY = "<ctrl>+<alt>+j"
+
+
+def _strip_wake_word(text: str) -> str:
+    """Remove leading wake phrase from STT output.
+
+    Handles plain English, SenseVoice-mangled variants, and Chinese.
+    """
+    import re
+
+    t = text.strip()
+    patterns = [
+        r"^(hey\s+)?jarvis[\s,.!?、，。！！？？]+",
+        r"^(hey\s+)?javis[\s,.!?、，。！！？？]+",
+        r"^(hey\s+)?jarvi[\s,.!?、，。！！？？]+",
+        r"^(hey\s+)?drivers[\s,.!?、，。！！？？]+",
+        r"^(hey\s+)?draaws[\s,.!?、，。！！？？]+",
+        r"^賈維斯[\s,.!?、，。！！？？]*",
+        r"^加維斯[\s,.!?、，。！！？？]*",
+    ]
+    for pat in patterns:
+        m = re.match(pat, t, re.IGNORECASE)
+        if m:
+            return t[m.end():].strip()
+    return t
+
+
+def _pick_spoken_line(lines: list[str]) -> str | None:
+    """Pick the line worth speaking aloud (ok/fail/caption), tag stripped.
+
+    Debug lines like ``[route]``, ``[fix]``, ``[brain]`` stay in the log
+    but are not spoken.
+    """
+    import re
+
+    for line in reversed(lines):
+        m = re.match(r"^\[(?:ok|fail|caption)\]\s*(.*)$", line)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
+    return None
 
 
 def _make_icon_image(*, recording: bool = False):
@@ -241,7 +282,7 @@ class SettingsWindow:
         self.var_rec = tk.StringVar(value=str(s.record_seconds))
         row = 0
         for label, var in (
-            ("Wake 門檻 (0.1–0.99)", self.var_thresh),
+            ("Wake 門檻 (0.35–0.99)", self.var_thresh),
             ("聽候 CD 秒", self.var_cd),
             ("錄音秒數", self.var_rec),
         ):
@@ -250,6 +291,39 @@ class SettingsWindow:
                 row=row, column=1, sticky="w", pady=4
             )
             row += 1
+
+        # Mic device picker
+        row += 1
+        tk.Label(frm, text="收音裝置").grid(row=row, column=0, sticky="w", pady=4)
+
+        self._mic_devices: list[tuple[int, str]] = []
+        self.var_mic = tk.StringVar(value="系統預設")
+
+        def _refresh_mic() -> None:
+            self._mic_devices = list_input_devices()
+            opts = ["系統預設"] + [name for _, name in self._mic_devices]
+            self.cmb_mic["values"] = opts
+            cur = self.var_mic.get()
+            if cur not in opts:
+                self.var_mic.set("系統預設")
+
+        self.cmb_mic = ttk.Combobox(
+            frm, textvariable=self.var_mic, values=[], state="readonly", width=52
+        )
+        self.cmb_mic.grid(row=row, column=1, sticky="w", pady=4)
+
+        if s.wake_mic_device is not None:
+            self.var_mic.set(
+                next(
+                    (n for idx, n in list_input_devices() if idx == s.wake_mic_device),
+                    "系統預設",
+                )
+            )
+        _refresh_mic()
+        tk.Button(frm, text="⟳", command=_refresh_mic, width=3).grid(
+            row=row, column=2, sticky="w", pady=4
+        )
+        row += 1
 
         from jarvis import autostart as auto
 
@@ -264,6 +338,15 @@ class SettingsWindow:
             fg="#666",
             font=("Segoe UI", 8),
         ).grid(row=row, column=0, columnspan=2, sticky="w")
+
+    def _resolve_mic_device(self) -> int | None:
+        """Resolve the selected mic name back to device id. None = system default."""
+        name = self.var_mic.get()
+        if name == "系統預設":
+            return None
+        return next(
+            (idx for idx, n in list_input_devices() if n == name), None
+        )
 
     def _asr_provider_id(self) -> str:
         raw = self.var_asr.get()
@@ -429,9 +512,9 @@ class SettingsWindow:
                 "JARVIS 設定", "門檻／CD／錄音秒數要係數字。", parent=self.win
             )
             return
-        if not (0.1 <= thresh <= 0.99):
+        if not (0.35 <= thresh <= 0.99):
             messagebox.showerror(
-                "JARVIS 設定", "Wake 門檻要喺 0.1–0.99。", parent=self.win
+                "JARVIS 設定", "Wake 門檻要喺 0.35–0.99。", parent=self.win
             )
             return
         if not (0.5 <= cd <= 30.0):
@@ -462,6 +545,7 @@ class SettingsWindow:
             wake_threshold=thresh,
             wake_cd_seconds=cd,
             record_seconds=rec,
+            wake_mic_device=self._resolve_mic_device(),
         )
         path = save_settings(s)
 
@@ -513,6 +597,7 @@ class JarvisShell:
         self._record_seconds = int(round(cfg.record_seconds))
         self._wake_cd = float(cfg.wake_cd_seconds)
         self._wake_threshold = float(cfg.wake_threshold)
+        self._wake_mic_device: int | None = cfg.wake_mic_device
 
         frm = tk.Frame(self.root, padx=8, pady=8)
         frm.pack(fill=tk.BOTH, expand=True)
@@ -567,6 +652,7 @@ class JarvisShell:
         self._record_seconds = max(1, int(round(s.record_seconds)))
         self._wake_cd = float(s.wake_cd_seconds)
         self._wake_threshold = float(s.wake_threshold)
+        self._wake_mic_device = s.wake_mic_device
         self.append_log(
             f"[ok] 已套用：ASR={s.asr_provider} REC={self._record_seconds}s "
             f"CD={self._wake_cd}s thr={self._wake_threshold}"
@@ -795,6 +881,78 @@ class JarvisShell:
 
         threading.Thread(target=work, daemon=True).start()
 
+    def _on_listen_cmd(self, pcm_array: Any) -> None:
+        """Transcribe pre-captured PCM from wake — no mic recording needed."""
+        if self._busy:
+            return
+        self._set_busy(True)
+        self.set_status("● 辨識指令中…", kind="busy")
+
+        def work() -> None:
+            path = None
+            try:
+                from jarvis.config import load_registry
+                from jarvis.ear import pcm_to_wav, transcribe_path
+                from jarvis.settings import load_settings, uses_cloud_asr
+
+                cfg = load_settings()
+                self._ui_queue.put(("timer_hide", None))
+                path = pcm_to_wav(pcm_array)
+                dur = float(pcm_array.size) / 16000.0 if hasattr(pcm_array, "size") else 0.0
+                self._ui_queue.put(("log", f"[ear] 指令音頻 {dur:.1f}s → 辨識中"))
+                status_msg = (
+                    f"● 辨識中（{cfg.asr_model}）…"
+                    if uses_cloud_asr(cfg)
+                    else "● 辨識中…"
+                )
+                self._ui_queue.put(("status", (status_msg, "busy")))
+                registry = load_registry()
+                hot: list[str] = []
+                for p in registry.profiles.values():
+                    hot.extend(p.names)
+                    hot.extend(p.locale_hints)
+                text = transcribe_path(path, language="yue", hotwords=hot)
+                self._ui_queue.put(("log", f"[ear] raw={text!r} ({cfg.asr_provider})"))
+                if not text.strip():
+                    self._ui_queue.put(("log", "[fail] 無辨識文字"))
+                    self._ui_queue.put(("status", ("● 無辨識文字", "fail")))
+                    return
+                clean = _strip_wake_word(text.strip())
+                if clean != text.strip():
+                    self._ui_queue.put(("log", f"[ear] stripped → {clean!r}"))
+                if not clean.strip():
+                    self._ui_queue.put(("log", "[fail] 剩醒詞，無指令"))
+                    self._ui_queue.put(("status", ("● 無指令", "fail")))
+                    return
+                self._ui_queue.put(("status", ("● 執行指令中…", "busy")))
+                result = execute_utterance(
+                    clean.strip(), ask_confirm=self._ask_confirm_threadsafe
+                )
+                self._ui_queue.put(("result", result.lines))
+                self._ui_queue.put(
+                    (
+                        "status",
+                        ("● 就緒" if result.ok else "● 失敗（見日誌）",
+                         "ok" if result.ok else "fail"),
+                    )
+                )
+            except RuntimeError as exc:
+                self._ui_queue.put(("log", f"[fail] {exc}"))
+                self._ui_queue.put(("status", ("● 語音失敗", "fail")))
+            except Exception as exc:  # noqa: BLE001
+                self._ui_queue.put(("log", f"[fail] 語音錯誤：{exc}"))
+                self._ui_queue.put(("status", ("● 語音失敗", "fail")))
+            finally:
+                if path is not None:
+                    try:
+                        path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                self._ui_queue.put(("timer_hide", None))
+                self._ui_queue.put(("busy", False))
+
+        threading.Thread(target=work, daemon=True).start()
+
     def _tick_countdown(self) -> None:
         """UI-only countdown while mic is open (worker records in parallel)."""
         if not self._busy or self._countdown_left <= 0:
@@ -831,6 +989,23 @@ class JarvisShell:
                 if kind == "result":
                     for line in payload:
                         self.append_log(line)
+                    from jarvis.mouth import available, speak
+
+                    if available():
+                        reply = _pick_spoken_line(payload)
+                        if reply:
+                            # Mute wake while Jarvis speaks (anti-echo / game-bleed)
+                            self._wake_pause.set()
+
+                            def _speak_then_resume(text: str = reply) -> None:
+                                try:
+                                    speak(text, blocking=True)
+                                finally:
+                                    self._wake_pause.clear()
+
+                            threading.Thread(
+                                target=_speak_then_resume, daemon=True
+                            ).start()
                 elif kind == "show":
                     self.show()
                 elif kind == "toggle":
@@ -847,6 +1022,7 @@ class JarvisShell:
                 elif kind == "timer_hide":
                     self._hide_timer()
                 elif kind == "wake":
+                    # STT fallback: no pre-captured audio, record fresh
                     self.request_show()
                     now = time.time()
                     if now - self._last_wake_ts < float(self._wake_cd):
@@ -858,8 +1034,21 @@ class JarvisShell:
                         self.append_log("[warn] 聽候略過（忙緊）")
                     else:
                         self._last_wake_ts = now
-                        self.append_log("[ok] 聽到 Jarvis — 請講指令（開／關…）")
+                        self.append_log("[ok] 聽到 Jarvis（STT）— 請講指令（開／關…）")
                         self._on_listen()
+                elif kind == "wake_cmd":
+                    # OWW wake: pre-captured PCM, transcribe directly — no gap
+                    self.request_show()
+                    now = time.time()
+                    if now - self._last_wake_ts < float(self._wake_cd):
+                        self._wake_pause.clear()
+                        self.append_log("[warn] 聽候略過（CD）")
+                    elif self._busy:
+                        self._wake_pause.clear()
+                    else:
+                        self._last_wake_ts = now
+                        self.append_log("[ok] 聽到 — 辨識指令中")
+                        self._on_listen_cmd(payload)  # payload = pcm_array
                 elif kind == "wake_off":
                     self._wake_on = False
                     self.btn_wake.configure(text="聽候：關")
@@ -945,7 +1134,6 @@ class JarvisShell:
         """Background Jarvis wake → auto 語音."""
         from jarvis.wake import (
             has_custom_jarvis_model,
-            recommended_threshold,
             run_wake_loop,
             wake_available,
         )
@@ -961,14 +1149,17 @@ class JarvisShell:
         self._wake_on = True
         self.btn_wake.configure(text="聽候：開")
         thr = float(self._wake_threshold)
-        # Soften high thr when custom onnx present (Colab simple scores low)
-        if has_custom_jarvis_model() and thr > recommended_threshold():
-            thr = recommended_threshold()
+        thr = max(0.35, min(0.99, thr))
         cd = float(self._wake_cd)
-        mode = "hey+custom+STT" if has_custom_jarvis_model() else "hey_jarvis+STT"
+        mode = "hey+custom" if has_custom_jarvis_model() else "hey_jarvis"
 
         def on_detect() -> None:
+            """STT fallback wake: no pre-captured audio."""
             self._ui_queue.put(("wake", None))
+
+        def on_command(pcm_array: Any) -> None:
+            """OWW wake: pre-captured PCM (int16 numpy array)."""
+            self._ui_queue.put(("wake_cmd", pcm_array))
 
         def work() -> None:
             try:
@@ -980,11 +1171,13 @@ class JarvisShell:
                 )
                 run_wake_loop(
                     on_detect,
+                    on_command=on_command,
                     threshold=thr,
                     post_resume_s=cd,
                     stop_event=self._wake_stop,
                     pause_event=self._wake_pause,
-                    text_wake=True,
+                    text_wake=False,
+                    input_device=self._wake_mic_device,
                 )
             except Exception as exc:  # noqa: BLE001
                 self._ui_queue.put(("log", f"[fail] 聽候錯誤：{exc}"))

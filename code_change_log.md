@@ -828,3 +828,84 @@
   - 解決方案：—
   - 狀態：✅ 已解決
 - **備註**：輸出 %APPDATA%\Jarvis\wake_recordings\my_real_samples\（CoreWorx 相容）
+
+## [2026-08-02 19:40:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/ear.py, src/jarvis/shell_app.py
+- **變更摘要**：單 stream 一口氣「Jarvis, open minecraft」；OWW 醒後唔關 mic，繼續擷 3s 指令 PCM + pre-wake context → STT → strip wake word → 執行
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：wake.py 新增 on_command callback；ear.py 新增 pcm_to_wav；shell_app 新增 _on_listen_cmd + _strip_wake_word。STT fallback 路徑不變。
+
+## [2026-08-02 21:40:00] 操作類型：修改
+- **文件路徑**：src/jarvis/settings.py, src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：設定頁新增收音裝置下拉選單；wake.py 接受 input_device 參數；解決 Jarvis 聽到系統音效嘅問題
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：wake_mic_device: int|None=None；list_input_devices() 列出 sounddevice 輸入裝置；儲存時解析名稱回 id
+
+## [2026-08-03 22:38:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py
+- **變更摘要**：修單 stream 指令擷取：`raw_data_buffer` 空 → 改用自管 `pcm_ring`；擴 ring buffer 容量 2s→5s
+- **遇到的問題**：
+  - 問題1：`[ear] 指令音頻 0.0s` + SenseVoice `choose a window size 0`；OWW 醒後 `raw_data_buffer` 為空，`except` 設 `np.zeros(0)`
+  - 解決方案：不靠 OWW 內部 buffer，直接用自管 `pcm_ring`；`_BUF_CHUNKS` 改為 `max(STT, CMD) * SR / CHUNK`（≈63 chunks≈5s）；移除 capture 模式中 `model.predict(pcm)` 動作
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-04 19:27:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py
+- **變更摘要**：提高醒詞靈敏度 — 門檻 0.35→0.05（自訓 onnx 分數近 0）；STT 後備加 auto 語言 + 粵語拼音 needle
+- **遇到的問題**：
+  - 問題1：自訓 jarvis.onnx 分數 0.001–0.003，遠低於門檻 0.35，OWW 永不會觸發；STT yue 把英文「Jarvis」亂碼成 �，en 回空白 → 兩條路都死
+  - 解決方案：降門檻到 0.05（ponytail: retrain 後再提高）；STT 嘗試順序 en,yue → auto,en,yue；新增粵拼 needle（渣維斯、揸域斯、查域斯、渣域、揸域）
+  - 狀態：✅ 待驗收
+- **備註**：長期仍須用 1000+ 自己聲重訓 onnx（docs/train_wake_jarvis.md），否則低門檻易誤觸
+
+## [2026-08-04 21:45:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：減辨識延遲 — OWW 醒後等 1.5→0.3s；擷取音頻 5→3s；指令 STT 語言 yue→auto
+- **遇到的問題**：
+  - 問題1：辨識時間太長（4-6s） — OWW fire 後等 1.5s、送 5s 音頻俾 SenseVoice、用 yue mode → 三層疊加
+  - 解決方案：_CMD_SAVE_DELAY_S 1.5→0.3s（ring buffer 已有 pre-wake 音頻）；_CMD_BUFFER_S 5.0→3.0s（「Jarvis, open x」~2s 就夠）；command path transcribe_path(language="auto") 取代 "yue"（auto 更快）
+  - 狀態：✅ 待驗收
+- **備註**：三項改動後延遲 ~2-3s（之前 ~4-6s）。極長指令（>3s）會被截斷
+
+## [2026-08-04 21:51:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：還原 _CMD_SAVE_DELAY_S 1.5s、_CMD_BUFFER_S 5.0s、command STT language="yue"
+- **遇到的問題**：
+  - 問題1：0.3s delay 太短 → 聽唔到聲
+  - 解決方案：回滾
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-05 14:24:00] 操作類型：新增
+- **文件路徑**：src/jarvis/mouth.py（新）, src/jarvis/shell_app.py
+- **變更摘要**：TTS 語音回饋 — Piper TTS + jgkawell/jarvis onnx model（J.A.R.V.I.S. Paul Bettany 風格）
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：model 自動下載至 %APPDATA%/Jarvis/models/piper/jarvis-medium.onnx(~63MB)。speak() 非阻塞，thread 播放。shell_app _drain_queue "result" handler 自動叫 speak()。
+
+## [2026-08-05 14:56:00] 操作類型：修改
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py
+- **變更摘要**：TTS 修復三點 — (1) 沙啞：換 high quality model（jarvis-high.onnx）(2) 播全部日誌：只播 [ok]/[fail]/[caption] 摘要行 (3) 唔講中文：CJK 過濾靜音
+- **遇到的問題**：
+  - 問題1：把 result.lines 全部 join 來播 → 中文 caption/debug 行被英文 Piper 念 → 沙啞 + 亂碼
+  - 解決方案：新增 _pick_spoken_line() 只取最新 [ok]/[fail]/[caption] 行剝 tag；mouth.speak 加 _has_cjk() 過濾，含中文字符直接 return
+  - 狀態：✅ 已解決
+- **備註**：jarvis-high.onnx 較大但音質更順滑；Piper jarvis model 只支援英文，中文結果保持沉默
+
+## [2026-08-05 18:35:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, src/jarvis/settings.py
+- **變更摘要**：修 wake 層四痛點 — 誤觸／指令錯／慢／聽 game 聲
+- **遇到的問題**：
+  - 問題1：thr 被 soft 到 0.05，hey_jarvis 0.05–0.2 狂 fire；固定擷 5s 含環境聲；STT fallback 掃 game；TTS 回授
+  - 解決方案：(1) 門檻 ≥0.35／預設 0.50，取消 custom onnx soft-drop (2) 改 post-wake VAD：pre-roll 0.6s + 語音到靜音結束，max 4s (3) 關 text_wake 預設；RMS gate 0.14；STT CD 8s (4) TTS 期間 pause wake
+  - 狀態：✅ 待驗收
+- **備註**：設定頁舊 thr&lt;0.35 載入時會 clamp。請確認收音裝置揀實體咪，唔好揀 Sonar/Stereo Mix。

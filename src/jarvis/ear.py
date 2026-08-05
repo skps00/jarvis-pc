@@ -45,6 +45,23 @@ def record_wav(seconds: float = DEFAULT_SECONDS, sample_rate: int = 16000) -> Pa
     return path
 
 
+def pcm_to_wav(pcm: "np.ndarray", *, sample_rate: int = 16000) -> Path:
+    """Write int16 mono PCM numpy array to a temp .wav.
+
+    Use for pre-captured audio (e.g. from wake loop).
+    """
+    import numpy as np
+
+    path = Path(tempfile.mkstemp(prefix="jarvis_cmd_", suffix=".wav")[1])
+    arr = np.asarray(pcm, dtype=np.int16)
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(arr.tobytes())
+    return path
+
+
 def _get_model():
     """Load SenseVoiceSmall once (FunASR)."""
     global _model

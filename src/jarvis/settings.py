@@ -60,9 +60,10 @@ class Settings:
     llm_model: str = DEFAULT_LLM_MODEL
     custom_models: list[str] = field(default_factory=list)
 
-    wake_threshold: float = 0.35
-    wake_cd_seconds: float = 2.0
+    wake_threshold: float = 0.50
+    wake_cd_seconds: float = 3.0
     record_seconds: float = 4.0
+    wake_mic_device: int | None = None  # None = system default
 
 
 _cache: Settings | None = None
@@ -144,18 +145,23 @@ def _clamp(s: Settings) -> Settings:
     try:
         s.wake_threshold = float(s.wake_threshold)
     except (TypeError, ValueError):
-        s.wake_threshold = 0.35
-    s.wake_threshold = max(0.1, min(0.99, s.wake_threshold))
+        s.wake_threshold = 0.50
+    s.wake_threshold = max(0.35, min(0.99, s.wake_threshold))
     try:
         s.wake_cd_seconds = float(s.wake_cd_seconds)
     except (TypeError, ValueError):
-        s.wake_cd_seconds = 2.0
+        s.wake_cd_seconds = 3.0
     s.wake_cd_seconds = max(0.5, min(30.0, s.wake_cd_seconds))
     try:
         s.record_seconds = float(s.record_seconds)
     except (TypeError, ValueError):
         s.record_seconds = 4.0
     s.record_seconds = max(1.0, min(15.0, s.record_seconds))
+    if s.wake_mic_device is not None:
+        try:
+            s.wake_mic_device = int(s.wake_mic_device)
+        except (TypeError, ValueError):
+            s.wake_mic_device = None
     return s
 
 
@@ -379,6 +385,22 @@ PRESET_LABELS = {
     LLM_PRESET_OLLAMA: "Ollama（本機）",
     LLM_PRESET_CUSTOM: "自訂 OpenAI 相容",
 }
+
+
+def list_input_devices() -> list[tuple[int, str]]:
+    """Return [(id, name), ...] for all host input devices. Empty list on failure."""
+    try:
+        import sounddevice as sd
+    except ImportError:
+        return []
+    try:
+        return [
+            (idx, dev["name"])
+            for idx, dev in enumerate(sd.query_devices())
+            if dev["max_input_channels"] > 0
+        ]
+    except Exception:
+        return []
 
 
 def preset_from_label(label: str) -> str:

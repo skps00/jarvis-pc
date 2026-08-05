@@ -11,21 +11,30 @@ from typing import Any
 # ~80ms @ 16kHz
 _CHUNK = 1280
 _SAMPLE_RATE = 16000
-DEFAULT_THRESHOLD = 0.58
-# Soft default when user has custom jarvis.onnx (Colab simple models score low)
-CUSTOM_DEFAULT_THRESHOLD = 0.35
+DEFAULT_THRESHOLD = 0.50
+# Dead Colab onnx must NOT lower thr — that caused false fires at 0.05–0.2
+CUSTOM_DEFAULT_THRESHOLD = 0.50
 # Must fall below this before next wake（防分數黏高狂錄）
-_REARM_BELOW = 0.22
+_REARM_BELOW = 0.25
 # After command/mic resume, ignore wakes this long
-_POST_RESUME_S = 2.0
-_COOLDOWN_S = 1.0
-# STT text-wake: loud enough + cooldown between ASR probes
-_RMS_GATE = 0.06  # ignore quiet game bleed for STT schedule
-_STT_SECONDS = 2.0  # ring buffer length
-_STT_COOLDOWN_S = 2.5
-_LOUD_FRAMES_NEED = 4  # ~320ms
-_STT_TRAIL_S = 0.65  # keep buffering after loud so word not cut off
-_BUF_CHUNKS = max(8, int(_STT_SECONDS * _SAMPLE_RATE / _CHUNK))
+_POST_RESUME_S = 3.0
+_COOLDOWN_S = 1.5
+# Command capture (post-wake VAD): pre-roll + listen until silence
+_CMD_PRE_ROLL_S = 0.6  # keep "Jarvis" just before fire
+_CMD_MAX_S = 4.0  # hard cap
+_CMD_MIN_S = 0.45  # don't cut mid-wake
+_CMD_SPEECH_RMS = 0.035  # voice after wake
+_CMD_SILENCE_RMS = 0.018  # end-of-utterance
+_CMD_SILENCE_FRAMES = 8  # ~640ms quiet → done
+# STT text-wake: strict — game bleed used to schedule forever
+_RMS_GATE = 0.14
+_STT_SECONDS = 2.0
+_STT_COOLDOWN_S = 8.0
+_LOUD_FRAMES_NEED = 10  # ~800ms continuous loud
+_STT_TRAIL_S = 0.5
+_BUF_CHUNKS = max(
+    8, int(max(_STT_SECONDS, _CMD_PRE_ROLL_S + _CMD_MAX_S) * _SAMPLE_RATE / _CHUNK)
+)
 _WAKE_DEBUG_LOG = Path.home() / "AppData" / "Roaming" / "Jarvis" / "wake_debug.log"
 
 CUSTOM_WAKE_DIR = Path.home() / "AppData" / "Roaming" / "Jarvis" / "wake"
@@ -59,9 +68,7 @@ def has_custom_jarvis_model() -> bool:
 
 
 def recommended_threshold() -> float:
-    """Default thr: softer when custom jarvis onnx present."""
-    if has_custom_jarvis_model():
-        return CUSTOM_DEFAULT_THRESHOLD
+    """Default OWW thr. Custom onnx no longer softens — dead models caused false fires."""
     return DEFAULT_THRESHOLD
 
 
@@ -141,6 +148,11 @@ def text_is_wake(text: str) -> bool:
         "jarvi",
         "賈維斯",
         "加維斯",
+        "渣維斯",
+        "揸域斯",
+        "查域斯",
+        "渣域",
+        "揸域",
         "driverss",
         "drivers",
         "drivefus",
@@ -245,7 +257,7 @@ def _try_stt_wake_pcm(chunks: list[Any] | None) -> bool:
                 ("cloud", transcribe_path(path, language="auto", hotwords=hot))
             )
         else:
-            for lang in ("en", "yue"):
+            for lang in ("auto", "en", "yue"):
                 attempts.append(
                     (lang, transcribe_wav(path, language=lang, hotwords=hot))
                 )
@@ -269,17 +281,24 @@ def _try_stt_wake_pcm(chunks: list[Any] | None) -> bool:
 def run_wake_loop(
     on_detect: Callable[[], None],
     *,
+    on_command: Callable[[Any], None] | None = None,
     threshold: float = DEFAULT_THRESHOLD,
     post_resume_s: float | None = None,
     stop_event: threading.Event | None = None,
     pause_event: threading.Event | None = None,
     text_wake: bool | None = None,
+    input_device: int | None = None,
 ) -> None:
     """
-    Stream mic → OWW (custom jarvis and/or hey_jarvis) → on_detect.
+    Stream mic → OWW (custom jarvis and/or hey_jarvis) → on_detect/on_command.
+
+    When *on_command* is given, OWW fire keeps the mic open and captures
+    post-wake audio with VAD (pre-roll + speech until silence, max
+    ``_CMD_MAX_S``), then calls ``on_command(pcm_int16_array)``.
 
     Hybrid: if OWW score stays low but mic is loud, STT the recent ring
-    buffer for bare ``Jarvis`` / ``hey jarvis`` (default on).
+    buffer for bare ``Jarvis`` / ``hey jarvis`` (off by default via
+    *text_wake*).
     """
     from collections import deque
 
@@ -307,39 +326,111 @@ def run_wake_loop(
     pcm_ring: deque[Any] = deque(maxlen=_BUF_CHUNKS)
     pcm_lock = threading.Lock()
     stt_snapshot: list[Any] = []
+    cmd_detected_at = 0.0
+    cmd_audio: Any = None
+    cmd_chunks: list[Any] = []
+    cmd_speech_seen = False
+    cmd_silent_frames = 0
 
     def _trip(reason: str) -> None:
-        """Signal wake hit; on_detect runs only after mic stream closes."""
+        """Signal wake hit. Keep stream open; VAD-capture command audio."""
         nonlocal cool_until, armed, loud_frames, stt_due
+        nonlocal cmd_detected_at, cmd_audio, cmd_chunks
+        nonlocal cmd_speech_seen, cmd_silent_frames
         armed = False
         loud_frames = 0
         stt_due = 0.0
         stt_pending.clear()
-        cool_until = time.time() + _COOLDOWN_S
-        pause.set()
-        fire_pending.set()
+        if on_command is None:
+            cool_until = time.time() + _COOLDOWN_S
+            pause.set()
+            fire_pending.set()
+            _wake_debug(f"{reason} (legacy)")
+            return
+        # Pre-roll: last ~0.6s so "Jarvis" not cut; then only NEW post-wake audio
+        n_pre = max(1, int(_CMD_PRE_ROLL_S * _SAMPLE_RATE / _CHUNK))
+        with pcm_lock:
+            cmd_chunks = list(pcm_ring)[-n_pre:]
+        cmd_detected_at = time.time()
+        cmd_audio = None
+        cmd_speech_seen = False
+        cmd_silent_frames = 0
+        cool_until = time.time() + _CMD_MAX_S + _COOLDOWN_S
         _wake_debug(reason)
 
-    def _dispatch_detect() -> None:
-        time.sleep(0.25)  # let WASAPI release before command record
-        _wake_debug("dispatch_on_detect")
-        try:
-            on_detect()
-        except Exception as exc:
-            _wake_debug(f"on_detect_fail {exc}")
+    def _finish_cmd_capture() -> None:
+        nonlocal cmd_detected_at, cmd_audio, cmd_chunks
+        if not cmd_chunks:
+            cmd_audio = np.zeros(0, dtype=np.int16)
+        else:
+            cmd_audio = np.concatenate(cmd_chunks)
+        fire_pending.set()
+        cmd_detected_at = 0.0
+        cmd_chunks = []
+        _wake_debug(f"oww_cmd_pcm dur={cmd_audio.size / _SAMPLE_RATE:.1f}s")
+
+    def _dispatch_detect(pcm_array: Any = None) -> None:
+        """OWW path: pcm_array is int16 numpy.  STT fallback: None."""
+        if pcm_array is not None and on_command is not None:
+            _wake_debug("dispatch_on_command")
+            try:
+                on_command(pcm_array)
+            except Exception as exc:
+                _wake_debug(f"on_command_fail {exc}")
+        else:
+            time.sleep(0.25)  # let WASAPI release before command record
+            _wake_debug("dispatch_on_detect")
+            try:
+                on_detect()
+            except Exception as exc:
+                _wake_debug(f"on_detect_fail {exc}")
 
     def _callback(indata, frames, time_info, status) -> None:  # noqa: ARG001
         nonlocal cool_until, armed, loud_frames, stt_due, stt_snapshot
+        nonlocal cmd_detected_at, cmd_audio, cmd_chunks
+        nonlocal cmd_speech_seen, cmd_silent_frames
         if stop.is_set() or pause.is_set() or stt_pending.is_set() or fire_pending.is_set():
             return
         now = time.time()
-        if now < cool_until:
-            return
         mono = indata[:, 0] if indata.ndim > 1 else indata.flatten()
         rms = float(np.sqrt(np.mean(np.square(mono))))
         pcm = (np.clip(mono, -1.0, 1.0) * 32767.0).astype(np.int16)
         with pcm_lock:
             pcm_ring.append(pcm.copy())
+
+        # --- capture mode: post-wake VAD (speech → silence → done) ---
+        if cmd_detected_at > 0 and cmd_audio is None:
+            cmd_chunks.append(pcm.copy())
+            elapsed = now - cmd_detected_at
+            if rms >= _CMD_SPEECH_RMS:
+                cmd_speech_seen = True
+                cmd_silent_frames = 0
+            elif rms < _CMD_SILENCE_RMS:
+                cmd_silent_frames += 1
+            else:
+                cmd_silent_frames = 0
+            done = False
+            if elapsed >= _CMD_MAX_S:
+                done = True
+            elif (
+                elapsed >= _CMD_MIN_S
+                and cmd_speech_seen
+                and cmd_silent_frames >= _CMD_SILENCE_FRAMES
+            ):
+                done = True
+            elif (
+                elapsed >= 1.2
+                and not cmd_speech_seen
+                and cmd_silent_frames >= _CMD_SILENCE_FRAMES
+            ):
+                # No speech after wake — bail early (false wake / ambient)
+                done = True
+            if done:
+                _finish_cmd_capture()
+            return
+
+        if now < cool_until:
+            return
         try:
             scores = model.predict(pcm)
         except Exception:
@@ -388,6 +479,11 @@ def run_wake_loop(
         stt_due = 0.0
         stt_pending.clear()
         fire_pending.clear()
+        cmd_detected_at = 0.0
+        cmd_audio = None
+        cmd_chunks = []
+        cmd_speech_seen = False
+        cmd_silent_frames = 0
         with pcm_lock:
             pcm_ring.clear()
         cool_until = time.time() + resume_s
@@ -401,6 +497,7 @@ def run_wake_loop(
                 dtype="float32",
                 blocksize=_CHUNK,
                 callback=_callback,
+                device=input_device,
             ):
                 while not stop.is_set() and not pause.is_set():
                     if stt_pending.is_set() or fire_pending.is_set():
@@ -414,10 +511,17 @@ def run_wake_loop(
         if stop.is_set():
             continue
 
-        # OWW hit: mic stream closed → then start command recording
+        # OWW hit: mic stream closed → forward pre-captured command PCM or call on_detect
         if fire_pending.is_set():
             fire_pending.clear()
-            _dispatch_detect()
+            pcm = cmd_audio
+            cmd_audio = None
+            _wake_debug(
+                f"oww_cmd_pcm dur={pcm.size / _SAMPLE_RATE:.1f}s"
+                if pcm is not None and pcm.size > 0
+                else "oww_cmd_pcm empty"
+            )
+            _dispatch_detect(pcm)
             continue
 
         if pause.is_set():
@@ -433,6 +537,10 @@ def run_wake_loop(
             cool_until = time.time() + _COOLDOWN_S
             armed = False
             _wake_debug("stt_fire")
-            _dispatch_detect()
+            if on_command is not None and snap:
+                pcm = np.concatenate(snap)
+                _dispatch_detect(pcm)
+            else:
+                _dispatch_detect()
         else:
             cool_until = time.time() + _STT_COOLDOWN_S
