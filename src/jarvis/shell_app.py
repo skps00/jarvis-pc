@@ -205,6 +205,7 @@ class JarvisShell:
     def apply_settings(self, s: Settings) -> None:
         """Apply runtime knobs from Settings (after save)."""
         if not s.hermes_enabled:
+            # only tears down if currently Trusted（免每次儲存打 WSL）
             self.clear_hermes_trusted()
         hermes_note = "Hermes=on" if s.hermes_enabled else "Hermes=off"
         self.append_log(
@@ -221,42 +222,56 @@ class JarvisShell:
         """G3: Trusted window → enable docker terminal; expires → Safe."""
         import time as _time
 
-        from jarvis.hermes_bridge import (
-            apply_hermes_trusted_toolsets,
-            recycle_api_server,
-        )
+        mins = max(1.0, float(minutes))
+        self.append_log(f"[ok] 開 Trusted（docker terminal，{mins:g} 分鐘）…")
 
-        ok, msg = apply_hermes_trusted_toolsets()
-        if not ok:
-            self.append_log(f"[fail] Trusted 開唔到：{msg}")
-            return
-        self.append_log(f"[ok] {msg}")
-        ok2, msg2 = recycle_api_server()
-        if not ok2:
-            self.append_log(f"[warn] API 重載：{msg2}")
-        else:
-            self.append_log(f"[ok] API 已重載（Trusted toolsets）")
-        self._hermes_trusted_until = _time.monotonic() + max(1.0, minutes * 60.0)
-        self.append_log(f"[ok] Hermes Trusted {minutes:g} 分鐘（之後回 Safe）")
+        def work() -> None:
+            from jarvis.hermes_bridge import (
+                apply_hermes_trusted_toolsets,
+                recycle_api_server,
+            )
 
-    def clear_hermes_trusted(self) -> None:
-        """Force Safe：關 terminal 等；若剛由 Trusted 退出則重載 API。"""
-        from jarvis.hermes_bridge import (
-            apply_hermes_safe_toolsets,
-            recycle_api_server,
-        )
-
-        was = self._hermes_trusted_until > 0
-        self._hermes_trusted_until = 0.0
-        ok, msg = apply_hermes_safe_toolsets()
-        if not ok:
-            self.append_log(f"[warn] Safe toolsets：{msg}")
-        elif was:
-            self.append_log(f"[ok] 已回 Safe（{msg}）")
-        if was:
+            ok, msg = apply_hermes_trusted_toolsets()
+            if not ok:
+                self._ui_queue.put(("log", f"[fail] Trusted 開唔到：{msg}"))
+                return
+            self._ui_queue.put(("log", f"[ok] {msg}"))
             ok2, msg2 = recycle_api_server()
             if not ok2:
-                self.append_log(f"[warn] API 重載：{msg2}")
+                self._ui_queue.put(("log", f"[warn] API 重載：{msg2}"))
+            else:
+                self._ui_queue.put(("log", "[ok] API 已重載（Trusted toolsets）"))
+            self._hermes_trusted_until = _time.monotonic() + mins * 60.0
+            self._ui_queue.put(
+                ("log", f"[ok] Hermes Trusted {mins:g} 分鐘（之後回 Safe）")
+            )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def clear_hermes_trusted(self) -> None:
+        """Force Safe if currently Trusted；no-op when already Safe."""
+        was = self._hermes_trusted_until > 0
+        if not was:
+            return
+        self._hermes_trusted_until = 0.0
+        self.append_log("[ok] 回 Safe（關 docker terminal）…")
+
+        def work() -> None:
+            from jarvis.hermes_bridge import (
+                apply_hermes_safe_toolsets,
+                recycle_api_server,
+            )
+
+            ok, msg = apply_hermes_safe_toolsets()
+            if not ok:
+                self._ui_queue.put(("log", f"[warn] Safe toolsets：{msg}"))
+            else:
+                self._ui_queue.put(("log", f"[ok] 已回 Safe（{msg}）"))
+            ok2, msg2 = recycle_api_server()
+            if not ok2:
+                self._ui_queue.put(("log", f"[warn] API 重載：{msg2}"))
+
+        threading.Thread(target=work, daemon=True).start()
 
     def hermes_is_trusted(self) -> bool:
         """True while within Trusted window; auto-expire → Safe toolsets."""
@@ -485,6 +500,11 @@ class JarvisShell:
             return False
 
     def _drain_queue(self) -> None:
+        # G3: Trusted 到期要關 docker terminal（唔靠人記得）
+        try:
+            self.hermes_is_trusted()
+        except Exception:
+            pass
         try:
             while True:
                 kind, payload = self._ui_queue.get_nowait()

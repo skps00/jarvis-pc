@@ -1,5 +1,18 @@
 # 代碼變更與問題日誌
 
+## [2026-08-07 20:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：修 Trusted：①到期輪詢回 Safe；②未 Trusted 唔每次儲存打 WSL；③arm／clear 改背景線程防 Tk 凍。
+- **遇到的問題**：
+  - 問題1：`hermes_is_trusted()` 無人呼叫 → 30min 後 terminal 唔關
+  - 解決方案：`_drain_queue` 每圈檢查到期
+  - 狀態：✅ 已解決
+  - 問題2：儲存設定（未勾 Trusted）仍 `clear`→`hermes tools disable`
+  - 解決方案：僅 `was` Trusted 先套 Safe／recycle
+  - 狀態：✅ 已解決
+- **備註**：—
+
 ## [2026-08-07 20:09:00] 操作類型：修改（文件）
 
 - **文件路徑**：docs/approve_bridge.md, code_change_log.md
