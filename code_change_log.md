@@ -1,5 +1,291 @@
 # 代碼變更與問題日誌
 
+## [2026-08-07 20:09:00] 操作類型：修改（文件）
+
+- **文件路徑**：docs/approve_bridge.md, code_change_log.md
+- **變更摘要**：驗收打勾：Trusted 寫 sandbox、Approve 彈窗、貼圖＋API 手測完成（使用者確認）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：下一步多半 commit 或 ASR／Phase2。
+
+## [2026-08-07 19:05:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,shell_app,settings_ui}.py, docs/approve_bridge.md, scripts/{hermes_docker_terminal_setup,wsl_docker_*}.sh, tests/test_hermes_trusted.py, code_change_log.md；WSL `~/.hermes/config.yaml`
+- **變更摘要**：Trusted＋docker terminal：Desktop 已裝；Safe 關 terminal／browser／CUA／cron；Trusted arm 開 docker terminal（sandbox mount）＋重載 API；無 yolo。
+- **遇到的問題**：
+  - 問題1：WSL 冇 `docker`／credential helper PATH
+  - 解決方案：PATH 加 Docker Desktop `resources/bin`；wrapper script
+  - 狀態：✅ 已解決
+  - 問題2：`C:/HermesSandbox` bind 被當 mode
+  - 解決方案：用 `/mnt/c/HermesSandbox:/workspace`
+  - 狀態：✅ 已解決
+- **備註**：手測 Trusted echo 寫 sandbox 仍待勾。
+
+## [2026-08-07 18:56:00] 操作類型：修改（Hermes 環境）
+
+- **文件路徑**：`~/.hermes/config.yaml`（WSL；非 jarvis-pc 源碼）, code_change_log.md
+- **變更摘要**：Safe 硬閘 #0：`api_server`＋`cli` 關 `terminal`／`browser`／`computer_use`／`cronjob`（design G1／G18）。
+- **遇到的問題**：
+  - 問題1：api_server 預設開 terminal（無 docker＝host）
+  - 解決方案：`hermes tools disable --platform …`
+  - 狀態：✅ 已解決
+- **備註**：Trusted＋docker terminal 未開；等 Docker Desktop 裝完再 #2–#3。
+
+## [2026-08-07 12:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,settings_ui,mouth}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：朗讀 TTS 加喇叭 Combobox（sounddevice 輸出）；`tts_output_device` 存檔；`mouth.speak` 播去指定裝置；試聽跟下拉。
+- **遇到的問題**：
+  - 問題1：只有 mic 下拉、喇叭冇
+  - 解決方案：`list_output_speakers()` + `sd.play(device=…)`
+  - 狀態：✅ 已解決
+- **備註**：None＝系統預設喇叭。
+
+## [2026-08-07 12:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/settings_ui.py, code_change_log.md
+- **變更摘要**：進階「麥克風」改 Combobox（sounddevice 輸入清單＋系統預設＋重新整理）。
+- **遇到的問題**：
+  - 問題1：Mic device # 手填難知邊個係邊個
+  - 解決方案：`list_input_mics()` 下拉
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-07 12:10:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/settings_ui.py（新）, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：重做設定頁：分頁 大腦／Hermes／朗讀／系統／進階；捲動；露出 ASR·wake（標停用）；開資料夾／profiles／檢測 Hermes API。
+- **遇到的問題**：
+  - 問題1：舊兩頁塞唔晒；ASR／wake 喺 json 但 UI 冇
+  - 解決方案：拆 `settings_ui.py`；進階保留 legacy
+  - 狀態：✅ 已解決
+- **備註**：語音識別仍停用；進階只存檔唔喚醒。
+
+## [2026-08-07 10:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,mouth,shell_app}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：TTS 開／語速／音量入設定「系統」；存 settings.json；試聽掣用滑桿值。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：`tts_length_scale` 0.5–1.5；`tts_volume` 0.3–3.0。
+
+## [2026-08-07 10:36:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, code_change_log.md
+- **變更摘要**：Piper TTS `volume=1.6`；播前 soft-clip 防爆音。
+- **遇到的問題**：
+  - 問題1：SPEAK 聲量偏細
+  - 解決方案：SynthesisConfig.volume 提高
+  - 狀態：✅ 已解決
+- **備註**：再大聲改 `VOLUME`（如 2.0）。
+
+## [2026-08-07 10:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, code_change_log.md
+- **變更摘要**：Piper TTS `length_scale=0.85`（約快 15%）；`LENGTH_SCALE` 可調。
+- **遇到的問題**：
+  - 問題1：SPEAK 朗讀偏慢
+  - 解決方案：SynthesisConfig.length_scale＜1
+  - 狀態：✅ 已解決
+- **備註**：再快可改 0.75；＞1 變慢。
+
+## [2026-08-07 10:30:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, tests/test_hermes_bridge.py, docs/approve_bridge.md, code_change_log.md
+- **變更摘要**：Hermes 雙輸出：繁中 `[caption]` + 末行 `SPEAK:` 短英 → `[speak]`／Piper；唔開第二次 LLM。
+- **遇到的問題**：
+  - 問題1：caption 全繁中 → mouth skip → Hermes 唔出聲
+  - 解決方案：`split_speak_footer`；API instructions／CLI hint；`_pick_spoken_line` 優先 `[speak]`、唔用 caption
+  - 狀態：✅ 已解決
+- **備註**：無 SPEAK 且有 CJK → 唔 TTS。
+
+## [2026-08-07 09:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：修 caption 重複：`run.completed` 覆蓋 `message.delta`；加 exact-echo dedupe。
+- **遇到的問題**：
+  - 問題1：同一句出現兩次（delta 拼完又 append completed）
+  - 解決方案：completed 用最終 output 取代 pieces
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-07 09:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：附圖改走 API Runs multimodal（base64）＋ Approve；唔再預設 `-q --image`（會無彈窗卡 120s）。
+- **遇到的問題**：
+  - 問題1：`do it [圖]` → Hermes 逾時 120s（CLI 無 Approve）
+  - 解決方案：`build_runs_input` + `_chat_via_api(image_path=)`；失敗先回落 `-q` 並提示
+  - 狀態：✅ 已解決
+- **備註**：圖＞12MB 拒；附圖 timeout 下限 180s。
+
+## [2026-08-07 08:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{shell_app,memory,asr_repair}.py, code_change_log.md
+- **變更摘要**：UI 打字 `repair_asr=False`；shellish 句唔套／唔學 STT alias；清掉 `…rm…→執行` 爛 alias。
+- **遇到的問題**：
+  - 問題1：手測 Approve 句被 `[fix] ASR 修正 → '執行'`，Hermes 收唔到 `rm`
+  - 解決方案：shell 關 ASR 修正；`_looks_shellish` 擋 lookup／learn；purge memory
+  - 狀態：✅ 已解決
+- **備註**：CLI `execute_utterance` 預設仍可 `repair_asr=True`（舊語音路徑）。
+
+## [2026-08-07 08:12:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, scripts/_smoke_hermes_api.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：Approve API 401：埠通仍要 auth probe；key 唔夾則殺 :8642 再以 Jarvis key 重起；煙測改讀同一 key 檔。
+- **遇到的問題**：
+  - 問題1：舊煙測 gateway 佔 8642 → `Invalid gateway API key` 401，Approve 橋失效
+  - 解決方案：`_api_auth_ok` + `ensure_api_server` 唔盲目重用；`fuser -k 8642/tcp` 後重起
+  - 狀態：✅ 已解決
+- **備註**：關 Jarvis 仍唔強制殺 API；只喺 key mismatch 先清埠。
+
+## [2026-08-07 08:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, scripts/_smoke_hermes_api.py, code_change_log.md
+- **變更摘要**：Phase1.5 Approve 橋完成：API `:8642` Runs+SSE `approval.request`→Yes=`once`／No=`deny`；engine 傳 `ask_confirm`；API 失敗回落 `-q`；單元測 mock SSE／fallback。
+- **遇到的問題**：
+  - 問題1：煙測 gateway 可能用另一把 key 佔 :8642 → Jarvis key 401
+  - 解決方案：POST 失敗即回落 `-q`；正式由 `ensure_api_server` 用 `%APPDATA%\Jarvis\hermes_api.key` 起
+  - 狀態：✅ 已解決
+- **備註**：附圖仍 CLI `--image`；Trusted 仍無 docker／無 yolo。手測清單見 `docs/approve_bridge.md`。
+
+## [2026-08-07 08:00:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine}.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, scripts/_smoke_hermes_api.py, code_change_log.md
+- **變更摘要**：Phase1.5 Approve 橋：本地 Hermes API `:8642` + `/v1/runs` SSE `approval.request` → Jarvis Yes=`once`／No=`deny`；失敗回落 `chat -q`；永不 yolo。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決（見 08:15 收尾）
+- **備註**：API key=`%APPDATA%\Jarvis\hermes_api.key`；有附圖暫走 CLI `--image`。
+
+## [2026-08-06 22:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,shell_app}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：全域熱鍵可改：設定「系統」揀／填；存 `settings.json`；套用即重註冊（唔使重開）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：預設仍 Ctrl+Alt+J；pynput 格式 `<ctrl>+<alt>+j`。
+
+## [2026-08-06 21:50:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, docs/approve_bridge.md, docs/phase2_computer_use.md, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：①驗收 session／Hands OK；②貼圖→`hermes --image`（剪貼簿／掣／Ctrl+V）；③Approve 橋 v0＝Hands Yes／No＋文件（Hermes -q 無 TTY 仍 fail-closed）；④Phase2 computer_use 規格草稿。
+- **遇到的問題**：
+  - 問題1：Hermes `approvals.mode=manual` 喺 `-q`+無 stdin 唔能 Jarvis 彈 Yes
+  - 解決方案：文件標 Phase1.5＝gateway／dashboard；唔開 `--yolo`
+  - 狀態：✅ 已解決（貼圖／規格）；Approve 真橋延 Phase1.5
+- **備註**：inbox=`C:\HermesSandbox\_inbox\`
+
+## [2026-08-06 21:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：`serve` 單實例：Windows named mutex；第二個啟動改觸發第一個顯示並退出。重啟用 `JARVIS_SERVE_WAIT` 等舊進程放鎖。
+- **遇到的問題**：
+  - 問題1：可開兩個 Jarvis（無鎖；重啟先起新再開舊會雙開）
+  - 解決方案：`Local\JarvisPcServe.v1` mutex + show event
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 21:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：細窗加「重啟」「結束」掣；結束同系統匣；重啟 = 隱藏起新 `pythonw -m jarvis serve` 再關舊。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：tray 亦加「重啟」。
+
+## [2026-08-06 20:58:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, src/jarvis/shell_app.py, scripts/open_hermes_dashboard.py, code_change_log.md
+- **變更摘要**：Jarvis 細窗加「Hermes 網頁」掣；開 http://127.0.0.1:9119（已起就只開瀏覽器；否則 WSL 隱藏啟動）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：邏輯集中 `open_dashboard()`；腳本改 thin wrapper。
+
+## [2026-08-06 17:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：修 Hermes 每句新 session：`-Q` 而家印 `session_id:`，舊 parser 只認 `Session:`／`hermes --resume` → 永遠唔 resume。
+- **遇到的問題**：
+  - 問題1：每 message 新 session
+  - 解決方案：parse `session_id:`；成功回覆但無新 id 時保留上次 resume id
+  - 狀態：✅ 已解決
+- **備註**：實測同一 session_id 連續兩句；重開 serve 後記憶體內 session 會清（設計：進程內 10min TTL）。
+
+## [2026-08-06 17:35:00] 操作類型：新增
+
+- **文件路徑**：scripts/open_hermes_dashboard.py, code_change_log.md
+- **變更摘要**：一鍵開 Hermes web dashboard（WSL `CREATE_NO_WINDOW`，唔彈黑窗；瀏覽器開 127.0.0.1:9119）。
+- **遇到的問題**：
+  - 問題1：PowerShell 轉義搞爛 inline python
+  - 解決方案：獨立腳本
+  - 狀態：✅ 已解決
+- **備註**：`python scripts/open_hermes_dashboard.py`
+
+## [2026-08-06 16:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, code_change_log.md
+- **變更摘要**：Hermes→WSL 時唔再彈 cmd 黑窗（`CREATE_NO_WINDOW`，同 Hands）。
+- **遇到的問題**：
+  - 問題1：每次問 Hermes 彈 WSL／cmd 視窗
+  - 解決方案：`subprocess.run(..., creationflags=CREATE_NO_WINDOW)`
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 16:35:00] 操作類型：刪除 | 修改
+
+- **文件路徑**：src/jarvis/shell_app.py, src/jarvis/__main__.py, README.md, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：使用者要求：語音識別太差 → **完全移除** ASR／聽候／「語音」掣；只留打字＋Hands＋Hermes bridge＋可選 TTS。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：shell 重寫去 ASR tab／語音／聽候；`listen`／`wake` CLI 回退提示；設定存檔保留舊 ASR 欄位唔洗爆 json
+  - 狀態：✅ 已解決
+- **備註**：`ear.py`／`wake.py` 暫留檔但無入口；`asr_fix` 仍服務打字別名。
+
+## [2026-08-06 16:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：修 Phase1 改 settings 時誤植縮排 → IndentationError，Jarvis 開唔到。
+- **遇到的問題**：
+  - 問題1：`serve` 即崩 IndentationError L716
+  - 解決方案：busy／wake_pause 塊移回 `apply_settings`
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 16:00:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, src/jarvis/{settings,engine,shell_app}.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：Phase1 薄 bridge：`hermes_enabled` 預設 false；query／unknown→WSL Hermes（safe 無 yolo）；開／關／電源仍本機 Hands；剝 `⟦JV⟧`；10min session。
+- **遇到的問題**：
+  - 問題1：pytest 未裝
+  - 解決方案：`python -c` 跑 test_hermes_bridge 函數；全過
+  - 狀態：✅ 已解決
+- **備註**：Trusted＝設定勾選 30min runtime；Approve 橋／docker 仍未做。開設定 →「啟用 Hermes」。
+
+## [2026-08-06 13:40:00] 操作類型：新增（Phase0 環境，非 jarvis 源碼）
+
+- **文件路徑**：`C:\HermesSandbox\`（PHASE0_STATUS.md 等）；WSL `~/.hermes/`（Hermes v0.20.0／v2026.8.3）
+- **變更摘要**：使用者「開始裝」→ Phase0：WSL2 裝 Hermes、safe root 僅 sandbox、jarvis-safe AGENTS、manual／deny、aux vision 佔位；無 Docker＝降級；無 MCP／computer_use。
+- **遇到的問題**：
+  - 問題1：官方 `install.sh` 卡在 sudo apt（ripgrep／ffmpeg／build-essential）無交互密碼
+  - 解決方案：static rg＋ffmpeg 進 `~/.local/bin`；`uv sync` 續裝；`--skip-browser --non-interactive`
+  - 狀態：✅ 已解決
+  - 問題2：live chat／vision 未驗
+  - 解決方案：等 SK 填 `~/.hermes/.env` 的 DEEPSEEK／OPENROUTER key
+  - 狀態：❌ 未解決（等 key）
+- **備註**：詳見 `C:\HermesSandbox\PHASE0_STATUS.md`；jarvis-pc 源碼未改。
+
 ## [2026-07-28 07:55:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/brain.py, tests/test_brain.py, code_change_log.md

@@ -34,6 +34,16 @@ DEFAULT_LLM_BASE = "https://api.deepseek.com"
 DEFAULT_LLM_MODEL = "deepseek-chat"
 DEFAULT_ASR_MODEL = "mimo-v2.5-asr"
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434/v1"
+DEFAULT_HOTKEY = "<ctrl>+<alt>+j"
+
+# Human labels shown in settings (value = pynput GlobalHotKeys string)
+HOTKEY_PRESETS: tuple[tuple[str, str], ...] = (
+    ("Ctrl+Alt+J", "<ctrl>+<alt>+j"),
+    ("Ctrl+Shift+J", "<ctrl>+<shift>+j"),
+    ("Ctrl+Alt+Space", "<ctrl>+<alt>+<space>"),
+    ("Alt+Shift+J", "<alt>+<shift>+j"),
+    ("Ctrl+Alt+`", "<ctrl>+<alt>+`"),
+)
 
 PRESET_BASES = {
     LLM_PRESET_DEEPSEEK: DEFAULT_LLM_BASE,
@@ -64,6 +74,17 @@ class Settings:
     wake_cd_seconds: float = 3.0
     record_seconds: float = 4.0
     wake_mic_device: int | None = None  # None = system default
+    # Phase1: Hermes thin bridge (default off — today's jarvis)
+    hermes_enabled: bool = False
+    # Trusted flag persisted as preference; shell enforces 30min + restart→Safe
+    hermes_trusted: bool = False
+    # pynput GlobalHotKeys string, e.g. <ctrl>+<alt>+j
+    hotkey: str = DEFAULT_HOTKEY
+    # Piper TTS (English SPEAK / ok / fail)
+    tts_enabled: bool = True
+    tts_length_scale: float = 0.85  # <1 faster
+    tts_volume: float = 1.6  # 1.0 = Piper default
+    tts_output_device: int | None = None  # sounddevice output index; None = default
 
 
 _cache: Settings | None = None
@@ -162,7 +183,142 @@ def _clamp(s: Settings) -> Settings:
             s.wake_mic_device = int(s.wake_mic_device)
         except (TypeError, ValueError):
             s.wake_mic_device = None
+    s.hermes_enabled = bool(s.hermes_enabled)
+    s.hermes_trusted = bool(s.hermes_trusted)
+    try:
+        s.hotkey = normalize_hotkey(s.hotkey or DEFAULT_HOTKEY)
+    except ValueError:
+        s.hotkey = DEFAULT_HOTKEY
+    s.tts_enabled = bool(s.tts_enabled)
+    try:
+        s.tts_length_scale = float(s.tts_length_scale)
+    except (TypeError, ValueError):
+        s.tts_length_scale = 0.85
+    s.tts_length_scale = max(0.50, min(1.50, s.tts_length_scale))
+    try:
+        s.tts_volume = float(s.tts_volume)
+    except (TypeError, ValueError):
+        s.tts_volume = 1.6
+    s.tts_volume = max(0.30, min(3.0, s.tts_volume))
+    if s.tts_output_device is not None:
+        try:
+            s.tts_output_device = int(s.tts_output_device)
+        except (TypeError, ValueError):
+            s.tts_output_device = None
     return s
+
+
+def normalize_hotkey(raw: str) -> str:
+    """Accept ``Ctrl+Alt+J`` or ``<ctrl>+<alt>+j`` → pynput string.
+
+    Raises ValueError if empty / no key.
+    """
+    import re
+
+    s = (raw or "").strip()
+    if not s:
+        raise ValueError("熱鍵空白")
+
+    # Already pynput-ish
+    if "<" in s:
+        parts = [p.strip().lower() for p in s.split("+") if p.strip()]
+    else:
+        parts = [p.strip().lower() for p in re.split(r"[+\-]", s) if p.strip()]
+
+    if not parts:
+        raise ValueError("熱鍵無效")
+
+    mod_map = {
+        "ctrl": "<ctrl>",
+        "control": "<ctrl>",
+        "alt": "<alt>",
+        "shift": "<shift>",
+        "win": "<cmd>",
+        "cmd": "<cmd>",
+        "super": "<cmd>",
+        "meta": "<cmd>",
+    }
+    special = {
+        "space": "<space>",
+        "esc": "<esc>",
+        "escape": "<esc>",
+        "tab": "<tab>",
+        "enter": "<enter>",
+        "return": "<enter>",
+    }
+    out: list[str] = []
+    for p in parts:
+        if p in mod_map:
+            out.append(mod_map[p])
+            continue
+        bare = p.strip("<>")
+        if bare in mod_map:
+            out.append(mod_map[bare])
+            continue
+        if p in special or bare in special:
+            out.append(special.get(p) or special[bare])
+            continue
+        if p.startswith("<") and p.endswith(">"):
+            out.append(p)
+            continue
+        # single char key
+        if len(bare) == 1:
+            out.append(bare)
+            continue
+        raise ValueError(f"唔識熱鍵段：{p}")
+
+    mods_only = {"<ctrl>", "<alt>", "<shift>", "<cmd>"}
+    if all(x in mods_only for x in out):
+        raise ValueError("熱鍵要有實體鍵（唔可以淨係修飾鍵）")
+
+    # dedupe mods keep order
+    seen: set[str] = set()
+    norm: list[str] = []
+    for x in out:
+        if x in mods_only and x in seen:
+            continue
+        seen.add(x)
+        norm.append(x)
+    return "+".join(norm)
+
+
+def hotkey_display(pynput_hk: str) -> str:
+    """``<ctrl>+<alt>+j`` → ``Ctrl+Alt+J``."""
+    try:
+        hk = normalize_hotkey(pynput_hk)
+    except ValueError:
+        return pynput_hk
+    labels = {
+        "<ctrl>": "Ctrl",
+        "<alt>": "Alt",
+        "<shift>": "Shift",
+        "<cmd>": "Win",
+        "<space>": "Space",
+        "<esc>": "Esc",
+        "<tab>": "Tab",
+        "<enter>": "Enter",
+    }
+    bits: list[str] = []
+    for p in hk.split("+"):
+        if p in labels:
+            bits.append(labels[p])
+        elif p.startswith("<") and p.endswith(">"):
+            bits.append(p[1:-1].title())
+        else:
+            bits.append(p.upper() if len(p) == 1 else p)
+    return "+".join(bits)
+
+
+def hotkey_preset_label(pynput_hk: str) -> str:
+    """Match preset label or return display form."""
+    try:
+        hk = normalize_hotkey(pynput_hk)
+    except ValueError:
+        return hotkey_display(pynput_hk)
+    for label, val in HOTKEY_PRESETS:
+        if val == hk:
+            return label
+    return hotkey_display(hk)
 
 
 def _from_dict(data: dict[str, Any]) -> Settings:
@@ -398,6 +554,22 @@ def list_input_devices() -> list[tuple[int, str]]:
             (idx, dev["name"])
             for idx, dev in enumerate(sd.query_devices())
             if dev["max_input_channels"] > 0
+        ]
+    except Exception:
+        return []
+
+
+def list_output_devices() -> list[tuple[int, str]]:
+    """Return [(id, name), ...] for host output (speaker) devices."""
+    try:
+        import sounddevice as sd
+    except ImportError:
+        return []
+    try:
+        return [
+            (idx, dev["name"])
+            for idx, dev in enumerate(sd.query_devices())
+            if int(dev.get("max_output_channels") or 0) > 0
         ]
     except Exception:
         return []

@@ -410,6 +410,15 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     if not raw:
         return raw, None
 
+    # Shell／路徑句：唔做 alias／模糊（避免削成「執行」）
+    try:
+        from jarvis.memory import _looks_shellish
+
+        if _looks_shellish(raw) or _looks_shellish(text):
+            return raw, None
+    except Exception:
+        pass
+
     t = raw
     for bad, good in _CONFUSIONS:
         # Latin aliases need word edges — else disco⊂discord → discordrd
