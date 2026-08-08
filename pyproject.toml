@@ -36,6 +36,7 @@ alerts = [
   "winrt-Windows.UI.Notifications>=3.0,<4",
   "winrt-Windows.UI.Notifications.Management>=3.0,<4",
   "winrt-Windows.ApplicationModel>=3.0,<4",
+  "comtypes>=1.4.0,<2",
 ]
 
 [project.scripts]
