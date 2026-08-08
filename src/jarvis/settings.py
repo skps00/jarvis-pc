@@ -16,9 +16,12 @@ SETTINGS_PATH = SETTINGS_DIR / "settings.json"
 
 # ASR
 ASR_SENSEVOICE = "sensevoice"
+ASR_FUN_ASR = "fun_asr"  # Fun-ASR-Nano (optional higher-accuracy local)
 ASR_OPENAI_AUDIO = "openai_audio"  # chat/completions + input_audio (MiMo 等)
 ASR_MIMO = "mimo"  # legacy alias → openai_audio
-ASR_PROVIDERS = frozenset({ASR_SENSEVOICE, ASR_OPENAI_AUDIO, ASR_MIMO})
+ASR_PROVIDERS = frozenset(
+    {ASR_SENSEVOICE, ASR_FUN_ASR, ASR_OPENAI_AUDIO, ASR_MIMO}
+)
 
 # LLM presets (UI only; stored as base_url + optional preset name)
 LLM_PRESET_DEEPSEEK = "deepseek"
@@ -74,6 +77,7 @@ class Settings:
     wake_cd_seconds: float = 3.0
     record_seconds: float = 4.0
     wake_mic_device: int | None = None  # None = system default
+    text_wake: bool = False  # STT-as-wake; default off (game false fires)
     # Phase1: Hermes thin bridge (default off — today's jarvis)
     hermes_enabled: bool = False
     # Trusted flag persisted as preference; shell enforces 30min + restart→Safe
@@ -85,6 +89,15 @@ class Settings:
     tts_length_scale: float = 0.85  # <1 faster
     tts_volume: float = 1.6  # 1.0 = Piper default
     tts_output_device: int | None = None  # sounddevice output index; None = default
+    # Voice alerts (Discord unread / Cursor done) — English TTS
+    alert_voice: bool = True
+    alert_discord: bool = True
+    alert_cursor: bool = True
+    alert_whatsapp: bool = True
+    alert_always: bool = True  # Windows Toast（前景都提醒）；Flash 作後備
+    # Extra toast app name needles, comma-separated (e.g. "Telegram,Slack")
+    alert_extra: str = ""
+    alert_cd_seconds: float = 8.0
 
 
 _cache: Settings | None = None
@@ -129,9 +142,10 @@ def _clamp(s: Settings) -> Settings:
     prov = (s.asr_provider or ASR_SENSEVOICE).strip().lower()
     if prov == ASR_MIMO:
         prov = ASR_OPENAI_AUDIO
-    if prov not in (ASR_SENSEVOICE, ASR_OPENAI_AUDIO):
+    if prov not in (ASR_SENSEVOICE, ASR_FUN_ASR, ASR_OPENAI_AUDIO):
         prov = ASR_SENSEVOICE
     s.asr_provider = prov
+    s.text_wake = bool(s.text_wake)
 
     # migrate legacy mimo_* → asr_*
     if not s.asr_api_key and s.mimo_api_key:
@@ -205,6 +219,17 @@ def _clamp(s: Settings) -> Settings:
             s.tts_output_device = int(s.tts_output_device)
         except (TypeError, ValueError):
             s.tts_output_device = None
+    s.alert_voice = bool(s.alert_voice)
+    s.alert_discord = bool(s.alert_discord)
+    s.alert_cursor = bool(s.alert_cursor)
+    s.alert_whatsapp = bool(getattr(s, "alert_whatsapp", True))
+    s.alert_always = bool(getattr(s, "alert_always", True))
+    s.alert_extra = str(getattr(s, "alert_extra", "") or "").strip()
+    try:
+        s.alert_cd_seconds = float(s.alert_cd_seconds)
+    except (TypeError, ValueError):
+        s.alert_cd_seconds = 8.0
+    s.alert_cd_seconds = max(2.0, min(120.0, s.alert_cd_seconds))
     return s
 
 
@@ -374,7 +399,7 @@ def _fill_from_env(s: Settings) -> Settings:
     env_asr = (os.environ.get("JARVIS_ASR_PROVIDER") or "").strip().lower()
     if env_asr == ASR_MIMO:
         env_asr = ASR_OPENAI_AUDIO
-    if env_asr in (ASR_SENSEVOICE, ASR_OPENAI_AUDIO):
+    if env_asr in (ASR_SENSEVOICE, ASR_FUN_ASR, ASR_OPENAI_AUDIO):
         s.asr_provider = env_asr
     env_asr_base = (
         os.environ.get("JARVIS_ASR_BASE_URL")

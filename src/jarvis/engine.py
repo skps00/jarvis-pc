@@ -58,6 +58,12 @@ def execute_utterance(
         if note:
             lines.append(f"[fix] {note}")
 
+    if not (utterance or "").strip():
+        lines.append(
+            "[fail] 聽唔清（太短／淨語氣詞如「嗯」）；請講完指令再試"
+        )
+        return RunResult(False, lines)
+
     intent = apply_verb_kind_limits(route(utterance, registry), registry)
     lines.append(f"[route] {intent.kind} | {intent.caption}")
 

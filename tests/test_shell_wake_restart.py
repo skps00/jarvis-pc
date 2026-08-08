@@ -1,8 +1,9 @@
-"""apply_settings after ASR removal (no wake restart)."""
+"""apply_settings + wake pause guards."""
 
 from __future__ import annotations
 
 import sys
+import threading
 import time
 from pathlib import Path
 from unittest import mock
@@ -20,6 +21,7 @@ def test_apply_settings_logs_hermes_and_clears_trusted_when_off():
     logs: list[str] = []
     shell.append_log = logs.append
     shell.clear_hermes_trusted = mock.Mock()
+    shell._wake_on = False
 
     JarvisShell.apply_settings(shell, Settings(hermes_enabled=False, llm_model="x"))
     shell.clear_hermes_trusted.assert_called_once()
@@ -28,6 +30,7 @@ def test_apply_settings_logs_hermes_and_clears_trusted_when_off():
 
 def test_apply_settings_keeps_trusted_hook_when_hermes_on():
     shell = mock.Mock()
+    shell._wake_on = False
     logs: list[str] = []
     shell.append_log = logs.append
     shell.clear_hermes_trusted = mock.Mock()
@@ -58,6 +61,32 @@ def test_hermes_is_trusted_expires_and_clears():
     shell.append_log.assert_any_call("[ok] Trusted 到期 → Safe")
 
 
+def test_set_busy_keeps_pause_while_tts_holds():
+    shell = mock.Mock()
+    shell._busy = False
+    shell._tts_holding_pause = True
+    shell._wake_pause = threading.Event()
+    shell._wake_pause.set()
+    shell.btn_send = mock.Mock()
+    shell.entry = mock.Mock()
+
+    JarvisShell._set_busy(shell, False)
+    assert shell._wake_pause.is_set()
+
+
+def test_set_busy_clears_pause_when_idle():
+    shell = mock.Mock()
+    shell._busy = True
+    shell._tts_holding_pause = False
+    shell._wake_pause = threading.Event()
+    shell._wake_pause.set()
+    shell.btn_send = mock.Mock()
+    shell.entry = mock.Mock()
+
+    JarvisShell._set_busy(shell, False)
+    assert not shell._wake_pause.is_set()
+
+
 if __name__ == "__main__":
     test_apply_settings_logs_hermes_and_clears_trusted_when_off()
     print("ok off")
@@ -67,4 +96,8 @@ if __name__ == "__main__":
     print("ok noop")
     test_hermes_is_trusted_expires_and_clears()
     print("ok expire")
+    test_set_busy_keeps_pause_while_tts_holds()
+    print("ok tts hold")
+    test_set_busy_clears_pause_when_idle()
+    print("ok clear")
     print("all passed")

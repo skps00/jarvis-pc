@@ -12,6 +12,7 @@ from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
 
 from jarvis.settings import (
+    ASR_FUN_ASR,
     ASR_OPENAI_AUDIO,
     ASR_SENSEVOICE,
     HOTKEY_PRESETS,
@@ -362,8 +363,66 @@ class SettingsWindow:
         )
         self.cmb_spk.grid(row=5, column=1, columnspan=2, sticky="ew", pady=2)
 
+        tk.Label(frm, text="語音提醒", font=("Segoe UI", 10, "bold")).grid(
+            row=6, column=0, columnspan=2, sticky="w", pady=(12, 4)
+        )
+        self.var_alert_voice = tk.BooleanVar(
+            value=bool(getattr(s, "alert_voice", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="啟用語音提醒（英文；Discord／Cursor）",
+            variable=self.var_alert_voice,
+        ).grid(row=7, column=0, columnspan=2, sticky="w")
+        self.var_alert_discord = tk.BooleanVar(
+            value=bool(getattr(s, "alert_discord", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="Discord：標題未讀數增加時提醒",
+            variable=self.var_alert_discord,
+        ).grid(row=8, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="Cursor：標題似在忙→轉閒時提醒（heuristic）",
+            variable=self.var_alert_cursor,
+        ).grid(row=9, column=0, columnspan=2, sticky="w")
+        self.var_alert_whatsapp = tk.BooleanVar(
+            value=bool(getattr(s, "alert_whatsapp", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="WhatsApp：Toast／任務列閃爍提醒",
+            variable=self.var_alert_whatsapp,
+        ).grid(row=10, column=0, columnspan=2, sticky="w")
+        self.var_alert_always = tk.BooleanVar(
+            value=bool(getattr(s, "alert_always", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="Always：Windows Toast（前景都提醒；Cursor=Done）",
+            variable=self.var_alert_always,
+        ).grid(row=11, column=0, columnspan=2, sticky="w")
+        self.var_alert_extra = tk.StringVar(
+            value=str(getattr(s, "alert_extra", "") or "")
+        )
+        tk.Label(frm, text="其他 app").grid(row=12, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_extra, width=36).grid(
+            row=12, column=1, sticky="w", pady=2
+        )
+        self.var_alert_cd = tk.StringVar(
+            value=str(float(getattr(s, "alert_cd_seconds", 8.0)))
+        )
+        tk.Label(frm, text="提醒冷卻秒").grid(row=13, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_cd, width=8).grid(
+            row=13, column=1, sticky="w", pady=2
+        )
+
         bf = tk.Frame(frm)
-        bf.grid(row=6, column=1, sticky="w", pady=4)
+        bf.grid(row=14, column=1, sticky="w", pady=4)
         tk.Button(bf, text="重新整理喇叭", command=self._refresh_spk_list).pack(
             side=tk.LEFT, padx=(0, 6)
         )
@@ -371,10 +430,14 @@ class SettingsWindow:
 
         self._hint(
             frm,
-            7,
-            "語速：數字愈細愈快。喇叭＝Piper 朗讀輸出裝置。「系統預設」跟 Windows。",
+            15,
+            "Always＝讀通知中心。其他 app＝通知顯示名關鍵字，逗號分隔"
+            "（如 Telegram,Slack）。該 app 要開 Windows 桌面通知。",
             cols=2,
         )
+        bf2 = tk.Frame(frm)
+        bf2.grid(row=16, column=0, columnspan=2, sticky="w", pady=4)
+        tk.Button(bf2, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
         frm.columnconfigure(1, weight=1)
 
     def _build_sys_tab(self, frm: tk.Frame, s: Settings) -> None:
@@ -429,24 +492,25 @@ class SettingsWindow:
             5,
             f"settings.json：{SETTINGS_PATH}\n"
             f"profiles：{DEFAULT_PROFILES_PATH}\n"
-            "語音識別／聽候已停用（見「進階」）。指令請打字。",
+            "聽候：主畫面「聽候：開／關」。ASR／門檻見「進階」。",
             cols=2,
         )
 
     def _build_advanced_tab(self, frm: tk.Frame, s: Settings) -> None:
         tk.Label(
             frm,
-            text="語音識別／聽候（已停用）",
+            text="語音識別／聽候",
             font=("Segoe UI", 10, "bold"),
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=4)
         row = self._hint(
             frm,
             1,
-            "Serve 唔再用 mic。以下仍寫入 settings.json，方便日後／CLI；改咗亦唔會喚醒聽候。",
+            "主畫面「聽候」掣開 OWW。預設 SenseVoice（粵語）；可切 Fun-ASR-Nano（較準較重）或雲端。text-wake 預設關。",
         )
 
         asr_lab = {
-            ASR_SENSEVOICE: "SenseVoice（本機）",
+            ASR_SENSEVOICE: "SenseVoice（本機，預設）",
+            ASR_FUN_ASR: "Fun-ASR-Nano（較準；首次下載慢）",
             ASR_OPENAI_AUDIO: "Cloud openai_audio（MiMo 等）",
         }
         cur_asr = s.asr_provider if s.asr_provider in asr_lab else ASR_SENSEVOICE
@@ -458,7 +522,7 @@ class SettingsWindow:
             textvariable=self.var_asr_label,
             values=tuple(asr_lab.values()),
             state="readonly",
-            width=32,
+            width=36,
         ).grid(row=row, column=1, columnspan=2, sticky="w", pady=2)
         row += 1
 
@@ -540,6 +604,13 @@ class SettingsWindow:
         tk.Button(frm, text="重新整理清單", command=self._refresh_mic_list).grid(
             row=row, column=1, sticky="w", pady=2
         )
+        row += 1
+        self.var_text_wake = tk.BooleanVar(value=bool(getattr(s, "text_wake", False)))
+        tk.Checkbutton(
+            frm,
+            text="text-wake（大聲短窗 ASR 當 wake；易誤觸，建議關）",
+            variable=self.var_text_wake,
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
         row += 1
         self._hint(
             frm,
@@ -660,6 +731,20 @@ class SettingsWindow:
             volume=float(self.var_tts_vol.get()),
             output_device=self._spk_label_to_id.get(self.var_tts_spk_label.get()),
         )
+
+    def _test_alert(self) -> None:
+        """Speak one alert phrase via live shell watcher if present."""
+        parent = self.parent
+        w = getattr(parent, "_alert_watcher", None)
+        if w is not None:
+            w.emit_test()
+            return
+        from jarvis.mouth import available, speak
+
+        if not available():
+            messagebox.showwarning("TTS", "未裝 Piper 模型", parent=self.win)
+            return
+        speak("Alert system ready.", blocking=False, force=True)
 
     def _model_choices(self, current: str) -> tuple[str, ...]:
         seen: set[str] = set()
@@ -797,6 +882,13 @@ class SettingsWindow:
         )
         wake_mic = self._mic_label_to_id.get(self.var_wake_mic_label.get())
         tts_spk = self._spk_label_to_id.get(self.var_tts_spk_label.get())
+        try:
+            alert_cd = float(self.var_alert_cd.get() or 8.0)
+        except ValueError:
+            messagebox.showerror(
+                "JARVIS 設定", "提醒冷卻秒必須係數字", parent=self.win
+            )
+            return
 
         s = Settings(
             asr_provider=asr_id,
@@ -814,6 +906,7 @@ class SettingsWindow:
             wake_cd_seconds=float(self.var_wake_cd.get()),
             record_seconds=float(self.var_rec_sec.get()),
             wake_mic_device=wake_mic,
+            text_wake=bool(self.var_text_wake.get()),
             hermes_enabled=bool(self.var_hermes.get()),
             hermes_trusted=False,
             hotkey=hotkey,
@@ -821,6 +914,13 @@ class SettingsWindow:
             tts_length_scale=float(self.var_tts_speed.get()),
             tts_volume=float(self.var_tts_vol.get()),
             tts_output_device=tts_spk,
+            alert_voice=bool(self.var_alert_voice.get()),
+            alert_discord=bool(self.var_alert_discord.get()),
+            alert_cursor=bool(self.var_alert_cursor.get()),
+            alert_whatsapp=bool(self.var_alert_whatsapp.get()),
+            alert_always=bool(self.var_alert_always.get()),
+            alert_extra=self.var_alert_extra.get().strip(),
+            alert_cd_seconds=alert_cd,
         )
         path = save_settings(s)
 
@@ -836,7 +936,7 @@ class SettingsWindow:
         except OSError as exc:
             auto_msg = f"開機自啟失敗：{exc}"
 
-        self.parent.apply_settings(s)
+        self.parent.apply_settings(s, restart_wake=True)
         if bool(self.var_hermes_trusted.get()) and bool(self.var_hermes.get()):
             self.parent.arm_hermes_trusted(minutes=30)
         else:

@@ -1,5 +1,132 @@
 # 代碼變更與問題日誌
 
+## [2026-08-08 14:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Alert 朗讀強制英文 stub；log `朗讀: …`；說明中文 toast 唔會被 Piper 讀。
+- **遇到的問題**：
+  - 問題1：WhatsApp toast 有 log 無聲，懷疑中文
+  - 解決方案：Piper 本來跳過 CJK；只講固定英文句；drain 再保險強制 phrase
+  - 狀態：✅ 已解決
+- **備註**：聽候掣無關。
+
+## [2026-08-08 12:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒加 WhatsApp＋自訂 Toast app 白名單（`alert_extra`）。
+- **遇到的問題**：
+  - 問題1：使用者要 WTS／其他 app 都提醒
+  - 解決方案：Toast 認 WhatsApp；設定可加逗號分隔 app 名
+  - 狀態：✅ 已解決
+- **備註**：仍靠 Windows 通知；app 要開桌面通知。
+
+## [2026-08-08 12:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Piper/onnxruntime DLL 初始化失敗 → 主線程預載＋subprocess 隔離播 TTS。
+- **遇到的問題**：
+  - 問題1：`ImportError: DLL load failed … onnxruntime_pybind11_state`
+  - 解決方案：serve 啟動主線程 `_warmup()`；失敗則 `python -c` 子行程播（CREATE_NO_WINDOW）
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-08 11:55:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：修 alert TTS 播放失敗：串行鎖、裝置失敗 sd.stop＋回退預設、resample 對喇叭 sample rate、log 真實錯誤。
+- **遇到的問題**：
+  - 問題1：`[fail] alert TTS 播放失敗`（喇叭 G27Q/NVIDIA idx 17）
+  - 解決方案：播放失敗拎 exception 字串；停壞 stream 再試系統預設；對齊 device default_samplerate
+  - 狀態：✅ 已解決
+- **備註**：裝置 index 會漂；失敗時建議改「系統預設」。
+
+## [2026-08-08 11:30:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Alert 無聲：speak `force=True`；串行播；裝置失敗回退預設並寫 log。
+- **遇到的問題**：
+  - 問題1：Toast 已 `[alert] discord:…` 但無聲
+  - 解決方案：force 略過 tts_enabled；唔開 12 條並發 speak；play 失敗 log＋device=None 重試
+  - 狀態：✅ 已解決
+- **備註**：聽候掣無關提醒聲。
+
+## [2026-08-08 11:25:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, pyproject.toml, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：`alert_always`：Windows Toast 監聽（前景都响）；Cursor 只認 Done toast；Flash 仍作後備。
+- **遇到的問題**：
+  - 問題1：Flash 只喺未聚焦；使用者要 always
+  - 解決方案：winrt UserNotificationListener 輪詢新 toast
+  - 狀態：✅ 已解決（Discord 要開系統通知；缺 winrt 則 Toast 關）
+- **備註**：`pip install "jarvis-pc[alerts]"`。
+
+## [2026-08-08 11:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/settings_ui.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒改 ShellHook `HSHELL_FLASH`（Discord／Cursor 任務列閃爍）；標題 (N)／Generating 作後備。
+- **遇到的問題**：
+  - 問題1：手測唔响——Discord 標題無 `(N)`（用 overlay badge）；Cursor 標題固定 `Cursor Agents`
+  - 解決方案：`RegisterShellHookWindow` 收 FLASH → 對應 exe 朗讀
+  - 狀態：✅ 已解決（需重啟；Discord 聚焦時可能唔閃）
+- **備註**：刪 probe 腳本。設定加「試語音提醒」。
+
+## [2026-08-08 11:05:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒 v0：Discord 標題未讀數↑、Cursor busy→idle → 英文 speak（無燈／無 Codex）。
+- **遇到的問題**：
+  - 問題1：mouth 跳過 CJK → 提醒句必須英文
+  - 解決方案：固定 English phrases
+  - 狀態：✅ 已解決
+  - 問題2：Cursor 未必改標題 → heuristic 可能漏
+  - 解決方案：文件／UI 註明；之後可加 toast／hooks
+  - 狀態：❌ 未解決（已知上限）
+- **備註**：設定「朗讀 TTS」頁開關。
+
+## [2026-08-08 00:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/engine.py, code_change_log.md
+- **變更摘要**：語音只聽到「嗯」→修成空白時，提早 `[fail] 聽唔清`，唔送 Hermes。
+- **遇到的問題**：
+  - 問題1：`raw='嗯。'` → ASR 修正空 → `空白指令`／失敗紅字（似壞咗）
+  - 解決方案：空 utterance 直接友善失敗；提示講完指令
+  - 狀態：✅ 已解決
+- **備註**：1.8s 多數係犹豫語氣詞／VAD 早截；再講「Jarvis，開 Chrome」試。
+
+## [2026-08-07 23:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/ear.py, src/jarvis/shell_app.py, src/jarvis/settings_ui.py, code_change_log.md
+- **變更摘要**：Fun-ASR 首次載入似凍：加進度 log、載入 timeout→回退 SenseVoice、UI 標註首次慢。
+- **遇到的問題**：
+  - 問題1：ASR=fun_asr 聽到 Jarvis 後停喺 `[ear] 指令音頻 3.2s`，送出灰（busy）
+  - 解決方案：worker 卡喺 AutoModel 下載／load；timeout 120s 回退；即時 log「開始 ASR」
+  - 狀態：✅ 已解決（使用者請改回 SenseVoice 或等 timeout）
+- **備註**：若 Tk 真死（GIL），要結束程序重開。
+
+## [2026-08-07 22:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：修聽候 bug：①on_command 即 pause mic；②busy 結束唔清 pause 若 TTS 仍播；③空 PCM 唔送 SenseVoice；④busy 略過唔清 pause；⑤quit 停聽候。
+- **遇到的問題**：
+  - 問題1：OWW 觸發後 wake loop 即重開 mic，同 STT 搶裝置
+  - 解決方案：`on_command`／`on_detect` 入 queue 前 `_wake_pause.set()`
+  - 狀態：✅ 已解決
+  - 問題2：`busy=False` 喺 speak 前清 pause → TTS 期間又聽
+  - 解決方案：`_tts_holding_pause`；speak finally 先清
+  - 狀態：✅ 已解決
+- **備註**：—
+- **續修**：busy／CD 先判斷 busy 唔清 pause；quit 停聽候；restart 時 TTS hold 亦 pause。
+
+## [2026-08-07 22:25:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{shell_app,ear,settings,settings_ui}.py, tests/*, code_change_log.md
+- **變更摘要**：重開 OWW 聽候（VAD→SenseVoice／可選 Fun-ASR-Nano→execute）；text_wake 預設關；設定聽候掣；打字仍關 asr_repair。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：編碼時避免 CMD 黑窗（既有 CREATE_NO_WINDOW）。
+
 ## [2026-08-07 20:15:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md

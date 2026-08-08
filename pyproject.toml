@@ -29,6 +29,14 @@ wake = [
   "openwakeword>=0.6.0,<0.7",
   "onnxruntime>=1.16.0,<2",
 ]
+alerts = [
+  "winrt-runtime>=3.0,<4",
+  "winrt-Windows.Foundation>=3.0,<4",
+  "winrt-Windows.Foundation.Collections>=3.0,<4",
+  "winrt-Windows.UI.Notifications>=3.0,<4",
+  "winrt-Windows.UI.Notifications.Management>=3.0,<4",
+  "winrt-Windows.ApplicationModel>=3.0,<4",
+]
 
 [project.scripts]
 jarvis = "jarvis.__main__:main"
