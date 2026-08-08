@@ -1,8 +1,10 @@
-"""Voice alerts via Windows taskbar flash + title fallbacks.
+"""Voice alerts via Windows toast + taskbar flash + Discord badge poll.
 
-Discord/Cursor often do **not** put unread/busy text in the window title
-(badge overlay / Agents UI). ``HSHELL_FLASH`` fires when the taskbar button
-flashes — the reliable OS signal for Discord pings (when unfocused).
+WhatsApp／Cursor often land in Action Center (Toast). Discord desktop often
+does **not** — it only paints a taskbar overlay. We poll the taskbar button
+name via UI Automation (``Discord - N …``) so alerts work while focused.
+
+``HSHELL_FLASH`` remains a fallback when the taskbar flashes (unfocused).
 
 English-only phrases — ``mouth.speak`` skips CJK.
 """
@@ -19,8 +21,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-# Discord taskbar often "(N) … Discord" on some builds (fallback)
+# Discord window title fallback: "(N) … Discord"
 _DISCORD_UNREAD = re.compile(r"\((\d+)\)")
+# Taskbar button: "Discord - 3 個通知尚未讀取" / "Discord - 1 unread"
+_DISCORD_TB_NUM = re.compile(
+    r"^discord(?:\s*(?:ptb|canary))?\s*[-–—]\s*(\d+)",
+    re.I,
+)
+_DISCORD_TB_MARK = re.compile(
+    r"discord.*(?:unread|notification|通知|尚未|未讀|未读)",
+    re.I,
+)
 _CURSOR_BUSY = re.compile(
     r"generating|thinking|planning|running agent|agent running|"
     r"applying|working\.\.\.|composer.*run",
@@ -53,6 +64,26 @@ def discord_unread_count(titles: list[str]) -> int:
             except ValueError:
                 continue
     return best
+
+
+def discord_taskbar_unread(name: str) -> int:
+    """Parse unread from Discord taskbar button name.
+
+    Examples: ``Discord - 3 個通知尚未讀取``, ``Discord - 1 unread message``.
+    Returns 1 for unread-without-number marks; 0 if idle ``Discord``.
+    """
+    s = (name or "").strip()
+    if not s:
+        return 0
+    m = _DISCORD_TB_NUM.match(s)
+    if m:
+        try:
+            return max(0, int(m.group(1)))
+        except ValueError:
+            return 0
+    if _DISCORD_TB_MARK.search(s):
+        return 1
+    return 0
 
 
 def cursor_titles_busy(titles: list[str]) -> bool:
@@ -97,23 +128,25 @@ def parse_extra_apps(raw: str | list[str] | None) -> list[str]:
 def toast_app_kind(
     app_name: str,
     *,
+    aumid: str = "",
     extra: list[str] | None = None,
 ) -> str | None:
-    """Map Windows toast app display name → alert kind.
+    """Map Windows toast app display name／AUMID → alert kind.
 
     Built-ins: discord | cursor | whatsapp.
     Extra needles → kind ``extra:<AppDisplayName>``.
     """
     a = (app_name or "").strip()
+    low = a.lower()
+    aid = (aumid or "").strip().lower()
+    if "discord" in low or "discord" in aid:
+        return "discord"
+    if low == "cursor" or low.startswith("cursor ") or "anysphere.cursor" in aid:
+        return "cursor"
+    if "whatsapp" in low or "whatsapp" in aid:
+        return "whatsapp"
     if not a:
         return None
-    low = a.lower()
-    if "discord" in low:
-        return "discord"
-    if low == "cursor" or low.startswith("cursor "):
-        return "cursor"
-    if "whatsapp" in low:
-        return "whatsapp"
     for needle in extra or []:
         if needle and needle in low:
             return f"extra:{a}"
@@ -220,6 +253,90 @@ def _exe_for_hwnd(hwnd: int) -> str:
         return buf.value
     finally:
         kernel32.CloseHandle(handle)
+
+
+def _discord_taskbar_names_uia() -> list[str] | None:
+    """Discord taskbar button names via UI Automation; None if unavailable."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import comtypes  # type: ignore
+        import comtypes.client  # type: ignore
+    except ImportError:
+        return None
+    try:
+        comtypes.CoInitialize()
+    except OSError:
+        pass
+    try:
+        try:
+            from comtypes.gen.UIAutomationClient import (  # type: ignore
+                CUIAutomation,
+                TreeScope_Children,
+                TreeScope_Descendants,
+                UIA_AutomationIdPropertyId,
+                UIA_ClassNamePropertyId,
+            )
+        except (ImportError, OSError, AttributeError):
+            comtypes.client.GetModule("UIAutomationCore.dll")
+            from comtypes.gen.UIAutomationClient import (  # type: ignore
+                CUIAutomation,
+                TreeScope_Children,
+                TreeScope_Descendants,
+                UIA_AutomationIdPropertyId,
+                UIA_ClassNamePropertyId,
+            )
+        uia = comtypes.client.CreateObject(CUIAutomation)
+        root = uia.GetRootElement()
+        aumids = (
+            "com.squirrel.Discord.Discord",
+            "com.squirrel.DiscordPTB.DiscordPTB",
+            "com.squirrel.DiscordCanary.DiscordCanary",
+        )
+        id_conds = [
+            uia.CreatePropertyCondition(UIA_AutomationIdPropertyId, aid)
+            for aid in aumids
+        ]
+        discord_cond = id_conds[0]
+        for c in id_conds[1:]:
+            discord_cond = uia.CreateOrCondition(discord_cond, c)
+        names: list[str] = []
+        for cls in ("Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
+            try:
+                tb_cond = uia.CreatePropertyCondition(UIA_ClassNamePropertyId, cls)
+                trays = root.FindAll(TreeScope_Children, tb_cond)
+            except Exception:
+                continue
+            if trays is None:
+                continue
+            for i in range(int(trays.Length)):
+                tray = trays.GetElement(i)
+                try:
+                    hits = tray.FindAll(TreeScope_Descendants, discord_cond)
+                except Exception:
+                    continue
+                if hits is None:
+                    continue
+                for j in range(int(hits.Length)):
+                    try:
+                        nm = hits.GetElement(j).CurrentName or ""
+                    except Exception:
+                        continue
+                    if nm:
+                        names.append(nm)
+        return names
+    except Exception:
+        return None
+
+
+def _discord_unread_best(*, title_n: int, tb_names: list[str] | None) -> int:
+    """Max of title (N) badge and taskbar overlay parse."""
+    best = max(0, int(title_n))
+    if not tb_names:
+        return best
+    for nm in tb_names:
+        best = max(best, discord_taskbar_unread(nm))
+    return best
 
 
 class AlertWatcher:
@@ -421,7 +538,16 @@ class AlertWatcher:
                                 app = n.app_info.display_info.display_name or ""
                             except Exception:
                                 app = ""
-                            kind = toast_app_kind(app, extra=self._extra)
+                            try:
+                                aumid = str(
+                                    getattr(n.app_info, "app_user_model_id", "")
+                                    or ""
+                                )
+                            except Exception:
+                                aumid = ""
+                            kind = toast_app_kind(
+                                app, aumid=aumid, extra=self._extra
+                            )
                             if not kind:
                                 continue
                             texts = _toast_texts(n.notification)
@@ -610,17 +736,24 @@ class AlertWatcher:
         pids = set()
         for name in ("Discord.exe", "DiscordPTB.exe", "DiscordCanary.exe"):
             pids |= pids_fn([name])
-        titles = _list_windows_for_pids(pids)
-        n = discord_unread_count(titles)
+        titles = _list_windows_for_pids(pids) if pids else []
+        title_n = discord_unread_count(titles)
+        tb_names = _discord_taskbar_names_uia()
+        n = _discord_unread_best(title_n=title_n, tb_names=tb_names)
         if self._discord_prev is None:
             self._discord_prev = n
             return
         if n > self._discord_prev:
+            detail = f"unread {self._discord_prev}→{n}"
+            if tb_names:
+                detail += " taskbar " + (tb_names[0][:60])
+            else:
+                detail = f"title {detail}"
             self._emit(
                 AlertEvent(
                     kind="discord",
-                    phrase="Discord has a new message.",
-                    detail=f"title unread {self._discord_prev}→{n}",
+                    phrase=alert_phrase_for("discord"),
+                    detail=detail,
                 )
             )
         self._discord_prev = n

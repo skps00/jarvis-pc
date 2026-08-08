@@ -1,5 +1,15 @@
 # 代碼變更與問題日誌
 
+## [2026-08-08 15:05:37] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, tests/test_alerts.py, pyproject.toml, code_change_log.md
+- **變更摘要**：Discord 語音提醒改讀任務列 UIA badge（`Discord - N …`）；Toast 兼認 AUMID。
+- **遇到的問題**：
+  - 問題1：WhatsApp Toast 得、Discord 唔响
+  - 解決方案：本機 Discord 唔進 Action Center；標題無 `(N)`；改 poll `com.squirrel.Discord.Discord` 任務列名；`alerts` 加 comtypes
+  - 狀態：✅ 已解決（需重啟 serve；`pip install -e ".[alerts]"`）
+- **備註**：聚焦 Discord 都可；未讀數唔升（淨圓點）時可能漏第二次。
+
 ## [2026-08-08 14:05:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/shell_app.py, code_change_log.md

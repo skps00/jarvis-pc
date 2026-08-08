@@ -13,6 +13,7 @@ from jarvis.alerts import (
     classify_exe,
     cursor_titles_busy,
     cursor_toast_is_done,
+    discord_taskbar_unread,
     discord_unread_count,
     parse_extra_apps,
     toast_app_kind,
@@ -23,6 +24,14 @@ def test_discord_unread_max():
     assert discord_unread_count([]) == 0
     assert discord_unread_count(["Discord"]) == 0
     assert discord_unread_count(["(3) Discord"]) == 3
+
+
+def test_discord_taskbar_unread():
+    assert discord_taskbar_unread("Discord") == 0
+    assert discord_taskbar_unread("Discord - 1 個通知尚未讀取") == 1
+    assert discord_taskbar_unread("Discord - 3 unread messages") == 3
+    assert discord_taskbar_unread("DiscordPTB - 2 notifications") == 2
+    assert discord_taskbar_unread("Discord - Unread Messages") == 1
 
 
 def test_cursor_busy_keywords():
@@ -38,6 +47,7 @@ def test_classify_exe():
 
 def test_toast_whatsapp_and_extra():
     assert toast_app_kind("WhatsApp") == "whatsapp"
+    assert toast_app_kind("", aumid="com.squirrel.Discord.Discord") == "discord"
     assert toast_app_kind("Telegram Desktop", extra=["telegram"]) == (
         "extra:Telegram Desktop"
     )
@@ -48,6 +58,7 @@ def test_toast_whatsapp_and_extra():
 
 if __name__ == "__main__":
     test_discord_unread_max()
+    test_discord_taskbar_unread()
     test_cursor_busy_keywords()
     test_classify_exe()
     test_toast_whatsapp_and_extra()
