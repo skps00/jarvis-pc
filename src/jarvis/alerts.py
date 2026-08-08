@@ -1,0 +1,660 @@
+"""Voice alerts via Windows taskbar flash + title fallbacks.
+
+Discord/Cursor often do **not** put unread/busy text in the window title
+(badge overlay / Agents UI). ``HSHELL_FLASH`` fires when the taskbar button
+flashes — the reliable OS signal for Discord pings (when unfocused).
+
+English-only phrases — ``mouth.speak`` skips CJK.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import re
+import sys
+import threading
+import time
+from ctypes import wintypes
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
+
+# Discord taskbar often "(N) … Discord" on some builds (fallback)
+_DISCORD_UNREAD = re.compile(r"\((\d+)\)")
+_CURSOR_BUSY = re.compile(
+    r"generating|thinking|planning|running agent|agent running|"
+    r"applying|working\.\.\.|composer.*run",
+    re.I,
+)
+
+_POLL_S = 2.0
+_CURSOR_IDLE_HOLD_S = 2.0
+HSHELL_FLASH = 0x8006
+WM_DESTROY = 0x0002
+WM_QUIT = 0x0012
+
+
+@dataclass
+class AlertEvent:
+    """One spoken alert."""
+
+    kind: str  # discord | cursor | test
+    phrase: str
+    detail: str = ""
+
+
+def discord_unread_count(titles: list[str]) -> int:
+    """Max (N) badge across Discord window titles; 0 if none."""
+    best = 0
+    for t in titles:
+        for m in _DISCORD_UNREAD.finditer(t or ""):
+            try:
+                best = max(best, int(m.group(1)))
+            except ValueError:
+                continue
+    return best
+
+
+def cursor_titles_busy(titles: list[str]) -> bool:
+    """True if any Cursor title looks like an agent is working."""
+    return any(_CURSOR_BUSY.search(t or "") for t in titles)
+
+
+def classify_exe(exe_path: str) -> str | None:
+    """Map process image path → alert kind (discord|cursor|whatsapp) or None."""
+    name = Path(exe_path or "").name.lower()
+    if name in ("discord.exe", "discordptb.exe", "discordcanary.exe"):
+        return "discord"
+    if name == "cursor.exe":
+        return "cursor"
+    if name in ("whatsapp.exe", "whatsapp.desktop.exe"):
+        return "whatsapp"
+    return None
+
+
+def parse_extra_apps(raw: str | list[str] | None) -> list[str]:
+    """Comma／newline separated display-name needles (lowercase)."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        parts = [str(x) for x in raw]
+    else:
+        parts = re.split(r"[,;\n]+", str(raw))
+    out: list[str] = []
+    seen: set[str] = set()
+    for p in parts:
+        n = p.strip().lower()
+        if len(n) < 2 or n in seen:
+            continue
+        # built-ins handled separately
+        if n in ("discord", "cursor", "whatsapp"):
+            continue
+        seen.add(n)
+        out.append(n)
+    return out
+
+
+def toast_app_kind(
+    app_name: str,
+    *,
+    extra: list[str] | None = None,
+) -> str | None:
+    """Map Windows toast app display name → alert kind.
+
+    Built-ins: discord | cursor | whatsapp.
+    Extra needles → kind ``extra:<AppDisplayName>``.
+    """
+    a = (app_name or "").strip()
+    if not a:
+        return None
+    low = a.lower()
+    if "discord" in low:
+        return "discord"
+    if low == "cursor" or low.startswith("cursor "):
+        return "cursor"
+    if "whatsapp" in low:
+        return "whatsapp"
+    for needle in extra or []:
+        if needle and needle in low:
+            return f"extra:{a}"
+    return None
+
+
+def alert_phrase_for(kind: str, *, app_label: str = "") -> str:
+    """English TTS phrase for alert kind."""
+    if kind == "discord":
+        return "Discord has a new message."
+    if kind == "cursor":
+        return "Cursor finished its work."
+    if kind == "whatsapp":
+        return "WhatsApp has a new message."
+    if kind.startswith("extra:"):
+        label = (app_label or kind[6:] or "App").strip()
+        # Piper ASCII-only — strip non-ascii from label
+        safe = "".join(ch if ord(ch) < 128 else " " for ch in label).strip()
+        safe = re.sub(r"\s+", " ", safe) or "App"
+        return f"{safe} has a notification."
+    return "You have a notification."
+
+
+def cursor_toast_is_done(texts: list[str]) -> bool:
+    """True if Cursor toast looks like agent finished (not every UI toast)."""
+    blob = " ".join(texts or []).strip().lower()
+    if not blob:
+        return False
+    if blob.startswith("done"):
+        return True
+    if "agent's output" in blob or "agents output" in blob:
+        return True
+    if "finished" in blob and "agent" in blob:
+        return True
+    return False
+
+
+def _toast_texts(notification) -> list[str]:
+    """Best-effort plain text lines from a WinRT toast notification."""
+    out: list[str] = []
+    try:
+        for binding in notification.visual.bindings:
+            try:
+                for el in binding.get_text_elements():
+                    t = (el.text or "").strip()
+                    if t:
+                        out.append(t)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
+def _list_windows_for_pids(pids: set[int]) -> list[str]:
+    """Visible window titles owned by *pids* (Windows)."""
+    if sys.platform != "win32" or not pids:
+        return []
+    user32 = ctypes.windll.user32
+    titles: list[str] = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def _enum(hwnd, _lparam):  # noqa: ANN001
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        length = user32.GetWindowTextLengthW(hwnd) + 1
+        if length <= 1:
+            return True
+        buf = ctypes.create_unicode_buffer(length)
+        user32.GetWindowTextW(hwnd, buf, length)
+        title = buf.value
+        if not title:
+            return True
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if int(pid.value) in pids:
+            titles.append(title)
+        return True
+
+    user32.EnumWindows(_enum, 0)
+    return titles
+
+
+def _exe_for_hwnd(hwnd: int) -> str:
+    """Best-effort full path of process owning *hwnd*."""
+    if not hwnd:
+        return ""
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+    if not handle:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        size = wintypes.DWORD(1024)
+        # QueryFullProcessImageNameW
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return ""
+        return buf.value
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+class AlertWatcher:
+    """Shell-hook flash + title poller → English TTS alerts."""
+
+    def __init__(
+        self,
+        *,
+        on_event: Callable[[AlertEvent], None] | None = None,
+        on_log: Callable[[str], None] | None = None,
+    ) -> None:
+        self._on_event = on_event
+        self._on_log = on_log
+        self._stop = threading.Event()
+        self._poll_thread: threading.Thread | None = None
+        self._hook_thread: threading.Thread | None = None
+        self._hwnd = None
+        self._enabled = True
+        self._discord = True
+        self._cursor = True
+        self._whatsapp = True
+        self._extra: list[str] = []
+        self._always = True  # toast poll (works while focused)
+        self._cd = 8.0
+        self._last_speak = 0.0
+        self._discord_prev: int | None = None
+        self._cursor_was_busy = False
+        self._cursor_idle_since = 0.0
+        self._cursor_alerted_for_cycle = False
+        self._lock = threading.Lock()
+        self._toast_thread: threading.Thread | None = None
+
+    def configure(
+        self,
+        *,
+        enabled: bool | None = None,
+        discord: bool | None = None,
+        cursor: bool | None = None,
+        whatsapp: bool | None = None,
+        always: bool | None = None,
+        extra: str | list[str] | None = None,
+        cd_seconds: float | None = None,
+    ) -> None:
+        if enabled is not None:
+            self._enabled = bool(enabled)
+        if discord is not None:
+            self._discord = bool(discord)
+        if cursor is not None:
+            self._cursor = bool(cursor)
+        if whatsapp is not None:
+            self._whatsapp = bool(whatsapp)
+        if always is not None:
+            self._always = bool(always)
+        if extra is not None:
+            self._extra = parse_extra_apps(extra)
+        if cd_seconds is not None:
+            self._cd = max(2.0, float(cd_seconds))
+
+    def start(self) -> None:
+        if sys.platform != "win32":
+            return
+        if self._poll_thread and self._poll_thread.is_alive():
+            return
+        self._stop.clear()
+        self._hook_thread = threading.Thread(
+            target=self._hook_loop, daemon=True, name="jarvis-alert-hook"
+        )
+        self._poll_thread = threading.Thread(
+            target=self._poll_loop, daemon=True, name="jarvis-alert-poll"
+        )
+        self._toast_thread = threading.Thread(
+            target=self._toast_loop, daemon=True, name="jarvis-alert-toast"
+        )
+        self._hook_thread.start()
+        self._poll_thread.start()
+        self._toast_thread.start()
+        self._log(
+            "[ok] 語音提醒已開（Toast 前景＋任務列閃爍後備）"
+        )
+
+    def stop(self, *, join_timeout: float = 1.5) -> None:
+        self._stop.set()
+        hwnd = self._hwnd
+        if hwnd:
+            try:
+                ctypes.windll.user32.PostMessageW(hwnd, WM_DESTROY, 0, 0)
+            except Exception:
+                pass
+        for th in (self._hook_thread, self._poll_thread, self._toast_thread):
+            if th is not None and th.is_alive() and th is not threading.current_thread():
+                th.join(timeout=join_timeout)
+        self._hook_thread = None
+        self._poll_thread = None
+        self._toast_thread = None
+        self._hwnd = None
+
+    def emit_test(self) -> None:
+        """Force one test phrase (settings button)."""
+        self._emit(
+            AlertEvent(kind="test", phrase="Alert system ready.", detail="manual test"),
+            force=True,
+        )
+
+    def _log(self, msg: str) -> None:
+        if self._on_log:
+            try:
+                self._on_log(msg)
+            except Exception:
+                pass
+
+    def _emit(self, ev: AlertEvent, *, force: bool = False) -> None:
+        now = time.monotonic()
+        with self._lock:
+            if not force and now - self._last_speak < self._cd:
+                return
+            self._last_speak = now
+        self._log(f"[alert] {ev.kind}: {ev.detail or ev.phrase}")
+        if self._on_event:
+            try:
+                self._on_event(ev)
+            except Exception:
+                pass
+
+    def _on_flash(self, hwnd: int) -> None:
+        if not self._enabled or not hwnd:
+            return
+        kind = classify_exe(_exe_for_hwnd(int(hwnd)))
+        if kind == "discord" and self._discord:
+            self._emit(
+                AlertEvent(
+                    kind="discord",
+                    phrase=alert_phrase_for("discord"),
+                    detail="taskbar flash",
+                )
+            )
+        elif kind == "cursor" and self._cursor:
+            self._emit(
+                AlertEvent(
+                    kind="cursor",
+                    phrase="Cursor needs your attention.",
+                    detail="taskbar flash",
+                )
+            )
+        elif kind == "whatsapp" and self._whatsapp:
+            self._emit(
+                AlertEvent(
+                    kind="whatsapp",
+                    phrase=alert_phrase_for("whatsapp"),
+                    detail="taskbar flash",
+                )
+            )
+
+    def _toast_loop(self) -> None:
+        """Poll Windows notification center for watched app toasts."""
+        try:
+            import asyncio
+
+            from winrt.windows.ui.notifications import NotificationKinds
+            from winrt.windows.ui.notifications.management import (
+                UserNotificationListener,
+                UserNotificationListenerAccessStatus,
+            )
+        except ImportError:
+            self._log(
+                '[warn] Toast 提醒未裝：pip install "jarvis-pc[alerts]"'
+            )
+            return
+
+        async def run() -> None:
+            listener = UserNotificationListener.current
+            access = await listener.request_access_async()
+            if access != UserNotificationListenerAccessStatus.ALLOWED:
+                self._log(
+                    "[warn] Windows 拒絕對通知存取；設定→私隱→通知"
+                )
+                return
+            seen: set[int] = set()
+            try:
+                existing = await listener.get_notifications_async(
+                    NotificationKinds.TOAST
+                )
+                for n in existing:
+                    seen.add(int(n.id))
+            except Exception as exc:  # noqa: BLE001
+                self._log(f"[warn] toast seed: {exc}")
+            self._log("[ok] Toast 監聽中（前景亦提醒）")
+            while not self._stop.is_set():
+                if self._enabled and self._always:
+                    try:
+                        notes = await listener.get_notifications_async(
+                            NotificationKinds.TOAST
+                        )
+                        for n in notes:
+                            nid = int(n.id)
+                            if nid in seen:
+                                continue
+                            seen.add(nid)
+                            try:
+                                app = n.app_info.display_info.display_name or ""
+                            except Exception:
+                                app = ""
+                            kind = toast_app_kind(app, extra=self._extra)
+                            if not kind:
+                                continue
+                            texts = _toast_texts(n.notification)
+                            detail = "toast " + (
+                                " | ".join(texts)[:80] or app
+                            )
+                            if kind == "discord" and self._discord:
+                                self._emit(
+                                    AlertEvent(
+                                        kind="discord",
+                                        phrase=alert_phrase_for("discord"),
+                                        detail=detail,
+                                    )
+                                )
+                            elif kind == "cursor" and self._cursor:
+                                if cursor_toast_is_done(texts):
+                                    self._emit(
+                                        AlertEvent(
+                                            kind="cursor",
+                                            phrase=alert_phrase_for("cursor"),
+                                            detail=detail,
+                                        )
+                                    )
+                            elif kind == "whatsapp" and self._whatsapp:
+                                self._emit(
+                                    AlertEvent(
+                                        kind="whatsapp",
+                                        phrase=alert_phrase_for("whatsapp"),
+                                        detail=detail,
+                                    )
+                                )
+                            elif kind.startswith("extra:"):
+                                self._emit(
+                                    AlertEvent(
+                                        kind="extra",
+                                        phrase=alert_phrase_for(
+                                            kind, app_label=app
+                                        ),
+                                        detail=detail,
+                                    )
+                                )
+                        if len(seen) > 4000:
+                            # ponytail: drop oldest half of id set
+                            seen = set(sorted(seen)[-2000:])
+                    except Exception as exc:  # noqa: BLE001
+                        self._log(f"[warn] toast poll: {exc}")
+                        await asyncio.sleep(3.0)
+                await asyncio.sleep(1.2)
+
+        try:
+            asyncio.run(run())
+        except Exception as exc:  # noqa: BLE001
+            self._log(f"[warn] toast loop: {exc}")
+
+    def _hook_loop(self) -> None:
+        """Hidden message window + RegisterShellHookWindow for HSHELL_FLASH."""
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        LRESULT = ctypes.c_ssize_t
+        WPARAM = ctypes.c_size_t
+        LPARAM = ctypes.c_ssize_t
+        WNDPROC = ctypes.WINFUNCTYPE(
+            LRESULT, wintypes.HWND, wintypes.UINT, WPARAM, LPARAM
+        )
+        shell_msg = user32.RegisterWindowMessageW("SHELLHOOK")
+        user32.DefWindowProcW.argtypes = [
+            wintypes.HWND,
+            wintypes.UINT,
+            WPARAM,
+            LPARAM,
+        ]
+        user32.DefWindowProcW.restype = LRESULT
+
+        @WNDPROC
+        def wndproc(hwnd, msg, wparam, lparam):  # noqa: ANN001
+            if msg == shell_msg and int(wparam) == HSHELL_FLASH:
+                try:
+                    self._on_flash(int(lparam))
+                except Exception as exc:  # noqa: BLE001
+                    self._log(f"[warn] alert flash: {exc}")
+                return 0
+            if msg == WM_DESTROY:
+                user32.PostQuitMessage(0)
+                return 0
+            return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+        # Keep callback alive for window lifetime
+        self._wndproc_ref = wndproc
+
+        class WNDCLASS(ctypes.Structure):
+            _fields_ = [
+                ("style", wintypes.UINT),
+                ("lpfnWndProc", WNDPROC),
+                ("cbClsExtra", ctypes.c_int),
+                ("cbWndExtra", ctypes.c_int),
+                ("hInstance", wintypes.HINSTANCE),
+                ("hIcon", wintypes.HICON),
+                ("hCursor", wintypes.HANDLE),
+                ("hbrBackground", wintypes.HBRUSH),
+                ("lpszMenuName", wintypes.LPCWSTR),
+                ("lpszClassName", wintypes.LPCWSTR),
+            ]
+
+        hinst = kernel32.GetModuleHandleW(None)
+        class_name = "JarvisAlertShellHook"
+        wc = WNDCLASS()
+        wc.style = 0
+        wc.lpfnWndProc = wndproc
+        wc.cbClsExtra = 0
+        wc.cbWndExtra = 0
+        wc.hInstance = hinst
+        wc.hIcon = None
+        wc.hCursor = None
+        wc.hbrBackground = None
+        wc.lpszMenuName = None
+        wc.lpszClassName = class_name
+        atom = user32.RegisterClassW(ctypes.byref(wc))
+        if not atom:
+            err = kernel32.GetLastError()
+            if err not in (0, 1410):  # ERROR_CLASS_ALREADY_EXISTS
+                self._log(f"[warn] alert RegisterClass: {err}")
+
+        # Hidden top-level window (message-only HWND_MESSAGE is flaky via ctypes)
+        hwnd = user32.CreateWindowExW(
+            0,
+            class_name,
+            "JarvisAlertHook",
+            0x80000000,  # WS_POPUP
+            0,
+            0,
+            0,
+            0,
+            None,
+            None,
+            hinst,
+            None,
+        )
+        if not hwnd:
+            self._log(f"[fail] alert CreateWindow: {kernel32.GetLastError()}")
+            return
+        self._hwnd = int(hwnd)
+        if not user32.RegisterShellHookWindow(hwnd):
+            self._log(f"[fail] RegisterShellHookWindow: {kernel32.GetLastError()}")
+            user32.DestroyWindow(hwnd)
+            self._hwnd = None
+            return
+        self._log("[ok] ShellHook FLASH 監聽中")
+
+        msg = wintypes.MSG()
+        while not self._stop.is_set():
+            ret = user32.MsgWaitForMultipleObjects(0, None, False, 200, 0x4FF)
+            while user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):
+                if msg.message == WM_QUIT:
+                    self._stop.set()
+                    break
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageW(ctypes.byref(msg))
+            if ret == 0xFFFFFFFF:
+                break
+
+        try:
+            user32.DeregisterShellHookWindow(hwnd)
+        except Exception:
+            pass
+        try:
+            user32.DestroyWindow(hwnd)
+        except Exception:
+            pass
+        self._hwnd = None
+
+    def _poll_loop(self) -> None:
+        from jarvis.hands import _pids_for_images
+
+        while not self._stop.is_set():
+            try:
+                if self._enabled:
+                    if self._discord:
+                        self._tick_discord(_pids_for_images)
+                    if self._cursor:
+                        self._tick_cursor(_pids_for_images)
+            except Exception as exc:  # noqa: BLE001
+                self._log(f"[warn] alert poll: {exc}")
+            self._stop.wait(_POLL_S)
+
+    def _tick_discord(self, pids_fn) -> None:
+        pids = set()
+        for name in ("Discord.exe", "DiscordPTB.exe", "DiscordCanary.exe"):
+            pids |= pids_fn([name])
+        titles = _list_windows_for_pids(pids)
+        n = discord_unread_count(titles)
+        if self._discord_prev is None:
+            self._discord_prev = n
+            return
+        if n > self._discord_prev:
+            self._emit(
+                AlertEvent(
+                    kind="discord",
+                    phrase="Discord has a new message.",
+                    detail=f"title unread {self._discord_prev}→{n}",
+                )
+            )
+        self._discord_prev = n
+
+    def _tick_cursor(self, pids_fn) -> None:
+        pids = pids_fn(["Cursor.exe"])
+        if not pids:
+            self._cursor_was_busy = False
+            self._cursor_idle_since = 0.0
+            self._cursor_alerted_for_cycle = False
+            return
+        titles = _list_windows_for_pids(pids)
+        busy = cursor_titles_busy(titles)
+        now = time.monotonic()
+        if busy:
+            self._cursor_was_busy = True
+            self._cursor_idle_since = 0.0
+            self._cursor_alerted_for_cycle = False
+            return
+        if not self._cursor_was_busy:
+            return
+        if self._cursor_idle_since <= 0:
+            self._cursor_idle_since = now
+            return
+        if now - self._cursor_idle_since < _CURSOR_IDLE_HOLD_S:
+            return
+        if self._cursor_alerted_for_cycle:
+            return
+        self._cursor_alerted_for_cycle = True
+        self._cursor_was_busy = False
+        self._emit(
+            AlertEvent(
+                kind="cursor",
+                phrase="Cursor finished its work.",
+                detail="title busy→idle",
+            )
+        )

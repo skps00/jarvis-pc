@@ -23,8 +23,10 @@ from jarvis.hands import (
     restore_battlefield,
     system_power,
 )
+from jarvis.hermes_bridge import chat as hermes_chat
 from jarvis.persist import commit_candidate
 from jarvis.router import Intent, apply_verb_kind_limits, route
+from jarvis.settings import load_settings
 
 
 @dataclass
@@ -41,6 +43,7 @@ def execute_utterance(
     dry_run: bool = False,
     ask_confirm=None,
     repair_asr: bool = True,
+    image_path: str | None = None,
 ) -> RunResult:
     """Route and optionally launch; never raises for normal refuse paths."""
     lines: list[str] = []
@@ -55,10 +58,39 @@ def execute_utterance(
         if note:
             lines.append(f"[fix] {note}")
 
+    if not (utterance or "").strip():
+        lines.append(
+            "[fail] 聽唔清（太短／淨語氣詞如「嗯」）；請講完指令再試"
+        )
+        return RunResult(False, lines)
+
     intent = apply_verb_kind_limits(route(utterance, registry), registry)
     lines.append(f"[route] {intent.kind} | {intent.caption}")
 
-    if intent.kind in ("refuse", "unknown") and looks_ambiguous(intent, utterance):
+    hermes_on = bool(load_settings().hermes_enabled)
+
+    # Phase1: query/unknown → Hermes; skip dual-brain when enabled
+    if hermes_on and intent.kind in ("query", "unknown"):
+        return _dispatch_hermes(
+            intent,
+            registry,
+            utterance=utterance,
+            dry_run=dry_run,
+            lines=lines,
+            image_path=image_path,
+            ask_confirm=ask_confirm,
+        )
+
+    if image_path and hermes_on:
+        lines.append("[warn] 附圖只經 Hermes（query／閒聊）；呢句 Hands 指令已忽略圖")
+    elif image_path and not hermes_on:
+        lines.append("[warn] 有附圖但 Hermes 未啟用 — 開設定勾 Hermes")
+
+    if (
+        not hermes_on
+        and intent.kind in ("refuse", "unknown")
+        and looks_ambiguous(intent, utterance)
+    ):
         if llm_configured():
             try:
                 brain_intent = resolve_ambiguous(utterance, registry)
@@ -86,6 +118,69 @@ def execute_utterance(
         ask_confirm=ask_confirm,
         lines=lines,
     )
+
+
+def _dispatch_hermes(
+    intent: Intent,
+    registry: Registry,
+    *,
+    utterance: str,
+    dry_run: bool,
+    lines: list[str],
+    image_path: str | None = None,
+    ask_confirm=None,
+) -> RunResult:
+    """query/unknown → Hermes bridge (Hands never called here)."""
+    lines.append(f"[hermes] kind={intent.kind}")
+    if image_path:
+        lines.append(f"[hermes] image={image_path}")
+    try:
+        reply = hermes_chat(
+            utterance,
+            image_path=image_path,
+            ask_approve=ask_confirm,
+            dry_run=dry_run,
+        )
+    except Exception as exc:  # noqa: BLE001 — bridge must not crash shell
+        lines.append(f"[hermes] 失敗：{exc}")
+        if intent.kind == "query" and llm_configured():
+            try:
+                caption = answer_query(utterance, registry)
+                lines.append(f"[caption] {caption}")
+                lines.append("[hermes] 已回落本機 brain")
+                return RunResult(True, lines)
+            except Exception as exc2:  # noqa: BLE001
+                lines.append(f"[brain] 回落失敗：{exc2}")
+        lines.append(f"[fail] Hermes 不可用：{exc}")
+        return RunResult(False, lines)
+
+    if not reply.ok:
+        lines.append(f"[hermes] 失敗：{reply.error or 'unknown'}")
+        err_l = (reply.error or "").lower()
+        if "approv" in err_l or "denied" in err_l or "timeout" in err_l:
+            lines.append(
+                "[hermes] Approve：拒／逾時；危險指令需彈窗 Yes。"
+                "見 docs/approve_bridge.md"
+            )
+        if intent.kind == "query" and llm_configured() and not dry_run:
+            try:
+                caption = answer_query(utterance, registry)
+                lines.append(f"[caption] {caption}")
+                lines.append("[hermes] 已回落本機 brain")
+                return RunResult(True, lines)
+            except Exception as exc2:  # noqa: BLE001
+                lines.append(f"[brain] 回落失敗：{exc2}")
+        lines.append(f"[fail] {reply.error or intent.caption}")
+        return RunResult(False, lines)
+
+    if reply.raw and reply.raw.startswith("[hermes] API 失敗"):
+        lines.append("[hermes] 已回落 chat -q（無 Approve 彈窗）")
+    if reply.session_id:
+        lines.append(f"[hermes] session={reply.session_id}")
+    lines.append(f"[caption] {reply.caption}")
+    if reply.spoken:
+        lines.append(f"[speak] {reply.spoken}")
+    return RunResult(True, lines)
 
 
 def _dispatch_intent(

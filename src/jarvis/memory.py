@@ -81,6 +81,23 @@ def _alias_key(raw: str) -> str:
     return re.sub(r"\s+", "", (raw or "").strip().lower())
 
 
+# Shell／Hermes 句唔好當 STT alias（否則 rm 路徑會被學成「執行」）
+_SHELLISH = re.compile(
+    r"(/tmp/|/mnt/|\\|-\s*rf\b|\brm\s|curl\s|wget\s|https?://|`|\|)",
+    re.I,
+)
+
+
+def _looks_shellish(raw: str) -> bool:
+    t = raw or ""
+    if _SHELLISH.search(t):
+        return True
+    # long paste with path-ish punctuation
+    if len(t) >= 36 and ("/" in t or "：" in t or ":" in t):
+        return True
+    return False
+
+
 def get_stt_alias(
     raw: str,
     path: Path | None = None,
@@ -88,6 +105,8 @@ def get_stt_alias(
     static: dict[str, str] | None = None,
 ) -> str | None:
     """Look up STT alias: memory first, then static (profiles.yaml)."""
+    if _looks_shellish(raw):
+        return None
     key = _alias_key(raw)
     if len(key) < 2:
         return None
@@ -124,9 +143,25 @@ def learn_stt_alias(
 
     Returns True if stored. Skips no-ops / too-short / identical keys.
     """
+    if _looks_shellish(raw) or _looks_shellish(canonical):
+        return False
     key = _alias_key(raw)
     label = (canonical or "").strip()
     if len(key) < 2 or len(label) < 2:
+        return False
+    if len(key) > 48:
+        return False
+    # bare verbs / Hermes filler — not app labels
+    if _alias_key(label) in {
+        "執行",
+        "运行",
+        "運行",
+        "run",
+        "execute",
+        "ok",
+        "yes",
+        "no",
+    }:
         return False
     if key == _alias_key(label):
         return False

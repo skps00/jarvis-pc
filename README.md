@@ -2,7 +2,7 @@
 
 **Just A Rather Very Intelligent System**
 
-Windows 本機管家：熱鍵／系統匣細窗 → 打字或本機 SenseVoice → 白名單開戰場。
+Windows 本機管家：熱鍵／系統匣細窗 → **打字**指令 → 白名單 Hands（可選 Hermes／TTS）。
 
 設計定稿：`%USERPROFILE%\.gstack\projects\jarvis-pc\*-design-*.md`（Status: APPROVED）
 
@@ -18,13 +18,9 @@ python -m jarvis serve
 
 # 開機自啟
 python -m jarvis autostart on
-
-# 語音（可選，較大）
-python -m pip install -e ".[ear]"
-python -m jarvis listen 3
 ```
 
-細窗：**Enter** 送出；**語音** 錄 3 秒；**Ctrl+Alt+J** 顯示／隱藏。
+細窗：**Enter** 送出；**Ctrl+Alt+J** 顯示／隱藏。語音識別／聽候已移除。
 
 ## 能力
 
@@ -40,7 +36,7 @@ python -m jarvis listen 3
 | Chrome 還原 | `--restore-last-session`；已開則 focus；多窗冷開請用選單「結束」 |
 | Discover | 未知 `open xxx` → Start Menu／Desktop／Local Programs／Get-StartApps／Steam／Prism → 確認後寫入 profiles；目標自動拼寫／粵拼近匹配 |
 | 查詢／歧義 | 小 LLM（`.env`：`JARVIS_LLM_*`，預設 DeepSeek）；Hands 仍只信白名單 |
-| Ear | SenseVoice `yue`（需 `[ear]`） |
+| Hermes | 設定啟用後，query／閒聊經 WSL Hermes（開 App 仍本機） |
 
 ```powershell
 copy .env.example .env   # 填 JARVIS_LLM_API_KEY=

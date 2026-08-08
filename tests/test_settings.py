@@ -284,6 +284,47 @@ def test_probe_connection_raises():
             raise AssertionError("expected RuntimeError")
 
 
+def test_normalize_hotkey_human_and_pynput():
+    from jarvis.settings import hotkey_display, normalize_hotkey
+
+    assert normalize_hotkey("Ctrl+Alt+J") == "<ctrl>+<alt>+j"
+    assert normalize_hotkey("<ctrl>+<alt>+j") == "<ctrl>+<alt>+j"
+    assert normalize_hotkey("ctrl-shift-j") == "<ctrl>+<shift>+j"
+    assert hotkey_display("<ctrl>+<alt>+j") == "Ctrl+Alt+J"
+    try:
+        normalize_hotkey("Ctrl+Alt")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for mods-only")
+
+
+def test_tts_settings_clamp_and_defaults():
+    from jarvis.settings import ASR_FUN_ASR, _clamp
+
+    s = _clamp(
+        Settings(tts_enabled=True, tts_length_scale=0.1, tts_volume=99.0)
+    )
+    assert s.tts_length_scale == 0.50
+    assert s.tts_volume == 3.0
+    d = Settings()
+    assert d.tts_enabled is True
+    assert d.tts_length_scale == 0.85
+    assert d.tts_volume == 1.6
+    assert d.tts_output_device is None
+    assert d.text_wake is False
+    assert d.alert_voice is True
+    assert d.alert_discord is True
+    assert d.alert_cursor is True
+    assert d.alert_always is True
+    a = _clamp(Settings(alert_cd_seconds=0.1))
+    assert a.alert_cd_seconds == 2.0
+    bad = _clamp(Settings(tts_output_device="nope"))  # type: ignore[arg-type]
+    assert bad.tts_output_device is None
+    f = _clamp(Settings(asr_provider="fun_asr"))
+    assert f.asr_provider == ASR_FUN_ASR
+
+
 if __name__ == "__main__":
     for fn in (
         test_openai_chat_url,
@@ -299,6 +340,8 @@ if __name__ == "__main__":
         test_preset_from_label,
         test_probe_connection_ok,
         test_probe_connection_raises,
+        test_normalize_hotkey_human_and_pynput,
+        test_tts_settings_clamp_and_defaults,
     ):
         fn()
         print("ok", fn.__name__)

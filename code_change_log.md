@@ -1,5 +1,431 @@
 # 代碼變更與問題日誌
 
+## [2026-08-08 14:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Alert 朗讀強制英文 stub；log `朗讀: …`；說明中文 toast 唔會被 Piper 讀。
+- **遇到的問題**：
+  - 問題1：WhatsApp toast 有 log 無聲，懷疑中文
+  - 解決方案：Piper 本來跳過 CJK；只講固定英文句；drain 再保險強制 phrase
+  - 狀態：✅ 已解決
+- **備註**：聽候掣無關。
+
+## [2026-08-08 12:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒加 WhatsApp＋自訂 Toast app 白名單（`alert_extra`）。
+- **遇到的問題**：
+  - 問題1：使用者要 WTS／其他 app 都提醒
+  - 解決方案：Toast 認 WhatsApp；設定可加逗號分隔 app 名
+  - 狀態：✅ 已解決
+- **備註**：仍靠 Windows 通知；app 要開桌面通知。
+
+## [2026-08-08 12:00:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Piper/onnxruntime DLL 初始化失敗 → 主線程預載＋subprocess 隔離播 TTS。
+- **遇到的問題**：
+  - 問題1：`ImportError: DLL load failed … onnxruntime_pybind11_state`
+  - 解決方案：serve 啟動主線程 `_warmup()`；失敗則 `python -c` 子行程播（CREATE_NO_WINDOW）
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-08 11:55:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：修 alert TTS 播放失敗：串行鎖、裝置失敗 sd.stop＋回退預設、resample 對喇叭 sample rate、log 真實錯誤。
+- **遇到的問題**：
+  - 問題1：`[fail] alert TTS 播放失敗`（喇叭 G27Q/NVIDIA idx 17）
+  - 解決方案：播放失敗拎 exception 字串；停壞 stream 再試系統預設；對齊 device default_samplerate
+  - 狀態：✅ 已解決
+- **備註**：裝置 index 會漂；失敗時建議改「系統預設」。
+
+## [2026-08-08 11:30:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：Alert 無聲：speak `force=True`；串行播；裝置失敗回退預設並寫 log。
+- **遇到的問題**：
+  - 問題1：Toast 已 `[alert] discord:…` 但無聲
+  - 解決方案：force 略過 tts_enabled；唔開 12 條並發 speak；play 失敗 log＋device=None 重試
+  - 狀態：✅ 已解決
+- **備註**：聽候掣無關提醒聲。
+
+## [2026-08-08 11:25:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, pyproject.toml, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：`alert_always`：Windows Toast 監聽（前景都响）；Cursor 只認 Done toast；Flash 仍作後備。
+- **遇到的問題**：
+  - 問題1：Flash 只喺未聚焦；使用者要 always
+  - 解決方案：winrt UserNotificationListener 輪詢新 toast
+  - 狀態：✅ 已解決（Discord 要開系統通知；缺 winrt 則 Toast 關）
+- **備註**：`pip install "jarvis-pc[alerts]"`。
+
+## [2026-08-08 11:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/settings_ui.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒改 ShellHook `HSHELL_FLASH`（Discord／Cursor 任務列閃爍）；標題 (N)／Generating 作後備。
+- **遇到的問題**：
+  - 問題1：手測唔响——Discord 標題無 `(N)`（用 overlay badge）；Cursor 標題固定 `Cursor Agents`
+  - 解決方案：`RegisterShellHookWindow` 收 FLASH → 對應 exe 朗讀
+  - 狀態：✅ 已解決（需重啟；Discord 聚焦時可能唔閃）
+- **備註**：刪 probe 腳本。設定加「試語音提醒」。
+
+## [2026-08-08 11:05:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/alerts.py, src/jarvis/{settings,settings_ui,shell_app}.py, tests/test_alerts.py, code_change_log.md
+- **變更摘要**：語音提醒 v0：Discord 標題未讀數↑、Cursor busy→idle → 英文 speak（無燈／無 Codex）。
+- **遇到的問題**：
+  - 問題1：mouth 跳過 CJK → 提醒句必須英文
+  - 解決方案：固定 English phrases
+  - 狀態：✅ 已解決
+  - 問題2：Cursor 未必改標題 → heuristic 可能漏
+  - 解決方案：文件／UI 註明；之後可加 toast／hooks
+  - 狀態：❌ 未解決（已知上限）
+- **備註**：設定「朗讀 TTS」頁開關。
+
+## [2026-08-08 00:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/engine.py, code_change_log.md
+- **變更摘要**：語音只聽到「嗯」→修成空白時，提早 `[fail] 聽唔清`，唔送 Hermes。
+- **遇到的問題**：
+  - 問題1：`raw='嗯。'` → ASR 修正空 → `空白指令`／失敗紅字（似壞咗）
+  - 解決方案：空 utterance 直接友善失敗；提示講完指令
+  - 狀態：✅ 已解決
+- **備註**：1.8s 多數係犹豫語氣詞／VAD 早截；再講「Jarvis，開 Chrome」試。
+
+## [2026-08-07 23:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/ear.py, src/jarvis/shell_app.py, src/jarvis/settings_ui.py, code_change_log.md
+- **變更摘要**：Fun-ASR 首次載入似凍：加進度 log、載入 timeout→回退 SenseVoice、UI 標註首次慢。
+- **遇到的問題**：
+  - 問題1：ASR=fun_asr 聽到 Jarvis 後停喺 `[ear] 指令音頻 3.2s`，送出灰（busy）
+  - 解決方案：worker 卡喺 AutoModel 下載／load；timeout 120s 回退；即時 log「開始 ASR」
+  - 狀態：✅ 已解決（使用者請改回 SenseVoice 或等 timeout）
+- **備註**：若 Tk 真死（GIL），要結束程序重開。
+
+## [2026-08-07 22:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：修聽候 bug：①on_command 即 pause mic；②busy 結束唔清 pause 若 TTS 仍播；③空 PCM 唔送 SenseVoice；④busy 略過唔清 pause；⑤quit 停聽候。
+- **遇到的問題**：
+  - 問題1：OWW 觸發後 wake loop 即重開 mic，同 STT 搶裝置
+  - 解決方案：`on_command`／`on_detect` 入 queue 前 `_wake_pause.set()`
+  - 狀態：✅ 已解決
+  - 問題2：`busy=False` 喺 speak 前清 pause → TTS 期間又聽
+  - 解決方案：`_tts_holding_pause`；speak finally 先清
+  - 狀態：✅ 已解決
+- **備註**：—
+- **續修**：busy／CD 先判斷 busy 唔清 pause；quit 停聽候；restart 時 TTS hold 亦 pause。
+
+## [2026-08-07 22:25:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{shell_app,ear,settings,settings_ui}.py, tests/*, code_change_log.md
+- **變更摘要**：重開 OWW 聽候（VAD→SenseVoice／可選 Fun-ASR-Nano→execute）；text_wake 預設關；設定聽候掣；打字仍關 asr_repair。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：編碼時避免 CMD 黑窗（既有 CREATE_NO_WINDOW）。
+
+## [2026-08-07 20:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：修 Trusted：①到期輪詢回 Safe；②未 Trusted 唔每次儲存打 WSL；③arm／clear 改背景線程防 Tk 凍。
+- **遇到的問題**：
+  - 問題1：`hermes_is_trusted()` 無人呼叫 → 30min 後 terminal 唔關
+  - 解決方案：`_drain_queue` 每圈檢查到期
+  - 狀態：✅ 已解決
+  - 問題2：儲存設定（未勾 Trusted）仍 `clear`→`hermes tools disable`
+  - 解決方案：僅 `was` Trusted 先套 Safe／recycle
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-07 20:09:00] 操作類型：修改（文件）
+
+- **文件路徑**：docs/approve_bridge.md, code_change_log.md
+- **變更摘要**：驗收打勾：Trusted 寫 sandbox、Approve 彈窗、貼圖＋API 手測完成（使用者確認）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：下一步多半 commit 或 ASR／Phase2。
+
+## [2026-08-07 19:05:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,shell_app,settings_ui}.py, docs/approve_bridge.md, scripts/{hermes_docker_terminal_setup,wsl_docker_*}.sh, tests/test_hermes_trusted.py, code_change_log.md；WSL `~/.hermes/config.yaml`
+- **變更摘要**：Trusted＋docker terminal：Desktop 已裝；Safe 關 terminal／browser／CUA／cron；Trusted arm 開 docker terminal（sandbox mount）＋重載 API；無 yolo。
+- **遇到的問題**：
+  - 問題1：WSL 冇 `docker`／credential helper PATH
+  - 解決方案：PATH 加 Docker Desktop `resources/bin`；wrapper script
+  - 狀態：✅ 已解決
+  - 問題2：`C:/HermesSandbox` bind 被當 mode
+  - 解決方案：用 `/mnt/c/HermesSandbox:/workspace`
+  - 狀態：✅ 已解決
+- **備註**：手測 Trusted echo 寫 sandbox 仍待勾。
+
+## [2026-08-07 18:56:00] 操作類型：修改（Hermes 環境）
+
+- **文件路徑**：`~/.hermes/config.yaml`（WSL；非 jarvis-pc 源碼）, code_change_log.md
+- **變更摘要**：Safe 硬閘 #0：`api_server`＋`cli` 關 `terminal`／`browser`／`computer_use`／`cronjob`（design G1／G18）。
+- **遇到的問題**：
+  - 問題1：api_server 預設開 terminal（無 docker＝host）
+  - 解決方案：`hermes tools disable --platform …`
+  - 狀態：✅ 已解決
+- **備註**：Trusted＋docker terminal 未開；等 Docker Desktop 裝完再 #2–#3。
+
+## [2026-08-07 12:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,settings_ui,mouth}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：朗讀 TTS 加喇叭 Combobox（sounddevice 輸出）；`tts_output_device` 存檔；`mouth.speak` 播去指定裝置；試聽跟下拉。
+- **遇到的問題**：
+  - 問題1：只有 mic 下拉、喇叭冇
+  - 解決方案：`list_output_speakers()` + `sd.play(device=…)`
+  - 狀態：✅ 已解決
+- **備註**：None＝系統預設喇叭。
+
+## [2026-08-07 12:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/settings_ui.py, code_change_log.md
+- **變更摘要**：進階「麥克風」改 Combobox（sounddevice 輸入清單＋系統預設＋重新整理）。
+- **遇到的問題**：
+  - 問題1：Mic device # 手填難知邊個係邊個
+  - 解決方案：`list_input_mics()` 下拉
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-07 12:10:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/settings_ui.py（新）, src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：重做設定頁：分頁 大腦／Hermes／朗讀／系統／進階；捲動；露出 ASR·wake（標停用）；開資料夾／profiles／檢測 Hermes API。
+- **遇到的問題**：
+  - 問題1：舊兩頁塞唔晒；ASR／wake 喺 json 但 UI 冇
+  - 解決方案：拆 `settings_ui.py`；進階保留 legacy
+  - 狀態：✅ 已解決
+- **備註**：語音識別仍停用；進階只存檔唔喚醒。
+
+## [2026-08-07 10:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,mouth,shell_app}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：TTS 開／語速／音量入設定「系統」；存 settings.json；試聽掣用滑桿值。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：`tts_length_scale` 0.5–1.5；`tts_volume` 0.3–3.0。
+
+## [2026-08-07 10:36:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, code_change_log.md
+- **變更摘要**：Piper TTS `volume=1.6`；播前 soft-clip 防爆音。
+- **遇到的問題**：
+  - 問題1：SPEAK 聲量偏細
+  - 解決方案：SynthesisConfig.volume 提高
+  - 狀態：✅ 已解決
+- **備註**：再大聲改 `VOLUME`（如 2.0）。
+
+## [2026-08-07 10:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/mouth.py, code_change_log.md
+- **變更摘要**：Piper TTS `length_scale=0.85`（約快 15%）；`LENGTH_SCALE` 可調。
+- **遇到的問題**：
+  - 問題1：SPEAK 朗讀偏慢
+  - 解決方案：SynthesisConfig.length_scale＜1
+  - 狀態：✅ 已解決
+- **備註**：再快可改 0.75；＞1 變慢。
+
+## [2026-08-07 10:30:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, tests/test_hermes_bridge.py, docs/approve_bridge.md, code_change_log.md
+- **變更摘要**：Hermes 雙輸出：繁中 `[caption]` + 末行 `SPEAK:` 短英 → `[speak]`／Piper；唔開第二次 LLM。
+- **遇到的問題**：
+  - 問題1：caption 全繁中 → mouth skip → Hermes 唔出聲
+  - 解決方案：`split_speak_footer`；API instructions／CLI hint；`_pick_spoken_line` 優先 `[speak]`、唔用 caption
+  - 狀態：✅ 已解決
+- **備註**：無 SPEAK 且有 CJK → 唔 TTS。
+
+## [2026-08-07 09:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：修 caption 重複：`run.completed` 覆蓋 `message.delta`；加 exact-echo dedupe。
+- **遇到的問題**：
+  - 問題1：同一句出現兩次（delta 拼完又 append completed）
+  - 解決方案：completed 用最終 output 取代 pieces
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-07 09:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：附圖改走 API Runs multimodal（base64）＋ Approve；唔再預設 `-q --image`（會無彈窗卡 120s）。
+- **遇到的問題**：
+  - 問題1：`do it [圖]` → Hermes 逾時 120s（CLI 無 Approve）
+  - 解決方案：`build_runs_input` + `_chat_via_api(image_path=)`；失敗先回落 `-q` 並提示
+  - 狀態：✅ 已解決
+- **備註**：圖＞12MB 拒；附圖 timeout 下限 180s。
+
+## [2026-08-07 08:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{shell_app,memory,asr_repair}.py, code_change_log.md
+- **變更摘要**：UI 打字 `repair_asr=False`；shellish 句唔套／唔學 STT alias；清掉 `…rm…→執行` 爛 alias。
+- **遇到的問題**：
+  - 問題1：手測 Approve 句被 `[fix] ASR 修正 → '執行'`，Hermes 收唔到 `rm`
+  - 解決方案：shell 關 ASR 修正；`_looks_shellish` 擋 lookup／learn；purge memory
+  - 狀態：✅ 已解決
+- **備註**：CLI `execute_utterance` 預設仍可 `repair_asr=True`（舊語音路徑）。
+
+## [2026-08-07 08:12:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, scripts/_smoke_hermes_api.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：Approve API 401：埠通仍要 auth probe；key 唔夾則殺 :8642 再以 Jarvis key 重起；煙測改讀同一 key 檔。
+- **遇到的問題**：
+  - 問題1：舊煙測 gateway 佔 8642 → `Invalid gateway API key` 401，Approve 橋失效
+  - 解決方案：`_api_auth_ok` + `ensure_api_server` 唔盲目重用；`fuser -k 8642/tcp` 後重起
+  - 狀態：✅ 已解決
+- **備註**：關 Jarvis 仍唔強制殺 API；只喺 key mismatch 先清埠。
+
+## [2026-08-07 08:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, scripts/_smoke_hermes_api.py, code_change_log.md
+- **變更摘要**：Phase1.5 Approve 橋完成：API `:8642` Runs+SSE `approval.request`→Yes=`once`／No=`deny`；engine 傳 `ask_confirm`；API 失敗回落 `-q`；單元測 mock SSE／fallback。
+- **遇到的問題**：
+  - 問題1：煙測 gateway 可能用另一把 key 佔 :8642 → Jarvis key 401
+  - 解決方案：POST 失敗即回落 `-q`；正式由 `ensure_api_server` 用 `%APPDATA%\Jarvis\hermes_api.key` 起
+  - 狀態：✅ 已解決
+- **備註**：附圖仍 CLI `--image`；Trusted 仍無 docker／無 yolo。手測清單見 `docs/approve_bridge.md`。
+
+## [2026-08-07 08:00:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine}.py, docs/approve_bridge.md, tests/test_hermes_bridge.py, scripts/_smoke_hermes_api.py, code_change_log.md
+- **變更摘要**：Phase1.5 Approve 橋：本地 Hermes API `:8642` + `/v1/runs` SSE `approval.request` → Jarvis Yes=`once`／No=`deny`；失敗回落 `chat -q`；永不 yolo。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決（見 08:15 收尾）
+- **備註**：API key=`%APPDATA%\Jarvis\hermes_api.key`；有附圖暫走 CLI `--image`。
+
+## [2026-08-06 22:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/{settings,shell_app}.py, tests/test_settings.py, code_change_log.md
+- **變更摘要**：全域熱鍵可改：設定「系統」揀／填；存 `settings.json`；套用即重註冊（唔使重開）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：預設仍 Ctrl+Alt+J；pynput 格式 `<ctrl>+<alt>+j`。
+
+## [2026-08-06 21:50:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/{hermes_bridge,engine,shell_app}.py, docs/approve_bridge.md, docs/phase2_computer_use.md, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：①驗收 session／Hands OK；②貼圖→`hermes --image`（剪貼簿／掣／Ctrl+V）；③Approve 橋 v0＝Hands Yes／No＋文件（Hermes -q 無 TTY 仍 fail-closed）；④Phase2 computer_use 規格草稿。
+- **遇到的問題**：
+  - 問題1：Hermes `approvals.mode=manual` 喺 `-q`+無 stdin 唔能 Jarvis 彈 Yes
+  - 解決方案：文件標 Phase1.5＝gateway／dashboard；唔開 `--yolo`
+  - 狀態：✅ 已解決（貼圖／規格）；Approve 真橋延 Phase1.5
+- **備註**：inbox=`C:\HermesSandbox\_inbox\`
+
+## [2026-08-06 21:15:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：`serve` 單實例：Windows named mutex；第二個啟動改觸發第一個顯示並退出。重啟用 `JARVIS_SERVE_WAIT` 等舊進程放鎖。
+- **遇到的問題**：
+  - 問題1：可開兩個 Jarvis（無鎖；重啟先起新再開舊會雙開）
+  - 解決方案：`Local\JarvisPcServe.v1` mutex + show event
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 21:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：細窗加「重啟」「結束」掣；結束同系統匣；重啟 = 隱藏起新 `pythonw -m jarvis serve` 再關舊。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：tray 亦加「重啟」。
+
+## [2026-08-06 20:58:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, src/jarvis/shell_app.py, scripts/open_hermes_dashboard.py, code_change_log.md
+- **變更摘要**：Jarvis 細窗加「Hermes 網頁」掣；開 http://127.0.0.1:9119（已起就只開瀏覽器；否則 WSL 隱藏啟動）。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：邏輯集中 `open_dashboard()`；腳本改 thin wrapper。
+
+## [2026-08-06 17:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：修 Hermes 每句新 session：`-Q` 而家印 `session_id:`，舊 parser 只認 `Session:`／`hermes --resume` → 永遠唔 resume。
+- **遇到的問題**：
+  - 問題1：每 message 新 session
+  - 解決方案：parse `session_id:`；成功回覆但無新 id 時保留上次 resume id
+  - 狀態：✅ 已解決
+- **備註**：實測同一 session_id 連續兩句；重開 serve 後記憶體內 session 會清（設計：進程內 10min TTL）。
+
+## [2026-08-06 17:35:00] 操作類型：新增
+
+- **文件路徑**：scripts/open_hermes_dashboard.py, code_change_log.md
+- **變更摘要**：一鍵開 Hermes web dashboard（WSL `CREATE_NO_WINDOW`，唔彈黑窗；瀏覽器開 127.0.0.1:9119）。
+- **遇到的問題**：
+  - 問題1：PowerShell 轉義搞爛 inline python
+  - 解決方案：獨立腳本
+  - 狀態：✅ 已解決
+- **備註**：`python scripts/open_hermes_dashboard.py`
+
+## [2026-08-06 16:45:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, code_change_log.md
+- **變更摘要**：Hermes→WSL 時唔再彈 cmd 黑窗（`CREATE_NO_WINDOW`，同 Hands）。
+- **遇到的問題**：
+  - 問題1：每次問 Hermes 彈 WSL／cmd 視窗
+  - 解決方案：`subprocess.run(..., creationflags=CREATE_NO_WINDOW)`
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 16:35:00] 操作類型：刪除 | 修改
+
+- **文件路徑**：src/jarvis/shell_app.py, src/jarvis/__main__.py, README.md, tests/test_shell_wake_restart.py, code_change_log.md
+- **變更摘要**：使用者要求：語音識別太差 → **完全移除** ASR／聽候／「語音」掣；只留打字＋Hands＋Hermes bridge＋可選 TTS。
+- **遇到的問題**：
+  - 問題1：—
+  - 解決方案：shell 重寫去 ASR tab／語音／聽候；`listen`／`wake` CLI 回退提示；設定存檔保留舊 ASR 欄位唔洗爆 json
+  - 狀態：✅ 已解決
+- **備註**：`ear.py`／`wake.py` 暫留檔但無入口；`asr_fix` 仍服務打字別名。
+
+## [2026-08-06 16:20:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py, code_change_log.md
+- **變更摘要**：修 Phase1 改 settings 時誤植縮排 → IndentationError，Jarvis 開唔到。
+- **遇到的問題**：
+  - 問題1：`serve` 即崩 IndentationError L716
+  - 解決方案：busy／wake_pause 塊移回 `apply_settings`
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-06 16:00:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py, src/jarvis/{settings,engine,shell_app}.py, tests/test_hermes_bridge.py, code_change_log.md
+- **變更摘要**：Phase1 薄 bridge：`hermes_enabled` 預設 false；query／unknown→WSL Hermes（safe 無 yolo）；開／關／電源仍本機 Hands；剝 `⟦JV⟧`；10min session。
+- **遇到的問題**：
+  - 問題1：pytest 未裝
+  - 解決方案：`python -c` 跑 test_hermes_bridge 函數；全過
+  - 狀態：✅ 已解決
+- **備註**：Trusted＝設定勾選 30min runtime；Approve 橋／docker 仍未做。開設定 →「啟用 Hermes」。
+
+## [2026-08-06 13:40:00] 操作類型：新增（Phase0 環境，非 jarvis 源碼）
+
+- **文件路徑**：`C:\HermesSandbox\`（PHASE0_STATUS.md 等）；WSL `~/.hermes/`（Hermes v0.20.0／v2026.8.3）
+- **變更摘要**：使用者「開始裝」→ Phase0：WSL2 裝 Hermes、safe root 僅 sandbox、jarvis-safe AGENTS、manual／deny、aux vision 佔位；無 Docker＝降級；無 MCP／computer_use。
+- **遇到的問題**：
+  - 問題1：官方 `install.sh` 卡在 sudo apt（ripgrep／ffmpeg／build-essential）無交互密碼
+  - 解決方案：static rg＋ffmpeg 進 `~/.local/bin`；`uv sync` 續裝；`--skip-browser --non-interactive`
+  - 狀態：✅ 已解決
+  - 問題2：live chat／vision 未驗
+  - 解決方案：等 SK 填 `~/.hermes/.env` 的 DEEPSEEK／OPENROUTER key
+  - 狀態：❌ 未解決（等 key）
+- **備註**：詳見 `C:\HermesSandbox\PHASE0_STATUS.md`；jarvis-pc 源碼未改。
+
 ## [2026-07-28 07:55:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/brain.py, tests/test_brain.py, code_change_log.md
@@ -819,3 +1245,93 @@
   - 解決方案：wake STT 雙語序 en→yue；短 ASCII 近似 jarvis 用 edit distance
   - 狀態：✅ 已解決
 - **備註**：長期仍應自己聲重訓 onnx
+
+## [2026-07-28 21:20:30] 操作類型：新增 | 修改
+- **文件路徑**：scripts/record_jarvis_wake.py, scripts/record_jarvis_wake.ps1, docs/train_wake_jarvis.md, code_change_log.md
+- **變更摘要**：本機 Jarvis wake 錄音腳本（預設目標 1000 段、16kHz）；文件改最準路徑（自己聲+TTS trainer）
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：輸出 %APPDATA%\Jarvis\wake_recordings\my_real_samples\（CoreWorx 相容）
+
+## [2026-08-02 19:40:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/ear.py, src/jarvis/shell_app.py
+- **變更摘要**：單 stream 一口氣「Jarvis, open minecraft」；OWW 醒後唔關 mic，繼續擷 3s 指令 PCM + pre-wake context → STT → strip wake word → 執行
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：wake.py 新增 on_command callback；ear.py 新增 pcm_to_wav；shell_app 新增 _on_listen_cmd + _strip_wake_word。STT fallback 路徑不變。
+
+## [2026-08-02 21:40:00] 操作類型：修改
+- **文件路徑**：src/jarvis/settings.py, src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：設定頁新增收音裝置下拉選單；wake.py 接受 input_device 參數；解決 Jarvis 聽到系統音效嘅問題
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：wake_mic_device: int|None=None；list_input_devices() 列出 sounddevice 輸入裝置；儲存時解析名稱回 id
+
+## [2026-08-03 22:38:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py
+- **變更摘要**：修單 stream 指令擷取：`raw_data_buffer` 空 → 改用自管 `pcm_ring`；擴 ring buffer 容量 2s→5s
+- **遇到的問題**：
+  - 問題1：`[ear] 指令音頻 0.0s` + SenseVoice `choose a window size 0`；OWW 醒後 `raw_data_buffer` 為空，`except` 設 `np.zeros(0)`
+  - 解決方案：不靠 OWW 內部 buffer，直接用自管 `pcm_ring`；`_BUF_CHUNKS` 改為 `max(STT, CMD) * SR / CHUNK`（≈63 chunks≈5s）；移除 capture 模式中 `model.predict(pcm)` 動作
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-04 19:27:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py
+- **變更摘要**：提高醒詞靈敏度 — 門檻 0.35→0.05（自訓 onnx 分數近 0）；STT 後備加 auto 語言 + 粵語拼音 needle
+- **遇到的問題**：
+  - 問題1：自訓 jarvis.onnx 分數 0.001–0.003，遠低於門檻 0.35，OWW 永不會觸發；STT yue 把英文「Jarvis」亂碼成 �，en 回空白 → 兩條路都死
+  - 解決方案：降門檻到 0.05（ponytail: retrain 後再提高）；STT 嘗試順序 en,yue → auto,en,yue；新增粵拼 needle（渣維斯、揸域斯、查域斯、渣域、揸域）
+  - 狀態：✅ 待驗收
+- **備註**：長期仍須用 1000+ 自己聲重訓 onnx（docs/train_wake_jarvis.md），否則低門檻易誤觸
+
+## [2026-08-04 21:45:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：減辨識延遲 — OWW 醒後等 1.5→0.3s；擷取音頻 5→3s；指令 STT 語言 yue→auto
+- **遇到的問題**：
+  - 問題1：辨識時間太長（4-6s） — OWW fire 後等 1.5s、送 5s 音頻俾 SenseVoice、用 yue mode → 三層疊加
+  - 解決方案：_CMD_SAVE_DELAY_S 1.5→0.3s（ring buffer 已有 pre-wake 音頻）；_CMD_BUFFER_S 5.0→3.0s（「Jarvis, open x」~2s 就夠）；command path transcribe_path(language="auto") 取代 "yue"（auto 更快）
+  - 狀態：✅ 待驗收
+- **備註**：三項改動後延遲 ~2-3s（之前 ~4-6s）。極長指令（>3s）會被截斷
+
+## [2026-08-04 21:51:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py
+- **變更摘要**：還原 _CMD_SAVE_DELAY_S 1.5s、_CMD_BUFFER_S 5.0s、command STT language="yue"
+- **遇到的問題**：
+  - 問題1：0.3s delay 太短 → 聽唔到聲
+  - 解決方案：回滾
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-05 14:24:00] 操作類型：新增
+- **文件路徑**：src/jarvis/mouth.py（新）, src/jarvis/shell_app.py
+- **變更摘要**：TTS 語音回饋 — Piper TTS + jgkawell/jarvis onnx model（J.A.R.V.I.S. Paul Bettany 風格）
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 待驗收
+- **備註**：model 自動下載至 %APPDATA%/Jarvis/models/piper/jarvis-medium.onnx(~63MB)。speak() 非阻塞，thread 播放。shell_app _drain_queue "result" handler 自動叫 speak()。
+
+## [2026-08-05 14:56:00] 操作類型：修改
+- **文件路徑**：src/jarvis/mouth.py, src/jarvis/shell_app.py
+- **變更摘要**：TTS 修復三點 — (1) 沙啞：換 high quality model（jarvis-high.onnx）(2) 播全部日誌：只播 [ok]/[fail]/[caption] 摘要行 (3) 唔講中文：CJK 過濾靜音
+- **遇到的問題**：
+  - 問題1：把 result.lines 全部 join 來播 → 中文 caption/debug 行被英文 Piper 念 → 沙啞 + 亂碼
+  - 解決方案：新增 _pick_spoken_line() 只取最新 [ok]/[fail]/[caption] 行剝 tag；mouth.speak 加 _has_cjk() 過濾，含中文字符直接 return
+  - 狀態：✅ 已解決
+- **備註**：jarvis-high.onnx 較大但音質更順滑；Piper jarvis model 只支援英文，中文結果保持沉默
+
+## [2026-08-05 18:35:00] 操作類型：修改
+- **文件路徑**：src/jarvis/wake.py, src/jarvis/shell_app.py, src/jarvis/settings.py
+- **變更摘要**：修 wake 層四痛點 — 誤觸／指令錯／慢／聽 game 聲
+- **遇到的問題**：
+  - 問題1：thr 被 soft 到 0.05，hey_jarvis 0.05–0.2 狂 fire；固定擷 5s 含環境聲；STT fallback 掃 game；TTS 回授
+  - 解決方案：(1) 門檻 ≥0.35／預設 0.50，取消 custom onnx soft-drop (2) 改 post-wake VAD：pre-roll 0.6s + 語音到靜音結束，max 4s (3) 關 text_wake 預設；RMS gate 0.14；STT CD 8s (4) TTS 期間 pause wake
+  - 狀態：✅ 待驗收
+- **備註**：設定頁舊 thr&lt;0.35 載入時會 clamp。請確認收音裝置揀實體咪，唔好揀 Sonar/Stereo Mix。
