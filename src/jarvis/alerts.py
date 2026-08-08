@@ -255,19 +255,52 @@ def _exe_for_hwnd(hwnd: int) -> str:
         kernel32.CloseHandle(handle)
 
 
+# COM apartment: init once per poll thread (not every 2s tick).
+_com_tls = threading.local()
+
+
+def _com_init_once() -> bool:
+    """CoInitialize once on this thread. True if comtypes importable."""
+    if getattr(_com_tls, "inited", False):
+        return True
+    try:
+        import comtypes  # type: ignore
+    except ImportError:
+        return False
+    try:
+        comtypes.CoInitialize()
+        _com_tls.owns = True
+    except OSError:
+        # Already initialized on this thread — do not Uninitialize later.
+        _com_tls.owns = False
+    _com_tls.inited = True
+    return True
+
+
+def _com_uninit_if_owned() -> None:
+    """Balance CoInitialize if this thread owns the apartment ref."""
+    if not getattr(_com_tls, "inited", False) or not getattr(_com_tls, "owns", False):
+        return
+    try:
+        import comtypes  # type: ignore
+
+        comtypes.CoUninitialize()
+    except Exception:
+        pass
+    _com_tls.inited = False
+    _com_tls.owns = False
+
+
 def _discord_taskbar_names_uia() -> list[str] | None:
     """Discord taskbar button names via UI Automation; None if unavailable."""
     if sys.platform != "win32":
         return None
     try:
-        import comtypes  # type: ignore
         import comtypes.client  # type: ignore
     except ImportError:
         return None
-    try:
-        comtypes.CoInitialize()
-    except OSError:
-        pass
+    if not _com_init_once():
+        return None
     try:
         try:
             from comtypes.gen.UIAutomationClient import (  # type: ignore
@@ -330,7 +363,11 @@ def _discord_taskbar_names_uia() -> list[str] | None:
 
 
 def _discord_unread_best(*, title_n: int, tb_names: list[str] | None) -> int:
-    """Max of title (N) badge and taskbar overlay parse."""
+    """Max of title (N) badge and taskbar overlay parse.
+
+    ``tb_names is None`` means taskbar state unknown (caller must not lower baseline).
+    Empty list means no Discord taskbar button — title-only is authoritative.
+    """
     best = max(0, int(title_n))
     if not tb_names:
         return best
@@ -721,16 +758,19 @@ class AlertWatcher:
     def _poll_loop(self) -> None:
         from jarvis.hands import _pids_for_images
 
-        while not self._stop.is_set():
-            try:
-                if self._enabled:
-                    if self._discord:
-                        self._tick_discord(_pids_for_images)
-                    if self._cursor:
-                        self._tick_cursor(_pids_for_images)
-            except Exception as exc:  # noqa: BLE001
-                self._log(f"[warn] alert poll: {exc}")
-            self._stop.wait(_POLL_S)
+        try:
+            while not self._stop.is_set():
+                try:
+                    if self._enabled:
+                        if self._discord:
+                            self._tick_discord(_pids_for_images)
+                        if self._cursor:
+                            self._tick_cursor(_pids_for_images)
+                except Exception as exc:  # noqa: BLE001
+                    self._log(f"[warn] alert poll: {exc}")
+                self._stop.wait(_POLL_S)
+        finally:
+            _com_uninit_if_owned()
 
     def _tick_discord(self, pids_fn) -> None:
         pids = set()
@@ -756,6 +796,11 @@ class AlertWatcher:
                     detail=detail,
                 )
             )
+            self._discord_prev = n
+            return
+        # UIA unknown: title-only under-counts while focused — keep baseline.
+        if tb_names is None:
+            return
         self._discord_prev = n
 
     def _tick_cursor(self, pids_fn) -> None:

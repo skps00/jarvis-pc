@@ -1,5 +1,18 @@
 # 代碼變更與問題日誌
 
+## [2026-08-08 09:11:52] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py, code_change_log.md
+- **變更摘要**：修 Discord UIA 失敗壓低 unread baseline；COM CoInitialize 改 per-thread 一次。
+- **遇到的問題**：
+  - 問題1：`_discord_taskbar_names_uia` 回 `None` 時 `_discord_unread_best`/`_tick_discord` 當零，baseline 掉落後 UIA 恢復誤觸發 new message
+  - 解決方案：`tb_names is None` 時不把 `_discord_prev` 往下改（標題上升仍可更新）
+  - 狀態：✅ 已解決
+  - 問題2：每 2s poll 呼叫 `CoInitialize` 無 `CoUninitialize`，apartment ref 累積
+  - 解決方案：thread-local 只 init 一次；`_poll_loop` finally 對自己 init 的做 `CoUninitialize`
+  - 狀態：✅ 已解決
+- **備註**：空 list `[]`（任務列無 Discord）仍可把 baseline 降為 title。
+
 ## [2026-08-08 15:05:37] 操作類型：修改
 
 - **文件路徑**：src/jarvis/alerts.py, tests/test_alerts.py, pyproject.toml, code_change_log.md
