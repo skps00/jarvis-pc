@@ -317,12 +317,37 @@ def test_tts_settings_clamp_and_defaults():
     assert d.alert_discord is True
     assert d.alert_cursor is True
     assert d.alert_always is True
-    a = _clamp(Settings(alert_cd_seconds=0.1))
-    assert a.alert_cd_seconds == 2.0
+    assert d.alert_tts == "hermes"
+    assert d.alerts_mcp_port == 8765
+    assert d.voice_frontend == "hermes"
+    a = _clamp(Settings(alert_cd_seconds=0.0))
+    assert a.alert_cd_seconds == 0.0
+    a2 = _clamp(Settings(alert_cd_seconds=0.1))
+    assert a2.alert_cd_seconds == 0.1
+    assert _clamp(Settings(alert_tts="piper")).alert_tts == "piper"
     bad = _clamp(Settings(tts_output_device="nope"))  # type: ignore[arg-type]
     assert bad.tts_output_device is None
     f = _clamp(Settings(asr_provider="fun_asr"))
     assert f.asr_provider == ASR_FUN_ASR
+    vf = _clamp(Settings(voice_frontend="JARVIS"))
+    assert vf.voice_frontend == "jarvis"
+    junk = _clamp(Settings(voice_frontend="nope"))
+    assert junk.voice_frontend == "hermes"
+
+
+def test_uses_hermes_voice_frontend():
+    from jarvis.settings import (
+        VOICE_FRONTEND_JARVIS,
+        uses_hermes_voice_frontend,
+    )
+
+    assert uses_hermes_voice_frontend(Settings()) is True
+    assert (
+        uses_hermes_voice_frontend(
+            Settings(voice_frontend=VOICE_FRONTEND_JARVIS)
+        )
+        is False
+    )
 
 
 if __name__ == "__main__":
@@ -342,6 +367,7 @@ if __name__ == "__main__":
         test_probe_connection_raises,
         test_normalize_hotkey_human_and_pynput,
         test_tts_settings_clamp_and_defaults,
+        test_uses_hermes_voice_frontend,
     ):
         fn()
         print("ok", fn.__name__)

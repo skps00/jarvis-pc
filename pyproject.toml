@@ -37,10 +37,14 @@ alerts = [
   "winrt-Windows.UI.Notifications.Management>=3.0,<4",
   "winrt-Windows.ApplicationModel>=3.0,<4",
   "comtypes>=1.4.0,<2",
+  "mcp>=1.0,<2",
+  "uvicorn>=0.30,<1",
+  "starlette>=0.37,<1",
 ]
 
 [project.scripts]
 jarvis = "jarvis.__main__:main"
+jarvis-mcp = "jarvis.mcp_alerts_http:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

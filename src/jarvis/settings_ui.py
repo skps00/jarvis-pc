@@ -1,6 +1,6 @@
-"""Jarvis settings window (multi-tab).
+"""Jarvis companion settings (multi-tab).
 
-Tabs: 大腦 LLM · Hermes · 朗讀 TTS · 系統 · 進階（legacy ASR／wake）。
+Tabs: 提醒 · Hermes · 系統 · 進階（Piper／legacy wake／LLM）。
 """
 
 from __future__ import annotations
@@ -88,15 +88,14 @@ def _pick_device_label(
 
 
 class SettingsWindow:
-    """Settings UI — LLM / Hermes / TTS / System / Advanced."""
+    """Settings UI — Alerts / Hermes / System / Advanced."""
 
     def __init__(self, parent: Any) -> None:
         self.parent = parent
         self.win = tk.Toplevel(parent.root)
-        self.win.title("JARVIS 設定")
-        self.win.geometry("580x640+100+40")
-        self.win.minsize(520, 480)
-        self.win.attributes("-topmost", True)
+        self.win.title("JARVIS companion 設定")
+        self.win.geometry("520x560+100+40")
+        self.win.minsize(480, 420)
         self.win.transient(parent.root)
 
         from jarvis.brain import _load_dotenv
@@ -108,9 +107,8 @@ class SettingsWindow:
         nb = ttk.Notebook(self.win)
         nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        self._build_llm_tab(self._add_scroll_tab(nb, "大腦 LLM"), s)
+        self._build_alerts_tab(self._add_scroll_tab(nb, "提醒"), s)
         self._build_hermes_tab(self._add_scroll_tab(nb, "Hermes"), s)
-        self._build_tts_tab(self._add_scroll_tab(nb, "朗讀 TTS"), s)
         self._build_sys_tab(self._add_scroll_tab(nb, "系統"), s)
         self._build_advanced_tab(self._add_scroll_tab(nb, "進階"), s)
 
@@ -169,13 +167,19 @@ class SettingsWindow:
         ).grid(row=row, column=0, columnspan=cols, sticky="w", pady=(0, 6))
         return row + 1
 
-    def _build_llm_tab(self, frm: tk.Frame, s: Settings) -> None:
+    def _build_llm_section(self, frm: tk.Frame, s: Settings, *, start_row: int = 0) -> int:
+        """Legacy Hands-query LLM (buried under 進階). Returns next free row."""
         preset_id = s.llm_preset or LLM_PRESET_DEEPSEEK
         self.var_preset_label = tk.StringVar(
             value=PRESET_LABELS.get(preset_id, PRESET_LABELS[LLM_PRESET_CUSTOM])
         )
-        tk.Label(frm, text="供應商", font=("Segoe UI", 10, "bold")).grid(
-            row=0, column=0, sticky="w", pady=4
+        row = start_row
+        tk.Label(frm, text="本機 LLM（Hands 歧義／舊 query）", font=("Segoe UI", 10, "bold")).grid(
+            row=row, column=0, columnspan=3, sticky="w", pady=(12, 4)
+        )
+        row += 1
+        tk.Label(frm, text="供應商").grid(
+            row=row, column=0, sticky="w", pady=4
         )
         cmb = ttk.Combobox(
             frm,
@@ -186,14 +190,14 @@ class SettingsWindow:
             state="readonly",
             width=36,
         )
-        cmb.grid(row=0, column=1, columnspan=2, sticky="ew", pady=4)
+        cmb.grid(row=row, column=1, columnspan=2, sticky="ew", pady=4)
         cmb.bind("<<ComboboxSelected>>", self._on_preset)
 
         self.var_llm_key = tk.StringVar(value=s.llm_api_key)
         self.var_llm_base = tk.StringVar(value=s.llm_base_url)
         self.var_llm_model = tk.StringVar(value=s.llm_model)
 
-        row = 1
+        row += 1
         tk.Label(frm, text="API Key").grid(row=row, column=0, sticky="w", pady=2)
         tk.Entry(frm, textvariable=self.var_llm_key, width=36, show="*").grid(
             row=row, column=1, columnspan=2, sticky="ew", pady=2
@@ -230,51 +234,57 @@ class SettingsWindow:
             row=row, column=2, padx=2
         )
         row += 1
-        self._hint(
+        return self._hint(
             frm,
             row,
-            "Ollama 例：http://127.0.0.1:11434/v1｜Hands 開 App 唔經 LLM。",
+            "對話大腦用 Hermes。呢度只影響本機 Hands 歧義查詢。",
+            cols=3,
         )
-        frm.columnconfigure(1, weight=1)
 
     def _build_hermes_tab(self, frm: tk.Frame, s: Settings) -> None:
+        from jarvis.settings import VOICE_FRONTEND_HERMES
+
         self.var_hermes = tk.BooleanVar(value=bool(s.hermes_enabled))
         self.var_hermes_trusted = tk.BooleanVar(value=False)
-        tk.Label(frm, text="Hermes Agent", font=("Segoe UI", 10, "bold")).grid(
+        # default voice frontend; radio lives under 進階
+        vf = str(getattr(s, "voice_frontend", None) or VOICE_FRONTEND_HERMES).strip().lower()
+        self.var_voice_frontend = tk.StringVar(value=vf or VOICE_FRONTEND_HERMES)
+
+        tk.Label(frm, text="Approve／Trusted", font=("Segoe UI", 10, "bold")).grid(
             row=0, column=0, columnspan=2, sticky="w", pady=4
         )
         tk.Checkbutton(
             frm,
-            text="啟用 Hermes（query／閒聊／貼圖經 WSL API；開 App 仍本機 Hands）",
+            text="啟用 Hermes bridge（Approve SSE／Trusted）",
             variable=self.var_hermes,
-            wraplength=500,
+            wraplength=460,
             justify="left",
         ).grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
         tk.Checkbutton(
             frm,
-            text="Trusted 30 分鐘（儲存時生效；開 docker terminal；重開 Jarvis → Safe；無 yolo）",
+            text="Trusted 30 分鐘（儲存生效；開 docker terminal；重開 → Safe）",
             variable=self.var_hermes_trusted,
-            wraplength=500,
+            wraplength=460,
             justify="left",
         ).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
 
-        tk.Label(frm, text="本機 API", font=("Segoe UI", 10, "bold")).grid(
-            row=3, column=0, sticky="w", pady=(12, 4)
-        )
         key_path = (
             Path.home() / "AppData" / "Roaming" / "Jarvis" / "hermes_api.key"
         )
+        tk.Label(frm, text="本機 Approve", font=("Segoe UI", 10, "bold")).grid(
+            row=3, column=0, sticky="w", pady=(12, 4)
+        )
         tk.Label(
             frm,
-            text="127.0.0.1:8642  ·  Approve Yes=once／No=deny",
+            text="127.0.0.1:8642  ·  Yes=once／No=deny",
             font=("Segoe UI", 9),
         ).grid(row=4, column=0, columnspan=2, sticky="w")
         tk.Label(
             frm,
-            text=f"API key 檔：{key_path}",
+            text=f"API key：{key_path}",
             fg="#666",
             font=("Segoe UI", 8),
-            wraplength=500,
+            wraplength=460,
             justify="left",
         ).grid(row=5, column=0, columnspan=2, sticky="w", pady=2)
 
@@ -289,155 +299,99 @@ class SettingsWindow:
         self._hint(
             frm,
             7,
-            "字幕繁中 + 末行 SPEAK: 短英 → Piper。詳見 docs/approve_bridge.md。",
+            "對話／wake／TTS 喺 Hermes。語音前端（Jarvis OWW）見「進階」。",
             cols=2,
         )
 
-    def _build_tts_tab(self, frm: tk.Frame, s: Settings) -> None:
-        from jarvis.mouth import available
-
-        tk.Label(frm, text="Piper 朗讀（英文）", font=("Segoe UI", 10, "bold")).grid(
+    def _build_alerts_tab(self, frm: tk.Frame, s: Settings) -> None:
+        tk.Label(frm, text="桌面語音提醒", font=("Segoe UI", 10, "bold")).grid(
             row=0, column=0, columnspan=2, sticky="w", pady=4
-        )
-        self.var_tts = tk.BooleanVar(value=bool(s.tts_enabled))
-        tk.Checkbutton(
-            frm,
-            text="啟用朗讀（[speak]／Hands [ok]·[fail]）",
-            variable=self.var_tts,
-        ).grid(row=1, column=0, columnspan=2, sticky="w")
-
-        status = (
-            "模型：已就緒"
-            if available()
-            else "模型：未裝（%APPDATA%\\Jarvis\\models\\piper）"
-        )
-        tk.Label(frm, text=status, fg="#666", font=("Segoe UI", 8)).grid(
-            row=2, column=0, columnspan=2, sticky="w", pady=(0, 8)
-        )
-
-        self.var_tts_speed = tk.DoubleVar(value=float(s.tts_length_scale))
-        self.lbl_tts_speed = tk.Label(frm, text="")
-        tk.Label(frm, text="語速").grid(row=3, column=0, sticky="w", pady=2)
-        tk.Scale(
-            frm,
-            from_=0.50,
-            to=1.50,
-            resolution=0.05,
-            orient=tk.HORIZONTAL,
-            length=260,
-            variable=self.var_tts_speed,
-            showvalue=0,
-            command=self._on_tts_speed,
-        ).grid(row=3, column=1, sticky="w", pady=2)
-        self.lbl_tts_speed.grid(row=3, column=1, sticky="e")
-        self._on_tts_speed(str(self.var_tts_speed.get()))
-
-        self.var_tts_vol = tk.DoubleVar(value=float(s.tts_volume))
-        self.lbl_tts_vol = tk.Label(frm, text="")
-        tk.Label(frm, text="音量").grid(row=4, column=0, sticky="w", pady=2)
-        tk.Scale(
-            frm,
-            from_=0.30,
-            to=3.0,
-            resolution=0.1,
-            orient=tk.HORIZONTAL,
-            length=260,
-            variable=self.var_tts_vol,
-            showvalue=0,
-            command=self._on_tts_vol,
-        ).grid(row=4, column=1, sticky="w", pady=2)
-        self.lbl_tts_vol.grid(row=4, column=1, sticky="e")
-        self._on_tts_vol(str(self.var_tts_vol.get()))
-
-        spk_rows = list_output_speakers()
-        cur_spk, spk_rows = _pick_device_label(spk_rows, s.tts_output_device)
-        self._spk_label_to_id = {lab: idx for idx, lab in spk_rows}
-        self.var_tts_spk_label = tk.StringVar(value=cur_spk)
-        tk.Label(frm, text="喇叭").grid(row=5, column=0, sticky="w", pady=2)
-        self.cmb_spk = ttk.Combobox(
-            frm,
-            textvariable=self.var_tts_spk_label,
-            values=tuple(lab for _idx, lab in spk_rows),
-            state="readonly",
-            width=48,
-        )
-        self.cmb_spk.grid(row=5, column=1, columnspan=2, sticky="ew", pady=2)
-
-        tk.Label(frm, text="語音提醒", font=("Segoe UI", 10, "bold")).grid(
-            row=6, column=0, columnspan=2, sticky="w", pady=(12, 4)
         )
         self.var_alert_voice = tk.BooleanVar(
             value=bool(getattr(s, "alert_voice", True))
         )
         tk.Checkbutton(
             frm,
-            text="啟用語音提醒（英文；Discord／Cursor）",
+            text="啟用語音提醒（短英 stub；無 message body）",
             variable=self.var_alert_voice,
-        ).grid(row=7, column=0, columnspan=2, sticky="w")
+        ).grid(row=1, column=0, columnspan=2, sticky="w")
         self.var_alert_discord = tk.BooleanVar(
             value=bool(getattr(s, "alert_discord", True))
         )
         tk.Checkbutton(
             frm,
-            text="Discord：標題未讀數增加時提醒",
+            text="Discord（任務列未讀↑）",
             variable=self.var_alert_discord,
-        ).grid(row=8, column=0, columnspan=2, sticky="w")
-        self.var_alert_cursor = tk.BooleanVar(
-            value=bool(getattr(s, "alert_cursor", True))
-        )
-        tk.Checkbutton(
-            frm,
-            text="Cursor：標題似在忙→轉閒時提醒（heuristic）",
-            variable=self.var_alert_cursor,
-        ).grid(row=9, column=0, columnspan=2, sticky="w")
+        ).grid(row=2, column=0, columnspan=2, sticky="w")
         self.var_alert_whatsapp = tk.BooleanVar(
             value=bool(getattr(s, "alert_whatsapp", True))
         )
         tk.Checkbutton(
             frm,
-            text="WhatsApp：Toast／任務列閃爍提醒",
+            text="WhatsApp（Toast／閃爍）",
             variable=self.var_alert_whatsapp,
-        ).grid(row=10, column=0, columnspan=2, sticky="w")
+        ).grid(row=3, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="Cursor（官方 stop hook → 入隊）",
+            variable=self.var_alert_cursor,
+        ).grid(row=4, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor_watch = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor_watch", False))
+        )
+        tk.Checkbutton(
+            frm,
+            text="Cursor 外望後備（Toast／標題／flash；易誤觸）",
+            variable=self.var_alert_cursor_watch,
+        ).grid(row=5, column=0, columnspan=2, sticky="w")
         self.var_alert_always = tk.BooleanVar(
             value=bool(getattr(s, "alert_always", True))
         )
         tk.Checkbutton(
             frm,
-            text="Always：Windows Toast（前景都提醒；Cursor=Done）",
+            text="Always：讀 Windows Toast（前景都提醒）",
             variable=self.var_alert_always,
-        ).grid(row=11, column=0, columnspan=2, sticky="w")
+        ).grid(row=6, column=0, columnspan=2, sticky="w")
         self.var_alert_extra = tk.StringVar(
             value=str(getattr(s, "alert_extra", "") or "")
         )
-        tk.Label(frm, text="其他 app").grid(row=12, column=0, sticky="w", pady=2)
+        tk.Label(frm, text="其他 app").grid(row=7, column=0, sticky="w", pady=2)
         tk.Entry(frm, textvariable=self.var_alert_extra, width=36).grid(
-            row=12, column=1, sticky="w", pady=2
+            row=7, column=1, sticky="w", pady=2
         )
         self.var_alert_cd = tk.StringVar(
-            value=str(float(getattr(s, "alert_cd_seconds", 8.0)))
+            value=str(float(getattr(s, "alert_cd_seconds", 0.0)))
         )
-        tk.Label(frm, text="提醒冷卻秒").grid(row=13, column=0, sticky="w", pady=2)
+        tk.Label(frm, text="冷卻秒（0=關）").grid(row=8, column=0, sticky="w", pady=2)
         tk.Entry(frm, textvariable=self.var_alert_cd, width=8).grid(
-            row=13, column=1, sticky="w", pady=2
+            row=8, column=1, sticky="w", pady=2
         )
+        self.var_alert_tts = tk.StringVar(
+            value=str(getattr(s, "alert_tts", "hermes") or "hermes")
+        )
+        tk.Label(frm, text="朗讀路徑").grid(row=9, column=0, sticky="w", pady=2)
+        ttk.Combobox(
+            frm,
+            textvariable=self.var_alert_tts,
+            values=("hermes", "piper", "off"),
+            state="readonly",
+            width=12,
+        ).grid(row=9, column=1, sticky="w", pady=2)
 
         bf = tk.Frame(frm)
-        bf.grid(row=14, column=1, sticky="w", pady=4)
-        tk.Button(bf, text="重新整理喇叭", command=self._refresh_spk_list).pack(
-            side=tk.LEFT, padx=(0, 6)
-        )
-        tk.Button(bf, text="試聽", command=self._tts_preview).pack(side=tk.LEFT)
+        bf.grid(row=10, column=0, columnspan=2, sticky="w", pady=8)
+        tk.Button(bf, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
 
         self._hint(
             frm,
-            15,
-            "Always＝讀通知中心。其他 app＝通知顯示名關鍵字，逗號分隔"
-            "（如 Telegram,Slack）。該 app 要開 Windows 桌面通知。",
+            11,
+            "Cursor 完：python -m jarvis cursor-hooks install。"
+            " hermes＝入隊朗讀；piper＝本機；off＝唔讀。",
             cols=2,
         )
-        bf2 = tk.Frame(frm)
-        bf2.grid(row=16, column=0, columnspan=2, sticky="w", pady=4)
-        tk.Button(bf2, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
         frm.columnconfigure(1, weight=1)
 
     def _build_sys_tab(self, frm: tk.Frame, s: Settings) -> None:
@@ -492,20 +446,135 @@ class SettingsWindow:
             5,
             f"settings.json：{SETTINGS_PATH}\n"
             f"profiles：{DEFAULT_PROFILES_PATH}\n"
-            "聽候：主畫面「聽候：開／關」。ASR／門檻見「進階」。",
+            "桌面捷徑 JARVIS.lnk → companion；對話用 Hermes。",
             cols=2,
         )
 
     def _build_advanced_tab(self, frm: tk.Frame, s: Settings) -> None:
+        from jarvis.mouth import available
+        from jarvis.settings import (
+            VOICE_FRONTEND_HERMES,
+            VOICE_FRONTEND_JARVIS,
+        )
+
+        # ensure voice_frontend var exists (Hermes tab also sets it)
+        if not hasattr(self, "var_voice_frontend"):
+            vf = str(
+                getattr(s, "voice_frontend", None) or VOICE_FRONTEND_HERMES
+            ).strip().lower()
+            self.var_voice_frontend = tk.StringVar(value=vf or VOICE_FRONTEND_HERMES)
+
         tk.Label(
-            frm,
-            text="語音識別／聽候",
-            font=("Segoe UI", 10, "bold"),
+            frm, text="語音前端（進階）", font=("Segoe UI", 10, "bold")
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=4)
+        vf_row = tk.Frame(frm)
+        vf_row.grid(row=1, column=0, columnspan=3, sticky="w")
+        tk.Radiobutton(
+            vf_row,
+            text="Hermes（預設；唔開 Jarvis OWW）",
+            variable=self.var_voice_frontend,
+            value=VOICE_FRONTEND_HERMES,
+        ).pack(anchor="w")
+        tk.Radiobutton(
+            vf_row,
+            text="Jarvis OWW（唔好同 Hermes Voice 一齊開）",
+            variable=self.var_voice_frontend,
+            value=VOICE_FRONTEND_JARVIS,
+        ).pack(anchor="w")
         row = self._hint(
             frm,
-            1,
-            "主畫面「聽候」掣開 OWW。預設 SenseVoice（粵語）；可切 Fun-ASR-Nano（較準較重）或雲端。text-wake 預設關。",
+            2,
+            "正常用 Hermes。淨係要本機聽候先揀 Jarvis。",
+            cols=3,
+        )
+
+        tk.Label(
+            frm, text="Piper 逃生艙（alert_tts=piper）", font=("Segoe UI", 10, "bold")
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=(8, 4))
+        row += 1
+        self.var_tts = tk.BooleanVar(value=bool(s.tts_enabled))
+        tk.Checkbutton(
+            frm,
+            text="啟用本機 Piper（Hands [ok]/舊路徑）",
+            variable=self.var_tts,
+        ).grid(row=row, column=0, columnspan=3, sticky="w")
+        row += 1
+        status = (
+            "模型：已就緒（jarvis-high）"
+            if available()
+            else "模型：未裝（%APPDATA%\\Jarvis\\models\\piper）"
+        )
+        tk.Label(frm, text=status, fg="#666", font=("Segoe UI", 8)).grid(
+            row=row, column=0, columnspan=3, sticky="w", pady=(0, 4)
+        )
+        row += 1
+        self.var_tts_speed = tk.DoubleVar(value=float(s.tts_length_scale))
+        self.lbl_tts_speed = tk.Label(frm, text="")
+        tk.Label(frm, text="語速").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Scale(
+            frm,
+            from_=0.50,
+            to=1.50,
+            resolution=0.05,
+            orient=tk.HORIZONTAL,
+            length=220,
+            variable=self.var_tts_speed,
+            showvalue=0,
+            command=self._on_tts_speed,
+        ).grid(row=row, column=1, sticky="w", pady=2)
+        self.lbl_tts_speed.grid(row=row, column=2, sticky="w")
+        self._on_tts_speed(str(self.var_tts_speed.get()))
+        row += 1
+        self.var_tts_vol = tk.DoubleVar(value=float(s.tts_volume))
+        self.lbl_tts_vol = tk.Label(frm, text="")
+        tk.Label(frm, text="音量").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Scale(
+            frm,
+            from_=0.30,
+            to=3.0,
+            resolution=0.1,
+            orient=tk.HORIZONTAL,
+            length=220,
+            variable=self.var_tts_vol,
+            showvalue=0,
+            command=self._on_tts_vol,
+        ).grid(row=row, column=1, sticky="w", pady=2)
+        self.lbl_tts_vol.grid(row=row, column=2, sticky="w")
+        self._on_tts_vol(str(self.var_tts_vol.get()))
+        row += 1
+        spk_rows = list_output_speakers()
+        cur_spk, spk_rows = _pick_device_label(spk_rows, s.tts_output_device)
+        self._spk_label_to_id = {lab: idx for idx, lab in spk_rows}
+        self.var_tts_spk_label = tk.StringVar(value=cur_spk)
+        tk.Label(frm, text="喇叭").grid(row=row, column=0, sticky="w", pady=2)
+        self.cmb_spk = ttk.Combobox(
+            frm,
+            textvariable=self.var_tts_spk_label,
+            values=tuple(lab for _idx, lab in spk_rows),
+            state="readonly",
+            width=40,
+        )
+        self.cmb_spk.grid(row=row, column=1, columnspan=2, sticky="ew", pady=2)
+        row += 1
+        bf = tk.Frame(frm)
+        bf.grid(row=row, column=1, sticky="w", pady=2)
+        tk.Button(bf, text="重新整理喇叭", command=self._refresh_spk_list).pack(
+            side=tk.LEFT, padx=(0, 6)
+        )
+        tk.Button(bf, text="試聽 Piper", command=self._tts_preview).pack(side=tk.LEFT)
+        row += 1
+
+        tk.Label(
+            frm,
+            text="Legacy 聽候／ASR",
+            font=("Segoe UI", 10, "bold"),
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        row += 1
+        row = self._hint(
+            frm,
+            row,
+            "voice_frontend=jarvis 先用。預設唔開。",
+            cols=3,
         )
 
         asr_lab = {
@@ -545,10 +614,6 @@ class SettingsWindow:
         )
         row += 1
 
-        tk.Label(frm, text="聽候（legacy）", font=("Segoe UI", 10, "bold")).grid(
-            row=row, column=0, sticky="w", pady=(12, 4)
-        )
-        row += 1
         self.var_wake_th = tk.DoubleVar(value=float(s.wake_threshold))
         self.var_wake_cd = tk.DoubleVar(value=float(s.wake_cd_seconds))
         self.var_rec_sec = tk.DoubleVar(value=float(s.record_seconds))
@@ -612,12 +677,13 @@ class SettingsWindow:
             variable=self.var_text_wake,
         ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
         row += 1
-        self._hint(
+        row = self._hint(
             frm,
             row,
-            "下拉揀輸入裝置（sounddevice 編號）。「系統預設」＝唔寫死 device。",
+            "麥克風：sounddevice 編號。「系統預設」＝唔寫死 device。",
             cols=3,
         )
+        self._build_llm_section(frm, s, start_row=row)
         frm.columnconfigure(1, weight=1)
 
     def _refresh_mic_list(self) -> None:
@@ -883,7 +949,7 @@ class SettingsWindow:
         wake_mic = self._mic_label_to_id.get(self.var_wake_mic_label.get())
         tts_spk = self._spk_label_to_id.get(self.var_tts_spk_label.get())
         try:
-            alert_cd = float(self.var_alert_cd.get() or 8.0)
+            alert_cd = float(self.var_alert_cd.get() or 0.0)
         except ValueError:
             messagebox.showerror(
                 "JARVIS 設定", "提醒冷卻秒必須係數字", parent=self.win
@@ -909,6 +975,7 @@ class SettingsWindow:
             text_wake=bool(self.var_text_wake.get()),
             hermes_enabled=bool(self.var_hermes.get()),
             hermes_trusted=False,
+            voice_frontend=str(self.var_voice_frontend.get() or "hermes"),
             hotkey=hotkey,
             tts_enabled=bool(self.var_tts.get()),
             tts_length_scale=float(self.var_tts_speed.get()),
@@ -917,10 +984,12 @@ class SettingsWindow:
             alert_voice=bool(self.var_alert_voice.get()),
             alert_discord=bool(self.var_alert_discord.get()),
             alert_cursor=bool(self.var_alert_cursor.get()),
+            alert_cursor_watch=bool(self.var_alert_cursor_watch.get()),
             alert_whatsapp=bool(self.var_alert_whatsapp.get()),
             alert_always=bool(self.var_alert_always.get()),
             alert_extra=self.var_alert_extra.get().strip(),
             alert_cd_seconds=alert_cd,
+            alert_tts=str(self.var_alert_tts.get() or "hermes").strip().lower(),
         )
         path = save_settings(s)
 

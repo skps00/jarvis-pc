@@ -39,6 +39,11 @@ DEFAULT_ASR_MODEL = "mimo-v2.5-asr"
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434/v1"
 DEFAULT_HOTKEY = "<ctrl>+<alt>+j"
 
+# Voice frontend: Hermes owns wake/barge-in; Jarvis = Hands/alerts companion
+VOICE_FRONTEND_HERMES = "hermes"
+VOICE_FRONTEND_JARVIS = "jarvis"
+VOICE_FRONTENDS = frozenset({VOICE_FRONTEND_HERMES, VOICE_FRONTEND_JARVIS})
+
 # Human labels shown in settings (value = pynput GlobalHotKeys string)
 HOTKEY_PRESETS: tuple[tuple[str, str], ...] = (
     ("Ctrl+Alt+J", "<ctrl>+<alt>+j"),
@@ -82,6 +87,8 @@ class Settings:
     hermes_enabled: bool = False
     # Trusted flag persisted as preference; shell enforces 30min + restart→Safe
     hermes_trusted: bool = False
+    # hermes = companion shell (no Jarvis OWW); jarvis = local wake fallback
+    voice_frontend: str = VOICE_FRONTEND_HERMES
     # pynput GlobalHotKeys string, e.g. <ctrl>+<alt>+j
     hotkey: str = DEFAULT_HOTKEY
     # Piper TTS (English SPEAK / ok / fail)
@@ -93,11 +100,18 @@ class Settings:
     alert_voice: bool = True
     alert_discord: bool = True
     alert_cursor: bool = True
+    # False = Cursor done via official stop hook only (recommended).
+    # True = also toast/UIA/title/flash heuristics (noisy; plan-mode fallback).
+    alert_cursor_watch: bool = False
     alert_whatsapp: bool = True
     alert_always: bool = True  # Windows Toast（前景都提醒）；Flash 作後備
     # Extra toast app name needles, comma-separated (e.g. "Telegram,Slack")
     alert_extra: str = ""
-    alert_cd_seconds: float = 8.0
+    alert_cd_seconds: float = 0.0  # 0 = no cooldown between alerts
+    # hermes = enqueue for Hermes TTS; piper = local mouth.speak; off = drop
+    alert_tts: str = "hermes"
+    alerts_mcp_port: int = 8765
+    alerts_mcp_token: str = ""  # empty → env / auto file
 
 
 _cache: Settings | None = None
@@ -199,6 +213,11 @@ def _clamp(s: Settings) -> Settings:
             s.wake_mic_device = None
     s.hermes_enabled = bool(s.hermes_enabled)
     s.hermes_trusted = bool(s.hermes_trusted)
+    vf = (getattr(s, "voice_frontend", None) or VOICE_FRONTEND_HERMES)
+    vf = str(vf).strip().lower()
+    if vf not in VOICE_FRONTENDS:
+        vf = VOICE_FRONTEND_HERMES
+    s.voice_frontend = vf
     try:
         s.hotkey = normalize_hotkey(s.hotkey or DEFAULT_HOTKEY)
     except ValueError:
@@ -222,14 +241,25 @@ def _clamp(s: Settings) -> Settings:
     s.alert_voice = bool(s.alert_voice)
     s.alert_discord = bool(s.alert_discord)
     s.alert_cursor = bool(s.alert_cursor)
+    s.alert_cursor_watch = bool(getattr(s, "alert_cursor_watch", False))
     s.alert_whatsapp = bool(getattr(s, "alert_whatsapp", True))
     s.alert_always = bool(getattr(s, "alert_always", True))
     s.alert_extra = str(getattr(s, "alert_extra", "") or "").strip()
     try:
         s.alert_cd_seconds = float(s.alert_cd_seconds)
     except (TypeError, ValueError):
-        s.alert_cd_seconds = 8.0
-    s.alert_cd_seconds = max(2.0, min(120.0, s.alert_cd_seconds))
+        s.alert_cd_seconds = 0.0
+    s.alert_cd_seconds = max(0.0, min(120.0, s.alert_cd_seconds))
+    mode = str(getattr(s, "alert_tts", "hermes") or "hermes").strip().lower()
+    if mode not in ("hermes", "piper", "off"):
+        mode = "hermes"
+    s.alert_tts = mode
+    try:
+        s.alerts_mcp_port = int(getattr(s, "alerts_mcp_port", 8765))
+    except (TypeError, ValueError):
+        s.alerts_mcp_port = 8765
+    s.alerts_mcp_port = max(1024, min(65535, s.alerts_mcp_port))
+    s.alerts_mcp_token = str(getattr(s, "alerts_mcp_token", "") or "").strip()
     return s
 
 
@@ -546,6 +576,17 @@ def uses_cloud_asr(s: Settings | None = None) -> bool:
     """True when ASR goes through openai_audio HTTP."""
     cfg = s or load_settings()
     return cfg.asr_provider == ASR_OPENAI_AUDIO
+
+
+def uses_hermes_voice_frontend(s: Settings | None = None) -> bool:
+    """True when Hermes owns mic wake (Jarvis OWW should stay off)."""
+    cfg = s or load_settings()
+    return (
+        str(getattr(cfg, "voice_frontend", VOICE_FRONTEND_HERMES) or "")
+        .strip()
+        .lower()
+        == VOICE_FRONTEND_HERMES
+    )
 
 
 def probe_connection(base_url: str, api_key: str = "") -> str:

@@ -232,6 +232,21 @@ def _kill_images(names: list[str]) -> None:
         raise OSError("; ".join(errors))
 
 
+def _win_subprocess_text_kwargs() -> dict:
+    """Decode Windows CLI (tasklist etc.) as OEM/ANSI, not UTF-8.
+
+    ``PYTHONUTF8=1`` makes ``text=True`` use utf-8 and blow up on cp950
+    ``INFO: 沒有…`` lines (byte 0xb8…).
+    """
+    if sys.platform != "win32":
+        return {"text": True}
+    return {
+        "text": True,
+        "encoding": "mbcs",
+        "errors": "replace",
+    }
+
+
 def _pids_for_images(names: list[str]) -> set[int]:
     """PIDs currently running for given image names (Windows tasklist)."""
     found: set[int] = set()
@@ -242,9 +257,9 @@ def _pids_for_images(names: list[str]) -> set[int]:
         try:
             out = subprocess.check_output(
                 ["tasklist", "/FI", f"IMAGENAME eq {name}", "/FO", "CSV", "/NH"],
-                text=True,
                 stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                **_win_subprocess_text_kwargs(),
             )
         except (OSError, subprocess.CalledProcessError):
             continue
@@ -269,9 +284,9 @@ def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.check_output(
             ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-            text=True,
             stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            **_win_subprocess_text_kwargs(),
         )
     except (OSError, subprocess.CalledProcessError):
         return False

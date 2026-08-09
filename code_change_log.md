@@ -1,5 +1,208 @@
 # 代碼變更與問題日誌
 
+## [2026-08-09 16:05:00] 操作類型：修改
+
+- **文件路徑**：scripts/cursor_hook_alert.py；src/jarvis/cursor_hooks.py；src/jarvis/alerts.py；tests/test_cursor_hooks.py
+- **變更摘要**：preToolUse（SwitchMode／Ask*）入隊；exact UIA wait 預設開（AskQuestion hook 上游缺）。
+- **遇到的問題**：
+  - 問題1：finish 得；plan／permission 無 hook（AskQuestion 已知唔 fire）
+  - 解決方案：preToolUse + UIA exact「Waiting for approval」；toast／標題仍要 watch
+  - 狀態：✅ 已解決（Ask 仍依賴 UIA／上游修）
+- **備註**：reload Cursor；重裝 hooks 已寫 hooks.json。
+
+## [2026-08-09 14:10:00] 操作類型：新增 | 修改
+
+- **文件路徑**：scripts/cursor_hook_alert.py；src/jarvis/cursor_hooks.py；src/jarvis/alerts.py；src/jarvis/settings.py；src/jarvis/settings_ui.py；src/jarvis/shell_app.py；src/jarvis/__main__.py；docs/hermes_alerts_mcp.md；tests/test_cursor_hooks.py
+- **變更摘要**：Cursor 改用官方 `stop` hook 入隊（同社區做法）；預設關 UIA／標題／toast Cursor 外望。
+- **遇到的問題**：
+  - 問題1：外望假陽（點 chat 誤觸）
+  - 解決方案：`~/.cursor/hooks.json` stop → AlertStore；`alert_cursor_watch=false`；`python -m jarvis cursor-hooks install`
+  - 狀態：✅ 已解決
+- **備註**：Plan／Waiting for approval 仍可開 `alert_cursor_watch` 做後備。需 Cursor Settings 啟用 Hooks。
+
+## [2026-08-09 13:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py；src/jarvis/shell_app.py；tests/test_alerts.py
+- **變更摘要**：UIA 淨 exact「Waiting for approval」（唔匹配聊天長文）；latch 消失要穩 6s；cursor 用語沿用 event.phrase。
+- **遇到的問題**：
+  - 問題1：點 chat 觸發——對話裡有「Waiting for approval」被 substring 命中；雙講＋誤講 finished
+  - 解決方案：exact name；sticky unlatch；shell 唔再強制 cursor=finished
+  - 狀態：✅ 已解決
+- **備註**：重開 companion。
+
+## [2026-08-09 13:08:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py；src/jarvis/settings.py；src/jarvis/settings_ui.py；tests/test_settings.py
+- **變更摘要**：提醒冷卻改 0=關；預設無 CD；唔再 floor 2 秒。
+- **遇到的問題**：
+  - 問題1：`max(2.0, cd)` 令設定 0 仍擋提醒
+  - 解決方案：clamp／configure 允許 0；default `alert_cd_seconds=0`
+  - 狀態：✅ 已解決
+- **備註**：舊設定檔若仍係 8 要喺設定改 0 或刪 key。
+
+## [2026-08-09 13:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py；tests/test_alerts.py
+- **變更摘要**：修 Cursor「好耐前做完仍講」假陽性——busy 要夠耐先計、UIA 淨認 Waiting for approval、toast 忽略開機前舊通知、拿甩寬鬆 planning。
+- **遇到的問題**：
+  - 問題1：單次標題 flicker／歷史 Switch mode 卡／Action Center 舊 Done 再出現 → 誤報 finished
+  - 解決方案：busy hold 4s；UIA 唔再用 Switch+Switch；toast 用 creation_time；busy regex 收緊
+  - 狀態：✅ 已解決
+- **備註**：重開 companion。Log `detail=` 可分路徑。
+
+## [2026-08-09 12:32:00] 操作類型：修改
+
+- **文件路徑**：scripts/hermes_alert_speak_once.py；src/jarvis/shell_app.py
+- **變更摘要**：講嘢改 in-process Piper；清 orphan poller；重啟唔再用 DETACHED_PROCESS（唔再閃 CMD）。
+- **遇到的問題**：
+  - 問題1：CREATE_NO_WINDOW 仍閃——多個 poller + `python.exe`/`ffplay`；`restart` 用 DETACHED 令旗標失效
+  - 解決方案：`mouth.speak` 優先；poller 用 pythonw；啟動前殺舊 poller；restart 淨 CREATE_NO_WINDOW|NEW_PROCESS_GROUP
+  - 狀態：✅ 已解決
+- **備註**：重開 JARVIS（結束舊 → 捷徑再開）。
+
+## [2026-08-09 12:28:00] 操作類型：修改
+
+- **文件路徑**：scripts/hermes_alert_speak_once.py
+- **變更摘要**：Hermes TTS 子行程加 CREATE_NO_WINDOW（後被 12:32 取代為 mouth 優先）。
+- **遇到的問題**：
+  - 問題1：加旗標後仍閃（orphan poller / DETACHED）
+  - 解決方案：見 12:32
+  - 狀態：✅ 已解決
+- **備註**：—
+
+## [2026-08-09 12:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/alerts.py；tests/test_alerts.py
+- **變更摘要**：Cursor「切 Plan mode」提醒——擴 toast 關鍵字＋UIA 掃「Waiting for approval」／Switch mode 卡。
+- **遇到的問題**：
+  - 問題1：Plan switch 係 IDE 內卡、唔係 Done toast → `cursor_toast_is_done` 過濾
+  - 解決方案：workbench 字串 `Waiting for approval` + `Switch mode`/`Switch`；toast 用 `cursor_needs_attention`；latch 防洗版
+  - 狀態：✅ 已解決
+- **備註**：FACT：Cursor `SWITCH_MODE` waitText=`Waiting for approval`、accept=`Switch`。重開 companion。
+
+## [2026-08-09 11:46:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/shell_app.py；src/jarvis/settings_ui.py；README.md
+- **變更摘要**：Companion GUI remake——細窗淨 log／狀態／試提醒；設定 tab＝提醒｜Hermes｜系統｜進階（埋 LLM／wake／Piper）。
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：Hands／entry 碼保留唔暴露；`test_shell_wake_restart` 仍 mock entry。
+
+## [2026-08-09 11:40:00] 操作類型：修改
+
+- **文件路徑**：%LOCALAPPDATA%\hermes\config.yaml；scripts/hermes_alert_speak_once.py；scripts/hermes_alert_poll_loop.py；docs/hermes_alerts_mcp.md
+- **變更摘要**：Hermes／alert poller 改用 Jarvis Piper `jarvis-high.onnx`（唔再 Edge）。
+- **遇到的問題**：
+  - 問題1：Hermes venv 無 piper-tts
+  - 解決方案：`uv pip install piper-tts`；config `tts.provider=piper` + voice 絕對路徑
+  - 狀態：✅ 已解決
+- **備註**：smoke synth_s≈2.6s + ffplay OK；對話 TTS 同 alerts 共用呢把聲。
+
+## [2026-08-09 11:36:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py；scripts/hermes_alert_speak_once.py；JARVIS.vbs
+- **變更摘要**：修 `[warn] alert poll: utf-8 … 0xb8`：`PYTHONUTF8=1` 下 `tasklist` 本機碼頁 decode 失敗。
+- **遇到的問題**：
+  - 問題1：`subprocess text=True` 跟 UTF-8 mode 解 `tasklist` CSV（繁中 Windows 係 mbcs／cp950）
+  - 解決方案：Windows 子行程用 `encoding=mbcs, errors=replace`；VBS 唔再設 PYTHONUTF8
+  - 狀態：✅ 已解決
+- **備註**：重開 JARVIS 捷徑生效。
+
+## [2026-08-09 11:34:00] 操作類型：修改 | 新增
+
+- **文件路徑**：JARVIS.vbs；桌面 `JARVIS.lnk`
+- **變更摘要**：桌面雙擊捷徑；VBS 會試起 Hermes gateway + `jarvis serve`（無黑窗）。已 `pip install -e ".[alerts]"` 並起 serve。
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：捷徑 → `wscript //B JARVIS.vbs`。
+
+## [2026-08-09 11:30:00] 操作類型：修改
+
+- **文件路徑**：`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Hermes_Gateway.vbs`；`%LOCALAPPDATA%\hermes\gateway-service\`
+- **變更摘要**：`hermes gateway install --force --start-now --start-on-login` — 登入自啟 gateway（Startup folder；無 UAC 故無 Scheduled Task）。
+- **遇到的問題**：
+  - 問題1：Scheduled Task 要 UAC，非互動跳過
+  - 解決方案：用 Startup `.vbs` fallback；gateway 已喺跑（PID 見 status）
+  - 狀態：✅ 已解決
+- **備註**：重開機後應由 Startup 拉起；要 Task 級可用管理員再 `hermes gateway install --force`。
+
+## [2026-08-09 10:58:00] 操作類型：新增 | 修改
+
+- **文件路徑**：scripts/hermes_alert_speak_once.py；scripts/hermes_alert_poll_loop.py；docs/hermes_alerts_mcp.md；src/jarvis/shell_app.py；%LOCALAPPDATA%\hermes\config.yaml（mcp_servers）；Hermes cron job jarvis-alerts-speak
+- **變更摘要**：配 Hermes MCP（測試 4 tools OK）＋cron 1m backup；加 ~2s poller（cron 唔得秒級）；smoke 入隊已出聲。
+- **遇到的問題**：
+  - 問題1：Hermes cron 最小間隔 1m、gateway tick ~60s，唔達 eng plan ~2s
+  - 解決方案：主路徑用 poll_loop；cron 做後備；文件寫明 FACT
+  - 狀態：✅ 已解決
+- **備註**：gateway／poller／MCP 而家背景跑緊；`hermes gateway install` 可做開機自啟（未跑）。
+
+## [2026-08-09 10:40:00] 操作類型：新增 | 修改 | 刪除
+
+- **文件路徑**：docs/hermes_speak_spike.md；src/jarvis/alert_store.py；src/jarvis/mcp_alerts_http.py；shell_app/settings/settings_ui/pyproject；attic/hands_mcp/*；docs/hermes_alerts_mcp.md；docs/hermes_architecture.md；tests/test_alert_store.py；tests/test_mcp_alerts_http.py；tests/test_alert_tts_sink.py
+- **變更摘要**：T1 spike 過（Win Hermes Edge TTS）；alerts JSONL store + HTTP MCP + `alert_tts` sink；Hands MCP 封存 attic；`jarvis-mcp` 改 alerts。
+- **遇到的問題**：
+  - 問題1：Windows Hermes 先前已刪，spike 卡 gate
+  - 解決方案：`install.ps1 -NonInteractive -SkipSetup`；`uv pip install edge-tts`；ffplay 播
+  - 狀態：✅ 已解決
+  - 問題2：`play_audio_file` 無 player
+  - 解決方案：PATH 加 WinGet ffmpeg／ffplay；doc 註明
+  - 狀態：✅ 已解決
+- **備註**：branch `feature/hermes-alerts-mcp`；Hermes cron/skill 接 peek 尚未自動化（見 docs）。
+
+## [2026-08-09 10:26:00] 操作類型：新增
+
+- **文件路徑**：TODOS.md；~/.gstack/projects/jarvis-pc/skps9-main-eng-plan-20260809.md；skps9-main-eng-review-test-plan-20260809.md
+- **變更摘要**：/plan-eng-review 完成——最小路徑 eng plan（HTTP alerts MCP、Win Hermes、archive Hands）；TODOS 加 UIA follow-up＋遠端 tunnel。
+- **遇到的問題**：
+  - 問題1：無
+  - 解決方案：—
+  - 狀態：✅ 已解決
+- **備註**：未改產品碼；下一步 spike Hermes speak。
+
+## [2026-08-08 21:43:00] 操作類型：刪除
+
+- **文件路徑**：%LOCALAPPDATA%\hermes（Windows 本機）；docs/hermes_voice_smoke.md, docs/hermes_architecture.md, code_change_log.md
+- **變更摘要**：使用者要求刪除 Windows 版 Hermes；`hermes uninstall --full`＋清殘留目錄／User PATH。
+- **遇到的問題**：
+  - 問題1：uninstall 時 `.git/objects/pack` 存取被拒
+  - 解決方案：再 `Remove-Item`／清 PATH；確認 `LOCALAPPDATA\hermes` 已不存在
+  - 狀態：✅ 已解決
+- **備註**：WSL `~/.hermes` 未動。
+
+## [2026-08-08 21:41:56] 操作類型：修改
+
+- **文件路徑**：docs/hermes_voice_smoke.md, docs/hermes_architecture.md, scripts/_hermes_wsl_primary_voice.sh, code_change_log.md
+- **變更摘要**：語音主路徑改返 **WSL Hermes**；Windows native 降為可選；真咪用 desktop `capture: client`。
+- **遇到的問題**：
+  - 問題1：使用者不要 Windows 版做主（setup 供應商重複、同 WSL 分家）
+  - 解決方案：文件／架構改 WSL-primary；WSL 0 devices 時指引 desktop client capture
+  - 狀態：⏳ 待 WSL `hermes chat`／desktop 真人 barge-in
+- **備註**：commit 仍等全通。
+
+## [2026-08-08 19:01:45] 操作類型：修改 | 新增
+
+- **文件路徑**：docs/hermes_voice_smoke.md, docs/hermes_architecture.md, scripts/_hermes_windows_voice_setup.py, code_change_log.md
+- **變更摘要**：語音穩定路徑改 **Windows native Hermes**（真咪）；WSL PortAudio 標為不穩；加 Windows voice setup helper。
+- **遇到的問題**：
+  - 問題1：WSL 裝 PortAudio 後 `sounddevice` 仍 `devices=0`
+  - 解決方案：改用 `%LOCALAPPDATA%\hermes` native；`capture: local`；文件改推薦路徑
+  - 狀態：❌ 已撤銷為主路徑（改 WSL-primary）
+- **備註**：Windows 安裝可留作備份。
+
+## [2026-08-08 18:49:22] 操作類型：新增 | 修改
+
+- **文件路徑**：docs/hermes_voice_smoke.md, docs/hermes_hands_mcp.md, docs/hermes_architecture.md, src/jarvis/mcp_hands.py, scripts/jarvis_mcp.py, src/jarvis/{settings,settings_ui,shell_app,mouth}.py, tests/{test_mcp_hands,test_settings}.py, README.md, code_change_log.md
+- **變更摘要**：Hermes-first 語音統一：Hands MCP、companion serve、voice_frontend、煙測／架構文件、喇叭 fallback 日誌。
+- **遇到的問題**：
+  - 問題1：雙 OWW 搶咪；Hands 唔可鬆白名單
+  - 解決方案：`voice_frontend=hermes` 預設關 Jarvis 聽候；MCP 只包 `execute_utterance`／Hands，確認用 MessageBox，無 YOLO
+  - 狀態：✅ 已解決（Phase0 barge-in 真人煙測仍待本機 Hermes）
+- **備註**：stdio MCP 用 stdlib JSON-RPC；WSL→Windows 見 docs/hermes_hands_mcp.md。
+
 ## [2026-08-08 15:05:37] 操作類型：修改
 
 - **文件路徑**：src/jarvis/alerts.py, tests/test_alerts.py, pyproject.toml, code_change_log.md
