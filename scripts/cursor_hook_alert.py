@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Cursor hooks → Jarvis alert queue.
 
-Handles:
-  - ``stop`` (status=completed|error) → finished / error phrase
-  - ``preToolUse`` for SwitchMode / Ask* → needs approval phrase
+``stop`` means the agent *loop ended for this turn* — NOT always “job done”.
+When Cursor pauses for SwitchMode / Ask, it often still fires ``stop`` with
+``status=completed``. We suppress that false “finished” for a short window
+after an approval-tool ``preToolUse`` (or companion UIA wait).
 
-AskQuestion often skips hooks in Cursor (upstream bug) — companion still
-uses exact UIA ``Waiting for approval`` when Cursor alerts are on.
+AskQuestion often skips hooks (upstream Cursor bug) — companion UIA
+``Waiting for approval`` remains the fallback.
 
 Install: ``python -m jarvis cursor-hooks install``
 Docs: https://cursor.com/docs/agent/hooks
@@ -22,6 +23,12 @@ _REPO = Path(__file__).resolve().parents[1]
 _SRC = _REPO / "src"
 if _SRC.is_dir() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+
+from jarvis.cursor_hooks import (  # noqa: E402
+    clear_waiting,
+    mark_waiting,
+    waiting_active,
+)
 
 _APPROVAL_TOOLS = {
     "switchmode",
@@ -51,12 +58,23 @@ def _is_approval_tool(tool_name: str) -> bool:
     return False
 
 
+def _is_tool_hook(data: dict) -> bool:
+    return bool(
+        data.get("tool_name")
+        or data.get("tool_input") is not None
+        or data.get("tool_use_id")
+        or str(data.get("hook_event_name") or "").lower()
+        in ("pretooluse", "posttooluse", "posttoolusefailure")
+    )
+
+
 def _phrase_for_payload(data: dict) -> tuple[str, str] | None:
     """Return (phrase, detail) or None to skip."""
-    tool = str(data.get("tool_name") or "")
-    if tool:
+    if _is_tool_hook(data):
+        tool = str(data.get("tool_name") or "")
         if not _is_approval_tool(tool):
             return None
+        mark_waiting()
         if "switch" in _norm_tool(tool) or "mode" in _norm_tool(tool):
             phrase = "Cursor wants plan mode."
         else:
@@ -67,14 +85,18 @@ def _phrase_for_payload(data: dict) -> tuple[str, str] | None:
     if status == "aborted":
         return None
     if status == "error":
+        clear_waiting()
         return "Cursor stopped with an error.", f"hook stop status={status}"
-    # completed, or empty stdin smoke / stop without status
-    if status in ("completed", ""):
-        return (
-            "Cursor finished its work.",
-            f"hook stop status={status or 'completed'} loop={data.get('loop_count', 0)}",
-        )
-    return None
+    if status != "completed":
+        return None
+    # Loop ended — often also when pausing for user approval.
+    if waiting_active():
+        return None
+    clear_waiting()
+    return (
+        "Cursor finished its work.",
+        f"hook stop status=completed loop={data.get('loop_count', 0)}",
+    )
 
 
 def main() -> int:
@@ -86,8 +108,11 @@ def main() -> int:
         except json.JSONDecodeError:
             data = {}
 
+    if not data:
+        sys.stdout.write("{}")
+        return 0
+
     pair = _phrase_for_payload(data)
-    # Never block tools / agent loop
     out: dict = {}
     if pair is None:
         sys.stdout.write(json.dumps(out))

@@ -139,9 +139,76 @@ def test_install_merges_stop() -> None:
             assert not is_installed()
 
 
+def test_hook_script_pretool_suppresses_following_stop() -> None:
+    script = ROOT / "scripts" / "cursor_hook_alert.py"
+    with tempfile.TemporaryDirectory() as td:
+        tp = Path(td)
+        env = {
+            **os.environ,
+            "PYTHONPATH": str(ROOT / "src"),
+            "APPDATA": str(tp),
+        }
+        r1 = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps(
+                {
+                    "hook_event_name": "preToolUse",
+                    "tool_name": "SwitchMode",
+                    "tool_input": {"target_mode_id": "plan"},
+                }
+            ),
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=30,
+        )
+        assert r1.returncode == 0, r1.stderr
+        r2 = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps({"status": "completed", "loop_count": 0}),
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=30,
+        )
+        assert r2.returncode == 0, r2.stderr
+        qpath = tp / "Jarvis" / "alerts" / "queue.jsonl"
+        rows = [
+            json.loads(line)
+            for line in qpath.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        assert len(rows) == 1
+        assert "plan" in rows[0]["phrase"].lower()
+
+
+def test_hook_empty_stdin_noop() -> None:
+    script = ROOT / "scripts" / "cursor_hook_alert.py"
+    with tempfile.TemporaryDirectory() as td:
+        tp = Path(td)
+        env = {
+            **os.environ,
+            "PYTHONPATH": str(ROOT / "src"),
+            "APPDATA": str(tp),
+        }
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            input="",
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=30,
+        )
+        assert proc.returncode == 0
+        qpath = tp / "Jarvis" / "alerts" / "queue.jsonl"
+        assert not qpath.is_file()
+
+
 if __name__ == "__main__":
     test_hook_script_enqueues_completed()
     test_hook_script_skips_aborted()
     test_hook_script_pretool_switchmode()
+    test_hook_script_pretool_suppresses_following_stop()
+    test_hook_empty_stdin_noop()
     test_install_merges_stop()
     print("all passed")

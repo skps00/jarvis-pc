@@ -1,5 +1,15 @@
 # 代碼變更與問題日誌
 
+## [2026-08-09 16:15:00] 操作類型：修改
+
+- **文件路徑**：scripts/cursor_hook_alert.py；tests/test_cursor_hooks.py
+- **變更摘要**：停誤報「finished」——`stop`≠做完；SwitchMode/Ask 後 180s 內忽略 stop→finished。
+- **遇到的問題**：
+  - 問題1：等 Plan／批准時 Cursor 仍 fire `stop status=completed` → 講 finished
+  - 解決方案：preToolUse approval 寫 suppress flag；空 stdin 唔再當 completed
+  - 狀態：✅ 已解決
+- **備註**：hook script 即時生效（唔使重裝 hooks.json）。重開 companion 唔必須。
+
 ## [2026-08-09 16:05:00] 操作類型：修改
 
 - **文件路徑**：scripts/cursor_hook_alert.py；src/jarvis/cursor_hooks.py；src/jarvis/alerts.py；tests/test_cursor_hooks.py

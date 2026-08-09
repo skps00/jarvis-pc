@@ -976,6 +976,12 @@ class AlertWatcher:
                 self._cursor_attention_gone_since = 0.0
                 if not self._cursor_attention_latched:
                     self._cursor_attention_latched = True
+                    try:
+                        from jarvis.cursor_hooks import mark_waiting
+
+                        mark_waiting()
+                    except Exception:
+                        pass
                     phrase = (
                         alert_phrase_for("cursor_plan")
                         if "plan" in (detail or "").lower()

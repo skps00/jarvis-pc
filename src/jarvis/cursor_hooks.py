@@ -1,13 +1,17 @@
-"""Install / remove Cursor ``stop`` hook → Jarvis alert queue."""
+"""Install / remove Cursor hooks → Jarvis alert queue."""
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 HOOK_MARKER = "cursor_hook_alert.py"
 HOOKS_VERSION = 1
+# After SwitchMode/Ask / UIA wait, ignore stop→finished this long.
+WAIT_SUPPRESS_S = 180.0
 
 
 def cursor_dir() -> Path:
@@ -22,6 +26,46 @@ def hooks_json_path() -> Path:
 def hook_script_src() -> Path:
     """Repo script path."""
     return Path(__file__).resolve().parents[2] / "scripts" / "cursor_hook_alert.py"
+
+
+def alerts_dir() -> Path:
+    base = os.environ.get("APPDATA") or str(Path.home() / ".jarvis")
+    return Path(base) / "Jarvis" / "alerts"
+
+
+def wait_flag_path() -> Path:
+    return alerts_dir() / "hook_wait_until.txt"
+
+
+def mark_waiting(*, seconds: float = WAIT_SUPPRESS_S) -> None:
+    """Suppress stop→finished until *seconds* elapse (approval / plan card)."""
+    path = wait_flag_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(time.time() + float(seconds)), encoding="utf-8")
+
+
+def waiting_active() -> bool:
+    path = wait_flag_path()
+    if not path.is_file():
+        return False
+    try:
+        until = float(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    if time.time() < until:
+        return True
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+    return False
+
+
+def clear_waiting() -> None:
+    try:
+        wait_flag_path().unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _python_for_hook() -> Path:
