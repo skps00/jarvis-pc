@@ -1,5 +1,31 @@
 # 代碼變更與問題日誌
 
+## [2026-08-10 10:35:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/settings.py；settings_ui.py；alerts.py；shell_app.py；scripts/cursor_hook_alert.py；tests/*
+- **變更摘要**：Cursor 觸發改可選——hooks／Toast／UIA／標題·flash；Toast 預設開（hooks 不穩時有後備）。
+- **遇到的問題**：
+  - 問題1：hooks 不穩；舊 `alert_cursor_watch` 一把關死 Toast
+  - 解決方案：拆 `alert_cursor_hooks|toast|uia|watch`；hook script 讀設定；Toast done 在 hooks 開時跳過防雙講
+  - 狀態：✅ 已解決
+- **備註**：儲存設定後 companion 會 `apply_settings`；改 hooks 勾選即時影響下次 hook 執行。
+
+## [2026-08-09 16:25:00] 操作類型：修改 | 新增
+
+- **文件路徑**：src/jarvis/alerts.py；pyproject.toml；tests/test_cursor_hooks.py；tests/test_settings_ui_smoke.py；.gstack/qa-reports/qa-report-jarvis-pc-2026-08-09.md
+- **變更摘要**：修 /qa ISSUE-001～003：UIA 等候中持續刷新 suppress；pytest 進 dev 依賴；Tk settings 無頭 smoke。
+- **遇到的問題**：
+  - 問題1：AskQuestion 上游唔 fire hooks；長等後 suppress 過期 → 假 finished
+  - 解決方案：UIA hit 期間每輪 `mark_waiting()`；hook 無法從根治上游
+  - 狀態：✅ 已解決（mitigate；上游仍缺）
+  - 問題2：venv 無 pytest
+  - 解決方案：`[dependency-groups] dev` + optional `dev`
+  - 狀態：✅ 已解決
+  - 問題3：無 Tk 視覺煙霧
+  - 解決方案：`test_settings_ui_smoke.py` 建四頁 notebook
+  - 狀態：✅ 已解決（無頭構建，非截圖）
+- **備註**：`uv sync --group dev`；長跑 companion 請重啟以載入 alerts.py。
+
 ## [2026-08-09 16:15:00] 操作類型：修改
 
 - **文件路徑**：scripts/cursor_hook_alert.py；tests/test_cursor_hooks.py

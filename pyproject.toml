@@ -16,7 +16,19 @@ dependencies = [
   "ToJyutping>=3.0,<4",
 ]
 
+[dependency-groups]
+dev = [
+  "pytest>=8.0,<9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
 [project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+]
 ear = [
   "sounddevice>=0.4.6,<0.6",
   "numpy>=1.24,<3",

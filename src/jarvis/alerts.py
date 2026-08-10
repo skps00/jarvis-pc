@@ -529,7 +529,10 @@ class AlertWatcher:
         self._enabled = True
         self._discord = True
         self._cursor = True
-        # When False, Cursor alerts come from stop hook → queue only.
+        self._cursor_hooks = True
+        self._cursor_toast = True
+        self._cursor_uia = True
+        # Title busy→idle + flash (noisy).
         self._cursor_watch = False
         self._whatsapp = True
         self._extra: list[str] = []
@@ -553,6 +556,9 @@ class AlertWatcher:
         enabled: bool | None = None,
         discord: bool | None = None,
         cursor: bool | None = None,
+        cursor_hooks: bool | None = None,
+        cursor_toast: bool | None = None,
+        cursor_uia: bool | None = None,
         cursor_watch: bool | None = None,
         whatsapp: bool | None = None,
         always: bool | None = None,
@@ -565,6 +571,12 @@ class AlertWatcher:
             self._discord = bool(discord)
         if cursor is not None:
             self._cursor = bool(cursor)
+        if cursor_hooks is not None:
+            self._cursor_hooks = bool(cursor_hooks)
+        if cursor_toast is not None:
+            self._cursor_toast = bool(cursor_toast)
+        if cursor_uia is not None:
+            self._cursor_uia = bool(cursor_uia)
         if cursor_watch is not None:
             self._cursor_watch = bool(cursor_watch)
         if whatsapp is not None:
@@ -595,7 +607,7 @@ class AlertWatcher:
         self._poll_thread.start()
         self._toast_thread.start()
         self._log(
-            "[ok] 語音提醒已開（Toast／Flash；Cursor 預設靠 stop hook）"
+            "[ok] 語音提醒已開（Cursor：設定可選 hooks／Toast／UIA／標題）"
         )
 
     def stop(self, *, join_timeout: float = 1.5) -> None:
@@ -758,18 +770,23 @@ class AlertWatcher:
                             elif (
                                 kind == "cursor"
                                 and self._cursor
-                                and self._cursor_watch
+                                and self._cursor_toast
                             ):
-                                if cursor_needs_attention(texts):
-                                    self._emit(
-                                        AlertEvent(
-                                            kind="cursor",
-                                            phrase=cursor_attention_phrase(
-                                                texts
-                                            ),
-                                            detail=detail,
-                                        )
+                                if not cursor_needs_attention(texts):
+                                    continue
+                                # Hooks own "finished" when enabled — avoid double speak.
+                                if (
+                                    self._cursor_hooks
+                                    and cursor_toast_is_done(texts)
+                                ):
+                                    continue
+                                self._emit(
+                                    AlertEvent(
+                                        kind="cursor",
+                                        phrase=cursor_attention_phrase(texts),
+                                        detail=detail,
                                     )
+                                )
                             elif kind == "whatsapp" and self._whatsapp:
                                 self._emit(
                                     AlertEvent(
@@ -967,21 +984,23 @@ class AlertWatcher:
             self._cursor_attention_latched = False
             self._cursor_attention_gone_since = 0.0
             return
-        # Exact UIA wait card (plan / ask) — always when Cursor on.
-        # Full toast/title/flash only when alert_cursor_watch.
+        # Exact UIA wait card — optional (AskQuestion often skips hooks).
+        # Title/flash only when alert_cursor_watch.
         now = time.monotonic()
-        if self._cursor:
+        if self._cursor and self._cursor_uia:
             hit, detail = _cursor_uia_waiting_approval(pids)
             if hit:
                 self._cursor_attention_gone_since = 0.0
+                # AskQuestion 常唔 fire preToolUse；UIA 卡還在就延長 suppress，
+                # 避免等超過 WAIT_SUPPRESS_S 後 stop→假 finished。
+                try:
+                    from jarvis.cursor_hooks import mark_waiting
+
+                    mark_waiting()
+                except Exception:
+                    pass
                 if not self._cursor_attention_latched:
                     self._cursor_attention_latched = True
-                    try:
-                        from jarvis.cursor_hooks import mark_waiting
-
-                        mark_waiting()
-                    except Exception:
-                        pass
                     phrase = (
                         alert_phrase_for("cursor_plan")
                         if "plan" in (detail or "").lower()
@@ -1002,6 +1021,10 @@ class AlertWatcher:
                     self._cursor_attention_gone_since = 0.0
             else:
                 self._cursor_attention_gone_since = 0.0
+        elif self._cursor_attention_latched:
+            # UIA off mid-wait — clear latch.
+            self._cursor_attention_latched = False
+            self._cursor_attention_gone_since = 0.0
         if not (self._cursor and self._cursor_watch):
             return
         titles = _list_windows_for_pids(pids)

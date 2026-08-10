@@ -100,10 +100,14 @@ class Settings:
     alert_voice: bool = True
     alert_discord: bool = True
     alert_cursor: bool = True
-    # False = Cursor done via official stop hook only (recommended).
-    # True = also toast/UIA/title/flash heuristics (noisy; plan-mode fallback).
+    # Per-source Cursor triggers (master = alert_cursor).
+    alert_cursor_hooks: bool = True  # stop / preToolUse → queue
+    alert_cursor_toast: bool = True  # Action Center toast (done / needs you)
+    alert_cursor_uia: bool = True  # exact UIA "Waiting for approval"
+    # Title busy→idle + taskbar flash (noisy; easy false positives).
     alert_cursor_watch: bool = False
     alert_whatsapp: bool = True
+
     alert_always: bool = True  # Windows Toast（前景都提醒）；Flash 作後備
     # Extra toast app name needles, comma-separated (e.g. "Telegram,Slack")
     alert_extra: str = ""
@@ -241,8 +245,12 @@ def _clamp(s: Settings) -> Settings:
     s.alert_voice = bool(s.alert_voice)
     s.alert_discord = bool(s.alert_discord)
     s.alert_cursor = bool(s.alert_cursor)
+    s.alert_cursor_hooks = bool(getattr(s, "alert_cursor_hooks", True))
+    s.alert_cursor_toast = bool(getattr(s, "alert_cursor_toast", True))
+    s.alert_cursor_uia = bool(getattr(s, "alert_cursor_uia", True))
     s.alert_cursor_watch = bool(getattr(s, "alert_cursor_watch", False))
     s.alert_whatsapp = bool(getattr(s, "alert_whatsapp", True))
+
     s.alert_always = bool(getattr(s, "alert_always", True))
     s.alert_extra = str(getattr(s, "alert_extra", "") or "").strip()
     try:

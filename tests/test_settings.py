@@ -316,6 +316,10 @@ def test_tts_settings_clamp_and_defaults():
     assert d.alert_voice is True
     assert d.alert_discord is True
     assert d.alert_cursor is True
+    assert d.alert_cursor_hooks is True
+    assert d.alert_cursor_toast is True
+    assert d.alert_cursor_uia is True
+    assert d.alert_cursor_watch is False
     assert d.alert_always is True
     assert d.alert_tts == "hermes"
     assert d.alerts_mcp_port == 8765

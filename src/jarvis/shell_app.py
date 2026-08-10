@@ -363,6 +363,9 @@ class JarvisShell:
             enabled=bool(getattr(cfg, "alert_voice", True)),
             discord=bool(getattr(cfg, "alert_discord", True)),
             cursor=bool(getattr(cfg, "alert_cursor", True)),
+            cursor_hooks=bool(getattr(cfg, "alert_cursor_hooks", True)),
+            cursor_toast=bool(getattr(cfg, "alert_cursor_toast", True)),
+            cursor_uia=bool(getattr(cfg, "alert_cursor_uia", True)),
             cursor_watch=bool(getattr(cfg, "alert_cursor_watch", False)),
             whatsapp=bool(getattr(cfg, "alert_whatsapp", True)),
             always=bool(getattr(cfg, "alert_always", True)),
@@ -372,11 +375,15 @@ class JarvisShell:
         try:
             from jarvis.cursor_hooks import is_installed as _hooks_on
 
-            if getattr(cfg, "alert_cursor", True) and not _hooks_on():
+            if (
+                getattr(cfg, "alert_cursor", True)
+                and getattr(cfg, "alert_cursor_hooks", True)
+                and not _hooks_on()
+            ):
                 self._ui_queue.put(
                     (
                         "log",
-                        "[warn] Cursor stop hook 未裝 → python -m jarvis cursor-hooks install",
+                        "[warn] Cursor hooks 已勾但未裝 → python -m jarvis cursor-hooks install",
                     )
                 )
         except Exception:

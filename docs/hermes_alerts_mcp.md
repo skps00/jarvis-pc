@@ -73,9 +73,15 @@ tts:
     voice: "C:/Users/skps9/AppData/Roaming/Jarvis/models/piper/jarvis-high.onnx"
 ```
 
-## Cursor — official stop hook (recommended)
+## Cursor triggers (pick in companion 設定 → 提醒)
 
-Same pattern as [agent-notify](https://github.com/cfngc4594/agent-notify) / [tinynudge](https://github.com/hiskuDN/claude-notify): Cursor fires `stop` → script enqueues → poller speaks.
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `alert_cursor` | `true` | Master switch |
+| `alert_cursor_hooks` | `true` | stop / preToolUse → queue (can be flaky) |
+| `alert_cursor_toast` | `true` | Action Center toast; skips Done when hooks on (no double) |
+| `alert_cursor_uia` | `true` | Exact UIA `Waiting for approval` |
+| `alert_cursor_watch` | `false` | Title busy→idle + taskbar flash (noisy) |
 
 ```powershell
 cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
@@ -88,18 +94,13 @@ Writes/merges `%USERPROFILE%\.cursor\hooks.json`:
 - `stop` → finished / error
 - `preToolUse` → SwitchMode / Ask* (when Cursor fires it)
 
-Enable **Hooks** in Cursor Settings; reload window.
+Enable **Hooks** in Cursor Settings; reload window. If hooks feel unstable: uncheck Hooks, keep Toast + UIA.
 
 | Event | Phrase |
 |-------|--------|
 | stop completed | Cursor finished its work. |
 | preToolUse SwitchMode | Cursor wants plan mode. |
-| UIA exact `Waiting for approval` | Cursor needs your approval. (fallback; AskQuestion often skips hooks — [Cursor bug](https://forum.cursor.com/t/cursor-cli-askquestion-tool-skips-pretooluse-and-posttooluse-hooks/161836)) |
-
-| Key | Values |
-|-----|--------|
-| `alert_cursor` | master + exact UIA wait |
-| `alert_cursor_watch` | `false` (default) — no Toast/title/flash. `true` = noisy fallback |
+| Toast / UIA wait | Cursor needs your approval. / plan phrase |
 
 ## Settings
 

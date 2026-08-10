@@ -16,6 +16,7 @@ Docs: https://cursor.com/docs/agent/hooks
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -99,6 +100,24 @@ def _phrase_for_payload(data: dict) -> tuple[str, str] | None:
     )
 
 
+def _hooks_enqueue_allowed() -> bool:
+    """Respect companion settings (toast-only users can disable hooks)."""
+    env = (os.environ.get("JARVIS_ALERT_CURSOR_HOOKS") or "").strip().lower()
+    if env in ("0", "false", "off", "no"):
+        return False
+    if env in ("1", "true", "on", "yes"):
+        return True
+    try:
+        from jarvis.settings import load_settings
+
+        s = load_settings(force=True)
+        return bool(getattr(s, "alert_cursor", True)) and bool(
+            getattr(s, "alert_cursor_hooks", True)
+        )
+    except Exception:
+        return True
+
+
 def main() -> int:
     raw = sys.stdin.read()
     data: dict = {}
@@ -109,6 +128,10 @@ def main() -> int:
             data = {}
 
     if not data:
+        sys.stdout.write("{}")
+        return 0
+
+    if not _hooks_enqueue_allowed():
         sys.stdout.write("{}")
         return 0
 

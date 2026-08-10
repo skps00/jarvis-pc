@@ -336,17 +336,41 @@ class SettingsWindow:
         )
         tk.Checkbutton(
             frm,
-            text="Cursor（官方 stop hook → 入隊）",
+            text="Cursor（總開關）",
             variable=self.var_alert_cursor,
         ).grid(row=4, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor_hooks = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor_hooks", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="　· Hooks（stop／preToolUse → 入隊；可唔穩）",
+            variable=self.var_alert_cursor_hooks,
+        ).grid(row=5, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor_toast = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor_toast", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="　· Toast（Action Center；hooks 開時略過 Done 防雙講）",
+            variable=self.var_alert_cursor_toast,
+        ).grid(row=6, column=0, columnspan=2, sticky="w")
+        self.var_alert_cursor_uia = tk.BooleanVar(
+            value=bool(getattr(s, "alert_cursor_uia", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="　· UIA「Waiting for approval」（Ask／Plan 後備）",
+            variable=self.var_alert_cursor_uia,
+        ).grid(row=7, column=0, columnspan=2, sticky="w")
         self.var_alert_cursor_watch = tk.BooleanVar(
             value=bool(getattr(s, "alert_cursor_watch", False))
         )
         tk.Checkbutton(
             frm,
-            text="Cursor 外望後備（Toast／標題／flash；易誤觸）",
+            text="　· 標題 busy→idle／taskbar flash（易誤觸）",
             variable=self.var_alert_cursor_watch,
-        ).grid(row=5, column=0, columnspan=2, sticky="w")
+        ).grid(row=8, column=0, columnspan=2, sticky="w")
         self.var_alert_always = tk.BooleanVar(
             value=bool(getattr(s, "alert_always", True))
         )
@@ -354,42 +378,43 @@ class SettingsWindow:
             frm,
             text="Always：讀 Windows Toast（前景都提醒）",
             variable=self.var_alert_always,
-        ).grid(row=6, column=0, columnspan=2, sticky="w")
+        ).grid(row=9, column=0, columnspan=2, sticky="w")
         self.var_alert_extra = tk.StringVar(
             value=str(getattr(s, "alert_extra", "") or "")
         )
-        tk.Label(frm, text="其他 app").grid(row=7, column=0, sticky="w", pady=2)
+        tk.Label(frm, text="其他 app").grid(row=10, column=0, sticky="w", pady=2)
         tk.Entry(frm, textvariable=self.var_alert_extra, width=36).grid(
-            row=7, column=1, sticky="w", pady=2
+            row=10, column=1, sticky="w", pady=2
         )
         self.var_alert_cd = tk.StringVar(
             value=str(float(getattr(s, "alert_cd_seconds", 0.0)))
         )
-        tk.Label(frm, text="冷卻秒（0=關）").grid(row=8, column=0, sticky="w", pady=2)
+        tk.Label(frm, text="冷卻秒（0=關）").grid(row=11, column=0, sticky="w", pady=2)
         tk.Entry(frm, textvariable=self.var_alert_cd, width=8).grid(
-            row=8, column=1, sticky="w", pady=2
+            row=11, column=1, sticky="w", pady=2
         )
         self.var_alert_tts = tk.StringVar(
             value=str(getattr(s, "alert_tts", "hermes") or "hermes")
         )
-        tk.Label(frm, text="朗讀路徑").grid(row=9, column=0, sticky="w", pady=2)
+        tk.Label(frm, text="朗讀路徑").grid(row=12, column=0, sticky="w", pady=2)
         ttk.Combobox(
             frm,
             textvariable=self.var_alert_tts,
             values=("hermes", "piper", "off"),
             state="readonly",
             width=12,
-        ).grid(row=9, column=1, sticky="w", pady=2)
+        ).grid(row=12, column=1, sticky="w", pady=2)
 
         bf = tk.Frame(frm)
-        bf.grid(row=10, column=0, columnspan=2, sticky="w", pady=8)
+        bf.grid(row=13, column=0, columnspan=2, sticky="w", pady=8)
         tk.Button(bf, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
 
         self._hint(
             frm,
-            11,
-            "Cursor 完：python -m jarvis cursor-hooks install。"
-            " hermes＝入隊朗讀；piper＝本機；off＝唔讀。",
+            14,
+            "Hooks 不穩可關 hooks、開 Toast。"
+            " Install：python -m jarvis cursor-hooks install。"
+            " hermes＝入隊；piper＝本機；off＝唔讀。",
             cols=2,
         )
         frm.columnconfigure(1, weight=1)
@@ -984,6 +1009,9 @@ class SettingsWindow:
             alert_voice=bool(self.var_alert_voice.get()),
             alert_discord=bool(self.var_alert_discord.get()),
             alert_cursor=bool(self.var_alert_cursor.get()),
+            alert_cursor_hooks=bool(self.var_alert_cursor_hooks.get()),
+            alert_cursor_toast=bool(self.var_alert_cursor_toast.get()),
+            alert_cursor_uia=bool(self.var_alert_cursor_uia.get()),
             alert_cursor_watch=bool(self.var_alert_cursor_watch.get()),
             alert_whatsapp=bool(self.var_alert_whatsapp.get()),
             alert_always=bool(self.var_alert_always.get()),
