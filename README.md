@@ -2,25 +2,27 @@
 
 **Just A Rather Very Intelligent System**
 
-Windows 本機管家：熱鍵／系統匣細窗 → **打字**指令 → 白名單 Hands（可選 Hermes／TTS）。
+Windows 本機管家：**Hermes = 對話／語音／alert TTS**；**Jarvis = 桌面提醒眼睛＋Approve 伴侶殼**。
 
-設計定稿：`%USERPROFILE%\.gstack\projects\jarvis-pc\*-design-*.md`（Status: APPROVED）
+設計定稿：`%USERPROFILE%\.gstack\projects\jarvis-pc\*-design-*.md`（Status: APPROVED）  
+架構：`docs/hermes_architecture.md`｜Alerts MCP：`docs/hermes_alerts_mcp.md`｜Speak spike：`docs/hermes_speak_spike.md`
 
 ## 快速開始
 
 ```powershell
 cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
-python -m pip install -e .
+python -m pip install -e ".[alerts]"
 
-python -m jarvis -c "開 Cursor"
+# companion（桌面提醒眼睛 + alerts MCP + poller）
 python -m jarvis serve
-# 或雙擊 JARVIS.vbs（無黑窗）；JARVIS.bat 同效果
+# 或雙擊桌面 JARVIS.lnk / JARVIS.vbs（無黑窗）
 
-# 開機自啟
-python -m jarvis autostart on
+# CLI Hands 仍可用：
+python -m jarvis -c "開 Cursor"
 ```
 
-細窗：**Enter** 送出；**Ctrl+Alt+J** 顯示／隱藏。語音識別／聽候已移除。
+細窗＝**companion**：log／狀態／試語音提醒／設定；**唔打字開 app**（對話用 Hermes）。  
+熱鍵顯示／隱藏。預設 `alert_tts=hermes`（Jarvis Piper 聲經 Hermes）。
 
 ## 能力
 
@@ -36,7 +38,8 @@ python -m jarvis autostart on
 | Chrome 還原 | `--restore-last-session`；已開則 focus；多窗冷開請用選單「結束」 |
 | Discover | 未知 `open xxx` → Start Menu／Desktop／Local Programs／Get-StartApps／Steam／Prism → 確認後寫入 profiles；目標自動拼寫／粵拼近匹配 |
 | 查詢／歧義 | 小 LLM（`.env`：`JARVIS_LLM_*`，預設 DeepSeek）；Hands 仍只信白名單 |
-| Hermes | 設定啟用後，query／閒聊經 WSL Hermes（開 App 仍本機） |
+| Hermes | Voice wake＋barge-in；query／閒聊經 bridge；Hands 經 MCP（唔經裸 terminal） |
+| 語音提醒 | Discord／WhatsApp／Cursor Toast → 短英 stub（`alert_tts=hermes` 預設） |
 
 ```powershell
 copy .env.example .env   # 填 JARVIS_LLM_API_KEY=

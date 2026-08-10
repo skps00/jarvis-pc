@@ -87,6 +87,26 @@ def test_set_busy_clears_pause_when_idle():
     assert not shell._wake_pause.is_set()
 
 
+def test_apply_settings_stops_wake_when_hermes_voice():
+    shell = mock.Mock()
+    shell._hermes_trusted_until = 0.0
+    shell._wake_on = True
+    logs: list[str] = []
+    shell.append_log = logs.append
+    shell.clear_hermes_trusted = mock.Mock()
+    shell.stop_wake = mock.Mock()
+    shell._hotkey = "<ctrl>+<alt>+j"
+    shell.hint = mock.Mock()
+
+    JarvisShell.apply_settings(
+        shell,
+        Settings(hermes_enabled=True, voice_frontend="hermes", llm_model="z"),
+        restart_wake=True,
+    )
+    shell.stop_wake.assert_called_once()
+    assert any("語音前端=Hermes" in line for line in logs)
+
+
 if __name__ == "__main__":
     test_apply_settings_logs_hermes_and_clears_trusted_when_off()
     print("ok off")
@@ -100,4 +120,6 @@ if __name__ == "__main__":
     print("ok tts hold")
     test_set_busy_clears_pause_when_idle()
     print("ok clear")
+    test_apply_settings_stops_wake_when_hermes_voice()
+    print("ok hermes voice")
     print("all passed")

@@ -1,11 +1,12 @@
-"""System tray + small command window + configurable hotkey + settings.
+"""System tray + companion panel + hotkey + settings.
 
-Tray + hotkey + settings + optional OWW wake (SenseVoice / Fun-ASR).
+Hermes owns chat/voice. This shell = desktop alerts eyes + Approve companion.
 """
 
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -28,6 +29,54 @@ def _win_kernel32():
     import ctypes
 
     return ctypes.windll.kernel32
+
+
+def _stop_alert_poller_processes(*, keep_pid: int | None = None) -> int:
+    """Kill orphan ``hermes_alert_poll_loop`` processes. Returns count stopped."""
+    if sys.platform != "win32":
+        return 0
+    import os
+    import subprocess
+
+    me = os.getpid()
+    keep = {me}
+    if keep_pid is not None:
+        keep.add(int(keep_pid))
+    flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    # CIM is more reliable than wmic on current Windows.
+    ps = (
+        "Get-CimInstance Win32_Process | "
+        "Where-Object { $_.CommandLine -match 'hermes_alert_poll_loop' } | "
+        "Select-Object -ExpandProperty ProcessId"
+    )
+    try:
+        out = subprocess.check_output(
+            ["powershell", "-NoProfile", "-Command", ps],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=flags,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return 0
+    killed = 0
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.isdigit():
+            continue
+        pid = int(line)
+        if pid in keep:
+            continue
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/F"],
+                capture_output=True,
+                creationflags=flags,
+            )
+            killed += 1
+        except OSError:
+            continue
+    return killed
 
 
 def _signal_existing_show() -> bool:
@@ -150,12 +199,12 @@ def _strip_wake_word(text: str) -> str:
 
 
 class JarvisShell:
-    """Tk command panel + optional tray; hotkey shows the panel."""
+    """Companion panel + tray; hotkey shows the panel."""
 
     def __init__(self, *, instance_lock: list | None = None) -> None:
         self.root = tk.Tk()
-        self.root.title("JARVIS · 就緒")
-        self.root.geometry("440x400+80+80")
+        self.root.title("JARVIS · companion")
+        self.root.geometry("480x420+80+80")
         self.root.attributes("-topmost", True)
         # ponytail: withdraw until hotkey — reduces focus steal when idle
         self.root.withdraw()
@@ -183,47 +232,58 @@ class JarvisShell:
         self._hotkey = cfg.hotkey
         self._alert_watcher = None
         self._alert_speaking = False
+        self._alert_poller = None
 
-        frm = tk.Frame(self.root, padx=8, pady=8)
+        frm = tk.Frame(self.root, padx=10, pady=10)
         frm.pack(fill=tk.BOTH, expand=True)
 
         self.status = tk.Label(
             frm,
-            text="● 就緒（背景運行中）",
+            text="● 就緒",
             anchor="w",
             fg="#1a5fb4",
             font=("Segoe UI", 11, "bold"),
         )
-        self.status.pack(fill=tk.X, pady=(0, 4))
+        self.status.pack(fill=tk.X, pady=(0, 2))
 
         self.hint = tk.Label(
             frm,
-            text=f"指令（Enter 送出）· {hotkey_display(self._hotkey)} 顯示／隱藏",
+            text=(
+                "companion — Hermes 對話；呢度只係桌面提醒眼睛 · "
+                f"{hotkey_display(self._hotkey)} 顯示／隱藏"
+            ),
             anchor="w",
+            fg="#555",
+            font=("Segoe UI", 9),
+            wraplength=440,
+            justify="left",
         )
-        self.hint.pack(anchor="w")
-        self.entry = tk.Entry(frm)
-        self.entry.pack(fill=tk.X, pady=(0, 6))
-        self.entry.bind("<Return>", self._on_submit)
-        self.entry.bind("<Control-v>", self._on_paste_image)
-        self.entry.bind("<Control-V>", self._on_paste_image)
+        self.hint.pack(fill=tk.X, pady=(0, 4))
 
-        self.img_status = tk.Label(
-            frm, text="", anchor="w", fg="#666", font=("Segoe UI", 8)
+        self.strip = tk.Label(
+            frm,
+            text="MCP · · ·  |  poller · · ·  |  tts · · ·",
+            anchor="w",
+            fg="#333",
+            font=("Consolas", 9),
         )
-        self.img_status.pack(fill=tk.X)
+        self.strip.pack(fill=tk.X, pady=(0, 6))
 
-        self.log = scrolledtext.ScrolledText(frm, height=10, state=tk.DISABLED)
+        # Legacy hooks kept for wake/submit code paths (not packed).
+        self.entry = None
+        self.btn_send = None
+        self.btn_wake = None
+        self.img_status = None
+
+        self.log = scrolledtext.ScrolledText(
+            frm, height=12, state=tk.DISABLED, font=("Segoe UI", 9)
+        )
         self.log.pack(fill=tk.BOTH, expand=True)
 
         btn_row = tk.Frame(frm)
-        btn_row.pack(fill=tk.X, pady=(6, 0))
-        self.btn_send = tk.Button(btn_row, text="送出", command=self._on_submit)
-        self.btn_send.pack(side=tk.LEFT)
-        self.btn_wake = tk.Button(btn_row, text="聽候：關", command=self._toggle_wake)
-        self.btn_wake.pack(side=tk.LEFT, padx=6)
-        tk.Button(btn_row, text="貼圖", command=self.attach_clipboard_image).pack(
-            side=tk.LEFT, padx=6
+        btn_row.pack(fill=tk.X, pady=(8, 0))
+        tk.Button(btn_row, text="試語音提醒", command=self.test_alert).pack(
+            side=tk.LEFT
         )
         tk.Button(btn_row, text="Hermes 網頁", command=self.open_hermes_dashboard).pack(
             side=tk.LEFT, padx=6
@@ -239,9 +299,12 @@ class JarvisShell:
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.root.after(100, self._drain_queue)
+        self.root.after(800, self._refresh_status_strip)
 
     def apply_settings(self, s: Settings, *, restart_wake: bool = False) -> None:
         """Apply runtime knobs from Settings (after save)."""
+        from jarvis.settings import uses_hermes_voice_frontend
+
         if not s.hermes_enabled:
             # only tears down if currently Trusted（免每次儲存打 WSL）
             self.clear_hermes_trusted()
@@ -251,18 +314,30 @@ class JarvisShell:
         self._wake_mic_device = s.wake_mic_device
         self._text_wake = bool(getattr(s, "text_wake", False))
         hermes_note = "Hermes=on" if s.hermes_enabled else "Hermes=off"
+        vf = getattr(s, "voice_frontend", "hermes")
+        att = getattr(s, "alert_tts", "hermes")
         self.append_log(
-            f"[ok] 已套用：{hermes_note} LLM={s.llm_model} ASR={s.asr_provider} "
-            f"thr={self._wake_threshold} CD={self._wake_cd}s "
+            f"[ok] 已套用：{hermes_note} voice={vf} alert_tts={att} "
             f"熱鍵={hotkey_display(s.hotkey)}"
         )
         if s.hotkey != self._hotkey:
             self._hotkey = s.hotkey
             self.hint.configure(
-                text=f"指令（Enter 送出）· {hotkey_display(self._hotkey)} 顯示／隱藏"
+                text=(
+                    "companion — Hermes 對話；呢度只係桌面提醒眼睛 · "
+                    f"{hotkey_display(self._hotkey)} 顯示／隱藏"
+                )
             )
             self.restart_hotkey()
-        if restart_wake and was_wake:
+        self._refresh_status_strip()
+        # Hermes voice frontend → never keep Jarvis OWW (mic fight)
+        if uses_hermes_voice_frontend(s):
+            if was_wake:
+                self.stop_wake()
+                self.append_log(
+                    "[ok] 語音前端=Hermes → 已關 Jarvis 聽候（避免搶咪）"
+                )
+        elif restart_wake and was_wake:
             self.stop_wake()
             if self._wake_thread is not None and self._wake_thread.is_alive():
                 self.append_log("[warn] 聽候線程未停清；請稍後再開")
@@ -288,15 +363,95 @@ class JarvisShell:
             enabled=bool(getattr(cfg, "alert_voice", True)),
             discord=bool(getattr(cfg, "alert_discord", True)),
             cursor=bool(getattr(cfg, "alert_cursor", True)),
+            cursor_hooks=bool(getattr(cfg, "alert_cursor_hooks", True)),
+            cursor_toast=bool(getattr(cfg, "alert_cursor_toast", True)),
+            cursor_uia=bool(getattr(cfg, "alert_cursor_uia", True)),
+            cursor_watch=bool(getattr(cfg, "alert_cursor_watch", False)),
             whatsapp=bool(getattr(cfg, "alert_whatsapp", True)),
             always=bool(getattr(cfg, "alert_always", True)),
             extra=str(getattr(cfg, "alert_extra", "") or ""),
-            cd_seconds=float(getattr(cfg, "alert_cd_seconds", 8.0)),
+            cd_seconds=float(getattr(cfg, "alert_cd_seconds", 0.0)),
         )
+        try:
+            from jarvis.cursor_hooks import is_installed as _hooks_on
+
+            if (
+                getattr(cfg, "alert_cursor", True)
+                and getattr(cfg, "alert_cursor_hooks", True)
+                and not _hooks_on()
+            ):
+                self._ui_queue.put(
+                    (
+                        "log",
+                        "[warn] Cursor hooks 已勾但未裝 → python -m jarvis cursor-hooks install",
+                    )
+                )
+        except Exception:
+            pass
+        self._ensure_alerts_mcp(cfg)
 
     def _on_alert_event(self, ev) -> None:
         """Background alert → UI queue (speak on Tk drain)."""
         self._ui_queue.put(("alert", ev))
+
+    def _ensure_alerts_mcp(self, cfg: Settings) -> None:
+        """Start loopback HTTP alerts MCP + ~2s Hermes TTS poller when hermes sink on."""
+        if not bool(getattr(cfg, "alert_voice", True)):
+            return
+        if str(getattr(cfg, "alert_tts", "hermes") or "").lower() != "hermes":
+            return
+        try:
+            from jarvis.mcp_alerts_http import resolve_token, serve_in_thread
+
+            port = int(getattr(cfg, "alerts_mcp_port", 8765) or 8765)
+            tok = resolve_token(str(getattr(cfg, "alerts_mcp_token", "") or "") or None)
+            serve_in_thread(host="127.0.0.1", port=port, token=tok)
+            self._ui_queue.put(
+                (
+                    "log",
+                    f"[ok] alerts MCP http://127.0.0.1:{port}/mcp（Hermes peek）",
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._ui_queue.put(("log", f"[fail] alerts MCP：{exc}"))
+        self._ensure_alert_poller()
+
+    def _ensure_alert_poller(self) -> None:
+        """Background ~2s peek→TTS→ack (cron alone is ≥1m)."""
+        if getattr(self, "_alert_poller", None) is not None:
+            return
+        import os
+        import subprocess
+        from pathlib import Path
+
+        from jarvis.autostart import _pythonw
+
+        script = Path(__file__).resolve().parents[2] / "scripts" / "hermes_alert_poll_loop.py"
+        if not script.is_file():
+            self._ui_queue.put(("log", f"[warn] 無 poller：{script}"))
+            return
+        # Orphan pollers (restart / Cursor) each flash console on speak.
+        killed = _stop_alert_poller_processes()
+        if killed:
+            self._ui_queue.put(("log", f"[ok] 清舊 alert poller ×{killed}"))
+        try:
+            # pythonw + CREATE_NO_WINDOW: hidden console for any console child
+            flags = 0
+            if sys.platform == "win32":
+                flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            self._alert_poller = subprocess.Popen(
+                [str(_pythonw()), str(script)],
+                cwd=str(script.parent.parent),
+                env={
+                    **dict(os.environ),
+                    "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+                    "JARVIS_ALERT_POLL_S": "2",
+                },
+                creationflags=flags,
+            )
+            self._ui_queue.put(("log", "[ok] alert poller ~2s（Jarvis Piper）"))
+        except Exception as exc:  # noqa: BLE001
+            self._ui_queue.put(("log", f"[fail] alert poller：{exc}"))
 
     def arm_hermes_trusted(self, *, minutes: float = 30.0) -> None:
         """G3: Trusted window → enable docker terminal; expires → Safe."""
@@ -375,22 +530,30 @@ class JarvisShell:
 
     def start_wake(self) -> None:
         """Background OWW wake loop."""
+        from jarvis.settings import load_settings, uses_hermes_voice_frontend
         from jarvis.wake import (
             has_custom_jarvis_model,
             run_wake_loop,
             wake_available,
         )
 
+        if uses_hermes_voice_frontend(load_settings()):
+            self.append_log(
+                "[warn] 語音前端=Hermes — Jarvis 聽候已禁；改用 Hermes wake／"
+                "docs/hermes_voice_smoke.md；要本機 OWW 請設定改「Jarvis」"
+            )
+            self._set_wake_btn("聽候：關")
+            return
         if self._wake_thread and self._wake_thread.is_alive():
             return
         if not wake_available():
             self.append_log('[warn] 聽候依賴未裝：pip install "jarvis-pc[wake]"')
-            self.btn_wake.configure(text="聽候：關")
+            self._set_wake_btn("聽候：關")
             return
         self._wake_stop.clear()
         self._wake_pause.clear()
         self._wake_on = True
-        self.btn_wake.configure(text="聽候：開")
+        self._set_wake_btn("聽候：開")
         thr = max(0.35, min(0.99, float(self._wake_threshold)))
         cd = float(self._wake_cd)
         mode = "hey+custom" if has_custom_jarvis_model() else "hey_jarvis"
@@ -445,10 +608,7 @@ class JarvisShell:
             self.append_log("[warn] 聽候線程未完全停下")
         elif th is not None:
             self._wake_thread = None
-        try:
-            self.btn_wake.configure(text="聽候：關")
-        except Exception:
-            pass
+        self._set_wake_btn("聽候：關")
         self.append_log("[ok] 聽候已關")
 
     def _on_listen_cmd(self, pcm_array: Any) -> None:
@@ -598,19 +758,23 @@ class JarvisShell:
                 self.append_log("[warn] 剪貼簿無圖（先截圖／複製圖片）")
             return False
         self._pending_image = str(path)
-        self.img_status.configure(text=f"已附圖：{path.name}（下一句送 Hermes）", fg="#1a5fb4")
+        if self.img_status is not None:
+            self.img_status.configure(
+                text=f"已附圖：{path.name}（下一句送 Hermes）", fg="#1a5fb4"
+            )
         self.append_log(f"[ok] 已附圖 {path}")
         return True
 
     def _on_paste_image(self, _event=None):
-        """Ctrl+V: if clipboard is image, attach; else let Entry paste text."""
+        """Legacy: clipboard image attach (no Entry in companion UI)."""
         if self.attach_clipboard_image(silent_fail=True):
             return "break"
         return None
 
     def _clear_pending_image(self) -> None:
         self._pending_image = None
-        self.img_status.configure(text="")
+        if self.img_status is not None:
+            self.img_status.configure(text="")
 
     def set_status(self, text: str, *, kind: str = "idle") -> None:
         """Update status bar + window title (UI thread)."""
@@ -642,8 +806,9 @@ class JarvisShell:
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
-        self.entry.focus_set()
-        self.entry.selection_range(0, tk.END)
+        if self.entry is not None:
+            self.entry.focus_set()
+            self.entry.selection_range(0, tk.END)
 
     def hide(self) -> None:
         """Hide to tray; do not quit."""
@@ -695,12 +860,13 @@ class JarvisShell:
             prev = env.get("PYTHONPATH", "")
             env["PYTHONPATH"] = str(src) if not prev else f"{src}{os.pathsep}{prev}"
 
+        # CREATE_NO_WINDOW only — DETACHED_PROCESS makes CREATE_NO_WINDOW a
+        # no-op and every console child (ffplay/python) flashes a CMD.
         flags = 0
         if sys.platform == "win32":
-            flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
-                subprocess, "CREATE_NEW_PROCESS_GROUP", 0
+            flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) | int(
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             )
-            flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
         try:
             subprocess.Popen(
@@ -720,18 +886,78 @@ class JarvisShell:
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
         state = tk.DISABLED if busy else tk.NORMAL
-        self.btn_send.configure(state=state)
-        self.entry.configure(state=state)
+        if self.btn_send is not None:
+            self.btn_send.configure(state=state)
+        if self.entry is not None:
+            self.entry.configure(state=state)
         if busy:
             self._wake_pause.set()
         elif not self._tts_holding_pause:
             self._wake_pause.clear()
+
+    def _set_wake_btn(self, text: str) -> None:
+        if self.btn_wake is not None:
+            try:
+                self.btn_wake.configure(text=text)
+            except Exception:
+                pass
+
+    def test_alert(self) -> None:
+        """Enqueue / emit one test alert phrase."""
+        w = self._alert_watcher
+        if w is None:
+            self.append_log("[warn] alert watcher 未開")
+            return
+        w.emit_test()
+        self.append_log("[ok] 已送試語音提醒")
+
+    def _refresh_status_strip(self) -> None:
+        """Update MCP / poller / alert_tts line (UI thread)."""
+        try:
+            cfg = load_settings()
+            att = str(getattr(cfg, "alert_tts", "hermes") or "hermes")
+            port = int(getattr(cfg, "alerts_mcp_port", 8765) or 8765)
+            mcp = "up" if self._mcp_port_up(port) else "down"
+            poller = "up" if self._poller_alive() else "down"
+            voice = "on" if getattr(cfg, "alert_voice", True) else "off"
+            self.strip.configure(
+                text=(
+                    f"MCP {mcp}:{port}  |  poller {poller}  |  "
+                    f"alert_tts={att}  |  alerts={voice}"
+                )
+            )
+        except Exception:
+            pass
+        try:
+            self.root.after(3000, self._refresh_status_strip)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _mcp_port_up(port: int) -> bool:
+        import socket
+
+        try:
+            with socket.create_connection(("127.0.0.1", int(port)), timeout=0.25):
+                return True
+        except OSError:
+            return False
+
+    def _poller_alive(self) -> bool:
+        p = getattr(self, "_alert_poller", None)
+        try:
+            return p is not None and p.poll() is None
+        except Exception:
+            return False
 
     def _ask_confirm(self, prompt: str) -> bool:
         return bool(messagebox.askyesno("JARVIS 確認", prompt, parent=self.root))
 
     def _on_submit(self, _event=None) -> None:
         if self._busy:
+            return
+        if self.entry is None:
+            self.append_log("[warn] companion 模式無指令欄（用 Hermes）")
             return
         text = self.entry.get().strip()
         img = self._pending_image
@@ -810,23 +1036,33 @@ class JarvisShell:
                 elif kind == "alert":
                     try:
                         from jarvis.alerts import alert_phrase_for
-                        from jarvis.mouth import available, speak
+                        from jarvis.settings import load_settings as _load_s
 
                         akind = str(getattr(payload, "kind", "") or "")
                         detail = getattr(payload, "detail", "") or ""
-                        # Always English stub — never speak toast body (often CJK)
-                        if akind in ("discord", "whatsapp", "cursor", "test"):
+                        # Prefer watcher phrase (cursor plan/approve/done differ).
+                        # Never speak toast body (often CJK).
+                        raw_phrase = (
+                            getattr(payload, "phrase", "") or ""
+                        ).strip()
+                        if akind == "test":
+                            phrase = "Alert system ready."
+                        elif (
+                            akind == "cursor"
+                            and raw_phrase
+                            and not any(
+                                "\u4e00" <= ch <= "\u9fff" for ch in raw_phrase
+                            )
+                        ):
+                            phrase = raw_phrase
+                        elif akind in ("discord", "whatsapp", "cursor", "test"):
                             phrase = alert_phrase_for(
                                 "cursor" if akind == "cursor" else akind
                             )
-                            if akind == "test":
-                                phrase = "Alert system ready."
-                            elif akind == "cursor" and "flash" in detail:
+                            if akind == "cursor" and "flash" in detail:
                                 phrase = "Cursor needs your attention."
                         else:
-                            phrase = (
-                                getattr(payload, "phrase", "") or ""
-                            ).strip()
+                            phrase = raw_phrase
                             if not phrase or any(
                                 "\u4e00" <= ch <= "\u9fff" for ch in phrase
                             ):
@@ -840,42 +1076,65 @@ class JarvisShell:
                         )
                         if not phrase:
                             self.append_log("[warn] alert 無英文句，略過朗讀")
-                        elif not available():
-                            self.append_log(
-                                "[warn] alert 無 Piper 模型，唔得朗讀"
+                            continue
+                        sink = str(
+                            getattr(_load_s(), "alert_tts", "hermes") or "hermes"
+                        ).lower()
+                        if sink == "off":
+                            self.append_log("[alert] alert_tts=off，略過")
+                        elif sink == "hermes":
+                            # CRITICAL: no mouth.speak — Hermes polls MCP
+                            from jarvis.alert_store import AlertStore
+
+                            row = AlertStore().enqueue(
+                                kind=akind or "extra",
+                                phrase=phrase,
+                                detail=str(detail),
                             )
-                        elif self._alert_speaking:
                             self.append_log(
-                                "[warn] alert TTS 忙，略過重複（只朗讀英文提醒句）"
+                                f"[alert] 入隊 Hermes id={row.id[:8]}…: {phrase}"
                             )
                         else:
-                            self._alert_speaking = True
-                            self._tts_holding_pause = True
-                            self._wake_pause.set()
-                            self.append_log(f"[alert] 朗讀: {phrase}")
+                            from jarvis.mouth import available, speak
 
-                            def _alert_speak(text: str = phrase) -> None:
-                                try:
-                                    from jarvis.mouth import last_speak_error
+                            if not available():
+                                self.append_log(
+                                    "[warn] alert 無 Piper 模型，唔得朗讀"
+                                )
+                            elif self._alert_speaking:
+                                self.append_log(
+                                    "[warn] alert TTS 忙，略過重複（只朗讀英文提醒句）"
+                                )
+                            else:
+                                self._alert_speaking = True
+                                self._tts_holding_pause = True
+                                self._wake_pause.set()
+                                self.append_log(f"[alert] 朗讀: {phrase}")
 
-                                    ok = speak(text, blocking=True, force=True)
-                                    if not ok:
-                                        err = last_speak_error() or "unknown"
-                                        self._ui_queue.put(
-                                            (
-                                                "log",
-                                                f"[fail] alert TTS：{err}",
-                                            )
+                                def _alert_speak(text: str = phrase) -> None:
+                                    try:
+                                        from jarvis.mouth import last_speak_error
+
+                                        ok = speak(
+                                            text, blocking=True, force=True
                                         )
-                                finally:
-                                    self._alert_speaking = False
-                                    self._tts_holding_pause = False
-                                    if self._wake_on and not self._busy:
-                                        self._wake_pause.clear()
+                                        if not ok:
+                                            err = last_speak_error() or "unknown"
+                                            self._ui_queue.put(
+                                                (
+                                                    "log",
+                                                    f"[fail] alert TTS：{err}",
+                                                )
+                                            )
+                                    finally:
+                                        self._alert_speaking = False
+                                        self._tts_holding_pause = False
+                                        if self._wake_on and not self._busy:
+                                            self._wake_pause.clear()
 
-                            threading.Thread(
-                                target=_alert_speak, daemon=True
-                            ).start()
+                                threading.Thread(
+                                    target=_alert_speak, daemon=True
+                                ).start()
                     except Exception as exc:  # noqa: BLE001
                         self.append_log(f"[fail] alert handler: {exc}")
                 elif kind == "wake":
@@ -906,10 +1165,7 @@ class JarvisShell:
                         self._on_listen_cmd(payload)
                 elif kind == "wake_off":
                     self._wake_on = False
-                    try:
-                        self.btn_wake.configure(text="聽候：關")
-                    except Exception:
-                        pass
+                    self._set_wake_btn("聽候：關")
                 elif kind == "show":
                     self.show()
                 elif kind == "toggle":
@@ -1011,13 +1267,17 @@ class JarvisShell:
         def on_restart(icon, item) -> None:  # noqa: ARG001
             self.root.after(0, self.restart_app)
 
+        def on_test_alert(icon, item) -> None:  # noqa: ARG001
+            self.root.after(0, self.test_alert)
+
         menu = pystray.Menu(
-            pystray.MenuItem("開啟 JARVIS", on_show, default=True),
+            pystray.MenuItem("開啟 companion", on_show, default=True),
+            pystray.MenuItem("試語音提醒", on_test_alert),
             pystray.MenuItem("設定", on_settings),
             pystray.MenuItem("重啟", on_restart),
             pystray.MenuItem("結束", on_quit),
         )
-        icon = pystray.Icon("jarvis", _make_icon_image(), "JARVIS · 就緒", menu)
+        icon = pystray.Icon("jarvis", _make_icon_image(), "JARVIS · companion", menu)
         self._tray = icon
         threading.Thread(target=icon.run, daemon=True).start()
         self._ui_queue.put(("log", "[ok] 系統匣已啟動"))
@@ -1043,11 +1303,15 @@ class JarvisShell:
             self.append_log(f"[warn] TTS 預載：{exc}")
         self._apply_alert_settings()
         self.request_show()
-        self.set_status("● 就緒（背景運行中）", kind="idle")
-        self.append_log("JARVIS Shell 就緒。輸入 open CS2 / 開 Cursor …")
+        self.set_status("● 就緒", kind="idle")
         cfg = load_settings()
-        hermes = "on" if cfg.hermes_enabled else "off"
-        self.append_log(f"[ok] 設定：LLM={cfg.llm_model} Hermes={hermes}")
+        att = getattr(cfg, "alert_tts", "hermes")
+        self.append_log("JARVIS companion 就緒 — 桌面提醒眼睛（對話用 Hermes）")
+        self.append_log(
+            f"[ok] alert_tts={att} Hermes="
+            f"{'on' if cfg.hermes_enabled else 'off'} · docs/hermes_alerts_mcp.md"
+        )
+        self._refresh_status_strip()
         self.root.mainloop()
         self._show_watch_stop.set()
         # mainloop ended (quit_app may already have stopped these)

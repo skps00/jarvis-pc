@@ -55,6 +55,18 @@ def main(argv: list[str] | None = None) -> None:
                 print("[warn] 仍有舊 JARVIS.cmd（會彈黑窗）→ 跑：python -m jarvis autostart on")
         raise SystemExit(0)
 
+    if raw and raw[0] == "cursor-hooks":
+        from jarvis import cursor_hooks as ch
+
+        sub = raw[1] if len(raw) > 1 else "status"
+        if sub in ("on", "install"):
+            print(ch.install())
+        elif sub in ("off", "uninstall"):
+            print(ch.uninstall())
+        else:
+            print(ch.status())
+        raise SystemExit(0)
+
     if raw and raw[0] == "listen":
         print(
             "[fail] 語音識別已移除。請用：python -m jarvis -c \"開 Cursor\"",
@@ -109,6 +121,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.print_help()
         print("\n啟動介面：python -m jarvis serve")
         print("開機自啟：python -m jarvis autostart on|off|status")
+        print("Cursor hook：python -m jarvis cursor-hooks install|status|off")
         print("別名：python -m jarvis aliases | aliases clear")
         raise SystemExit(2)
 

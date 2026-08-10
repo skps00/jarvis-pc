@@ -32,14 +32,28 @@ _DISCORD_TB_MARK = re.compile(
     r"discord.*(?:unread|notification|通知|尚未|未讀|未读)",
     re.I,
 )
+# Title busy — avoid bare "planning" (Plan Mode chrome / old chat noise).
 _CURSOR_BUSY = re.compile(
-    r"generating|thinking|planning|running agent|agent running|"
+    r"generating|thinking\b|running agent|agent running|"
     r"applying|working\.\.\.|composer.*run",
     re.I,
 )
+# Toast attention beyond Done (Done handled by cursor_toast_is_done).
+_CURSOR_NEEDS_YOU = re.compile(
+    r"waiting\s+for\s+approval|"
+    r"switch(?:ing)?\s+mode|"
+    r"switch\s+to\s+plan|"
+    r"plan\s*mode",
+    re.I,
+)
+_CURSOR_UIA_WAIT_EXACT = "waiting for approval"
 
 _POLL_S = 2.0
 _CURSOR_IDLE_HOLD_S = 2.0
+# Must stay "busy" this long before idle can mean "agent finished".
+_CURSOR_BUSY_HOLD_S = 4.0
+# Approval card gone this long before latch clears (click/flicker safe).
+_CURSOR_ATTENTION_CLEAR_S = 6.0
 HSHELL_FLASH = 0x8006
 WM_DESTROY = 0x0002
 WM_QUIT = 0x0012
@@ -159,6 +173,10 @@ def alert_phrase_for(kind: str, *, app_label: str = "") -> str:
         return "Discord has a new message."
     if kind == "cursor":
         return "Cursor finished its work."
+    if kind == "cursor_plan":
+        return "Cursor wants plan mode."
+    if kind == "cursor_approve":
+        return "Cursor needs your approval."
     if kind == "whatsapp":
         return "WhatsApp has a new message."
     if kind.startswith("extra:"):
@@ -184,6 +202,35 @@ def cursor_toast_is_done(texts: list[str]) -> bool:
     return False
 
 
+def cursor_needs_attention(texts: list[str]) -> bool:
+    """True if Cursor toast/UI text needs user (done, plan switch, approval)."""
+    blob = " ".join(texts or []).strip()
+    if not blob:
+        return False
+    if cursor_toast_is_done([blob]):
+        return True
+    return bool(_CURSOR_NEEDS_YOU.search(blob))
+
+
+def cursor_uia_name_is_wait(name: str) -> bool:
+    """True only for the pending-card wait label — not chat that mentions it."""
+    return (name or "").strip().casefold() == _CURSOR_UIA_WAIT_EXACT
+
+
+def cursor_attention_phrase(texts: list[str]) -> str:
+    """Pick TTS phrase from Cursor attention blob."""
+    blob = " ".join(texts or []).strip().lower()
+    if "plan" in blob and (
+        "mode" in blob or "switch" in blob or "waiting" in blob
+    ):
+        return alert_phrase_for("cursor_plan")
+    if cursor_toast_is_done(texts):
+        return alert_phrase_for("cursor")
+    if _CURSOR_NEEDS_YOU.search(blob):
+        return alert_phrase_for("cursor_approve")
+    return alert_phrase_for("cursor_approve")
+
+
 def _toast_texts(notification) -> list[str]:
     """Best-effort plain text lines from a WinRT toast notification."""
     out: list[str] = []
@@ -199,6 +246,36 @@ def _toast_texts(notification) -> list[str]:
     except Exception:
         pass
     return out
+
+
+def _toast_created_before(notification, floor) -> bool:
+    """True if toast creation_time is before *floor* (aware UTC datetime).
+
+    Stale Action Center entries sometimes reappear with a new id — still old.
+    """
+    if floor is None:
+        return False
+    try:
+        import datetime as _dt
+
+        raw = getattr(notification, "creation_time", None)
+        if raw is None:
+            return False
+        # winrt may give datetime or a tick wrapper
+        if isinstance(raw, _dt.datetime):
+            created = raw
+        else:
+            # datetimeoffset-like: .universal_time or convert via timestamp
+            ts = getattr(raw, "timestamp", None)
+            if callable(ts):
+                created = _dt.datetime.fromtimestamp(ts(), tz=_dt.timezone.utc)
+            else:
+                return False
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=_dt.timezone.utc)
+        return created < floor
+    except Exception:
+        return False
 
 
 def _list_windows_for_pids(pids: set[int]) -> list[str]:
@@ -339,6 +416,101 @@ def _discord_unread_best(*, title_n: int, tb_names: list[str] | None) -> int:
     return best
 
 
+def _cursor_hwnds_for_pids(pids: set[int]) -> list[int]:
+    """Visible top-level HWND owned by *pids*."""
+    if sys.platform != "win32" or not pids:
+        return []
+    user32 = ctypes.windll.user32
+    out: list[int] = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def _enum(hwnd, _lparam):  # noqa: ANN001
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if int(pid.value) in pids:
+            out.append(int(hwnd))
+        return True
+
+    user32.EnumWindows(_enum, 0)
+    return out
+
+
+def _cursor_uia_waiting_approval(pids: set[int]) -> tuple[bool, str]:
+    """True if Cursor shows approval card (Switch mode / Ask / MCP auth).
+
+    Matches workbench waitText ``Waiting for approval`` (not chat 'plan' noise).
+    Returns (hit, detail).
+    """
+    if sys.platform != "win32" or not pids:
+        return False, ""
+    try:
+        import comtypes  # type: ignore
+        import comtypes.client  # type: ignore
+    except ImportError:
+        return False, ""
+    try:
+        comtypes.CoInitialize()
+    except OSError:
+        pass
+    try:
+        try:
+            from comtypes.gen.UIAutomationClient import (  # type: ignore
+                CUIAutomation,
+                TreeScope_Descendants,
+                UIA_ButtonControlTypeId,
+                UIA_ControlTypePropertyId,
+                UIA_TextControlTypeId,
+            )
+        except (ImportError, OSError, AttributeError):
+            comtypes.client.GetModule("UIAutomationCore.dll")
+            from comtypes.gen.UIAutomationClient import (  # type: ignore
+                CUIAutomation,
+                TreeScope_Descendants,
+                UIA_ButtonControlTypeId,
+                UIA_ControlTypePropertyId,
+                UIA_TextControlTypeId,
+            )
+        uia = comtypes.client.CreateObject(CUIAutomation)
+        names: list[str] = []
+        for hwnd in _cursor_hwnds_for_pids(pids)[:3]:
+            try:
+                el = uia.ElementFromHandle(hwnd)
+            except Exception:
+                continue
+            for ctid in (UIA_ButtonControlTypeId, UIA_TextControlTypeId):
+                try:
+                    cond = uia.CreatePropertyCondition(
+                        UIA_ControlTypePropertyId, ctid
+                    )
+                    found = el.FindAll(TreeScope_Descendants, cond)
+                except Exception:
+                    continue
+                if found is None:
+                    continue
+                n = min(int(found.Length), 300)
+                for i in range(n):
+                    try:
+                        nm = (found.GetElement(i).CurrentName or "").strip()
+                    except Exception:
+                        continue
+                    if nm and len(nm) <= 80:
+                        names.append(nm)
+        if not names:
+            return False, ""
+        # Exact wait label only. Substring matches chat bubbles that quote
+        # "Waiting for approval" (clicking that chat → false alert).
+        planish = any(n.strip().casefold() == "plan mode" for n in names)
+        for nm in names:
+            if cursor_uia_name_is_wait(nm):
+                tag = "plan:" if planish else ""
+                return True, f"uia:{tag}{nm}"
+        return False, ""
+    except Exception:
+        return False, ""
+
+
 class AlertWatcher:
     """Shell-hook flash + title poller → English TTS alerts."""
 
@@ -357,15 +529,24 @@ class AlertWatcher:
         self._enabled = True
         self._discord = True
         self._cursor = True
+        self._cursor_hooks = True
+        self._cursor_toast = True
+        self._cursor_uia = True
+        # Title busy→idle + flash (noisy).
+        self._cursor_watch = False
         self._whatsapp = True
         self._extra: list[str] = []
         self._always = True  # toast poll (works while focused)
-        self._cd = 8.0
+        self._cd = 0.0  # 0 = no cooldown
         self._last_speak = 0.0
         self._discord_prev: int | None = None
         self._cursor_was_busy = False
+        self._cursor_busy_since = 0.0
         self._cursor_idle_since = 0.0
         self._cursor_alerted_for_cycle = False
+        self._cursor_attention_latched = False
+        self._cursor_attention_gone_since = 0.0
+        self._toast_epoch = 0.0  # monotonic; skip toasts created before start
         self._lock = threading.Lock()
         self._toast_thread: threading.Thread | None = None
 
@@ -375,6 +556,10 @@ class AlertWatcher:
         enabled: bool | None = None,
         discord: bool | None = None,
         cursor: bool | None = None,
+        cursor_hooks: bool | None = None,
+        cursor_toast: bool | None = None,
+        cursor_uia: bool | None = None,
+        cursor_watch: bool | None = None,
         whatsapp: bool | None = None,
         always: bool | None = None,
         extra: str | list[str] | None = None,
@@ -386,6 +571,14 @@ class AlertWatcher:
             self._discord = bool(discord)
         if cursor is not None:
             self._cursor = bool(cursor)
+        if cursor_hooks is not None:
+            self._cursor_hooks = bool(cursor_hooks)
+        if cursor_toast is not None:
+            self._cursor_toast = bool(cursor_toast)
+        if cursor_uia is not None:
+            self._cursor_uia = bool(cursor_uia)
+        if cursor_watch is not None:
+            self._cursor_watch = bool(cursor_watch)
         if whatsapp is not None:
             self._whatsapp = bool(whatsapp)
         if always is not None:
@@ -393,7 +586,7 @@ class AlertWatcher:
         if extra is not None:
             self._extra = parse_extra_apps(extra)
         if cd_seconds is not None:
-            self._cd = max(2.0, float(cd_seconds))
+            self._cd = max(0.0, float(cd_seconds))
 
     def start(self) -> None:
         if sys.platform != "win32":
@@ -414,7 +607,7 @@ class AlertWatcher:
         self._poll_thread.start()
         self._toast_thread.start()
         self._log(
-            "[ok] 語音提醒已開（Toast 前景＋任務列閃爍後備）"
+            "[ok] 語音提醒已開（Cursor：設定可選 hooks／Toast／UIA／標題）"
         )
 
     def stop(self, *, join_timeout: float = 1.5) -> None:
@@ -450,7 +643,11 @@ class AlertWatcher:
     def _emit(self, ev: AlertEvent, *, force: bool = False) -> None:
         now = time.monotonic()
         with self._lock:
-            if not force and now - self._last_speak < self._cd:
+            if (
+                not force
+                and self._cd > 0
+                and now - self._last_speak < self._cd
+            ):
                 return
             self._last_speak = now
         self._log(f"[alert] {ev.kind}: {ev.detail or ev.phrase}")
@@ -472,7 +669,7 @@ class AlertWatcher:
                     detail="taskbar flash",
                 )
             )
-        elif kind == "cursor" and self._cursor:
+        elif kind == "cursor" and self._cursor and self._cursor_watch:
             self._emit(
                 AlertEvent(
                     kind="cursor",
@@ -514,6 +711,12 @@ class AlertWatcher:
                 )
                 return
             seen: set[int] = set()
+            # Wall-clock floor: ignore Action Center leftovers / recycled IDs
+            # whose creation_time is before this loop started.
+            import datetime as _dt
+
+            toast_started = _dt.datetime.now(_dt.timezone.utc)
+            self._toast_epoch = time.monotonic()
             try:
                 existing = await listener.get_notifications_async(
                     NotificationKinds.TOAST
@@ -534,6 +737,8 @@ class AlertWatcher:
                             if nid in seen:
                                 continue
                             seen.add(nid)
+                            if _toast_created_before(n, toast_started):
+                                continue
                             try:
                                 app = n.app_info.display_info.display_name or ""
                             except Exception:
@@ -562,15 +767,26 @@ class AlertWatcher:
                                         detail=detail,
                                     )
                                 )
-                            elif kind == "cursor" and self._cursor:
-                                if cursor_toast_is_done(texts):
-                                    self._emit(
-                                        AlertEvent(
-                                            kind="cursor",
-                                            phrase=alert_phrase_for("cursor"),
-                                            detail=detail,
-                                        )
+                            elif (
+                                kind == "cursor"
+                                and self._cursor
+                                and self._cursor_toast
+                            ):
+                                if not cursor_needs_attention(texts):
+                                    continue
+                                # Hooks own "finished" when enabled — avoid double speak.
+                                if (
+                                    self._cursor_hooks
+                                    and cursor_toast_is_done(texts)
+                                ):
+                                    continue
+                                self._emit(
+                                    AlertEvent(
+                                        kind="cursor",
+                                        phrase=cursor_attention_phrase(texts),
+                                        detail=detail,
                                     )
+                                )
                             elif kind == "whatsapp" and self._whatsapp:
                                 self._emit(
                                     AlertEvent(
@@ -762,17 +978,67 @@ class AlertWatcher:
         pids = pids_fn(["Cursor.exe"])
         if not pids:
             self._cursor_was_busy = False
+            self._cursor_busy_since = 0.0
             self._cursor_idle_since = 0.0
             self._cursor_alerted_for_cycle = False
+            self._cursor_attention_latched = False
+            self._cursor_attention_gone_since = 0.0
+            return
+        # Exact UIA wait card — optional (AskQuestion often skips hooks).
+        # Title/flash only when alert_cursor_watch.
+        now = time.monotonic()
+        if self._cursor and self._cursor_uia:
+            hit, detail = _cursor_uia_waiting_approval(pids)
+            if hit:
+                self._cursor_attention_gone_since = 0.0
+                # AskQuestion 常唔 fire preToolUse；UIA 卡還在就延長 suppress，
+                # 避免等超過 WAIT_SUPPRESS_S 後 stop→假 finished。
+                try:
+                    from jarvis.cursor_hooks import mark_waiting
+
+                    mark_waiting()
+                except Exception:
+                    pass
+                if not self._cursor_attention_latched:
+                    self._cursor_attention_latched = True
+                    phrase = (
+                        alert_phrase_for("cursor_plan")
+                        if "plan" in (detail or "").lower()
+                        else alert_phrase_for("cursor_approve")
+                    )
+                    self._emit(
+                        AlertEvent(
+                            kind="cursor",
+                            phrase=phrase,
+                            detail=detail or "uia approval",
+                        )
+                    )
+            elif self._cursor_attention_latched:
+                if self._cursor_attention_gone_since <= 0:
+                    self._cursor_attention_gone_since = now
+                elif now - self._cursor_attention_gone_since >= _CURSOR_ATTENTION_CLEAR_S:
+                    self._cursor_attention_latched = False
+                    self._cursor_attention_gone_since = 0.0
+            else:
+                self._cursor_attention_gone_since = 0.0
+        elif self._cursor_attention_latched:
+            # UIA off mid-wait — clear latch.
+            self._cursor_attention_latched = False
+            self._cursor_attention_gone_since = 0.0
+        if not (self._cursor and self._cursor_watch):
             return
         titles = _list_windows_for_pids(pids)
         busy = cursor_titles_busy(titles)
-        now = time.monotonic()
         if busy:
-            self._cursor_was_busy = True
+            if self._cursor_busy_since <= 0:
+                self._cursor_busy_since = now
+            elif now - self._cursor_busy_since >= _CURSOR_BUSY_HOLD_S:
+                # Sustained busy only — one-poll flicker must not arm "done".
+                self._cursor_was_busy = True
             self._cursor_idle_since = 0.0
             self._cursor_alerted_for_cycle = False
             return
+        self._cursor_busy_since = 0.0
         if not self._cursor_was_busy:
             return
         if self._cursor_idle_since <= 0:

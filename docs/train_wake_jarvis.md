@@ -79,9 +79,15 @@ cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
 
 ## 聽候點解（而家 main）
 
-1. **OWW**：`hey_jarvis` + 自訂 `jarvis.onnx`（若有）
-2. **STT 後備**：OWW 唔夠分時短窗 ASR（淨 Jarvis 過渡用；有強 onnx 後可少靠）
-3. 唔好開兩個 `jarvis serve`（搶 mic）
+1. **推薦**：Hermes Voice `hey_jarvis`／自訓 onnx + `voice.barge_in`（見 `docs/hermes_voice_smoke.md`）；Jarvis `voice_frontend=hermes`
+2. **Jarvis OWW 後備**：設定語音前端=Jarvis → `hey_jarvis` + 自訂 `jarvis.onnx`（若有）
+3. **STT 後備**：OWW 唔夠分時短窗 ASR（淨 Jarvis 過渡用；有強 onnx 後可少靠）
+4. 唔好開兩個 wake（Hermes + Jarvis）搶 mic；亦唔好開兩個 `jarvis serve`
+
+### 掛自訓 onnx 去 Hermes
+
+模型：`%APPDATA%\Jarvis\wake\jarvis.onnx`  
+喺 Hermes `config.yaml` 將 `wake_word.openwakeword.model`（或文檔嘅 `model_path`）改成該檔**絕對路徑**（例 `C:/Users/.../AppData/Roaming/Jarvis/wake/jarvis.onnx`）。欄位名跟 Hermes 版本。
 
 ---
 
@@ -90,3 +96,4 @@ cd C:\Users\skps9\Documents\Code_Project\jarvis-pc
 - 檔名／stem 要含 `jarvis`（例 `jarvis.onnx`）
 - 負樣本唔好用同音近義（官方／CoreWorx：用 hello／alexa 等明顯唔同句）
 - 第一次可先 300 段試跑；**1000+ 通常更準、更穩**
+- SOUL／個性：Hermes profile 或 SOUL.md 寫「Jarvis」短英管家口吻；Jarvis Piper 只讀英文 SPEAK／alert

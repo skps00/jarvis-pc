@@ -253,6 +253,13 @@ def speak(
                         return False
                     try:
                         _play_once(a16, samplerate=sr, device=None)
+                        # Selected speaker failed → system default (log, don't silent-swap)
+                        note = (
+                            f"TTS device fallback: idx={out_dev} → default "
+                            f"({type(exc1).__name__}: {exc1})"
+                        )
+                        _last_error = note
+                        print(f"[mouth] {note}", file=sys.stderr)
                         return True
                     except Exception as exc2:
                         _last_error = (
