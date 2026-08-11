@@ -78,10 +78,12 @@ tts:
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `alert_cursor` | `true` | Master switch |
-| `alert_cursor_hooks` | `true` | stop / preToolUse → queue (can be flaky) |
-| `alert_cursor_toast` | `true` | Action Center toast; skips Done when hooks on (no double) |
-| `alert_cursor_uia` | `true` | Exact UIA `Waiting for approval` |
+| `alert_cursor_hooks` | `true` | stop / preToolUse → queue. **Windows:** install uses `cmd /c … python -u` ([forum](https://forum.cursor.com/t/hooks-not-working-on-windows/149509)). |
+| `alert_cursor_toast` | `true` | Action Center; skips Done only if a hook fired in last ~30s |
+| `alert_cursor_uia` | `true` | Exact UIA `Waiting for approval` — keep ON if Ask/plan silent |
 | `alert_cursor_watch` | `false` | Title busy→idle + taskbar flash (noisy) |
+
+Debug hooks: Cursor **View → Output → Hooks**. Reinstall after pull: `python -m jarvis cursor-hooks install` then reload window.
 
 ```powershell
 cd C:\Users\skps9\Documents\Code_Project\jarvis-pc

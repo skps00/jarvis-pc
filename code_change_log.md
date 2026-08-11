@@ -1,5 +1,18 @@
 # 代碼變更與問題日誌
 
+## [2026-08-11 11:40:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/cursor_hooks.py；scripts/cursor_hook_alert.py；src/jarvis/alerts.py；docs/hermes_alerts_mcp.md；tests/test_cursor_hooks.py
+- **變更摘要**：修 Cursor 全靜——Windows hooks 加 `cmd /c`；Toast Done 只喺 hook 近期有心跳先略過（唔再因 hooks 開關而死）。
+- **遇到的問題**：
+  - 問題1：網上／論壇：Windows hooks 常要 `cmd /c`；pythonw／無 shell 會唔跑
+  - 解決方案：`hook_command()` → `cmd /c … python.exe -u script`
+  - 狀態：✅ 已解決（需 reinstall + reload Cursor）
+  - 問題2：`alert_cursor_hooks=true` 時 Toast Done 一律 skip → hooks 死就全靜；用戶 UIA=false
+  - 解決方案：只在 `hook_last_fire` <30s 先 skip Done
+  - 狀態：✅ 已解決
+- **備註**：FACT 用戶 settings `alert_cursor_uia=false`；建議開返。View→Output→Hooks 驗。
+
 ## [2026-08-10 10:35:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/settings.py；settings_ui.py；alerts.py；shell_app.py；scripts/cursor_hook_alert.py；tests/*

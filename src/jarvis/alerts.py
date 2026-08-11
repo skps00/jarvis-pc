@@ -774,12 +774,21 @@ class AlertWatcher:
                             ):
                                 if not cursor_needs_attention(texts):
                                     continue
-                                # Hooks own "finished" when enabled — avoid double speak.
-                                if (
-                                    self._cursor_hooks
-                                    and cursor_toast_is_done(texts)
-                                ):
-                                    continue
+                                # Skip toast Done only if a hook just fired (avoid
+                                # silence when hooks are enabled but never run on Windows).
+                                if cursor_toast_is_done(texts):
+                                    try:
+                                        from jarvis.cursor_hooks import (
+                                            hook_fired_recently,
+                                        )
+
+                                        if (
+                                            self._cursor_hooks
+                                            and hook_fired_recently()
+                                        ):
+                                            continue
+                                    except Exception:
+                                        pass
                                 self._emit(
                                     AlertEvent(
                                         kind="cursor",

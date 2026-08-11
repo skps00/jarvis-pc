@@ -121,6 +121,16 @@ def test_hook_script_pretool_switchmode() -> None:
         assert "plan" in rows[-1]["phrase"].lower()
 
 
+def test_hook_command_windows_uses_cmd() -> None:
+    if sys.platform != "win32":
+        return
+    cmd = hook_command()
+    assert cmd.lower().startswith("cmd /c")
+    assert HOOK_MARKER in cmd
+    assert " -u " in cmd
+    assert "pythonw" not in cmd.lower()
+
+
 def test_install_merges_stop() -> None:
     with tempfile.TemporaryDirectory() as td:
         home_cursor = Path(td) / ".cursor"

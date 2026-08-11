@@ -27,6 +27,7 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
 
 from jarvis.cursor_hooks import (  # noqa: E402
     clear_waiting,
+    mark_hook_fired,
     mark_waiting,
     waiting_active,
 )
@@ -153,6 +154,7 @@ def main() -> int:
             app="Cursor",
             detail=detail[:200],
         )
+        mark_hook_fired()
     except Exception as exc:  # noqa: BLE001
         sys.stderr.write(f"[jarvis-hook] enqueue fail: {exc}\n")
     sys.stdout.write(json.dumps(out))
