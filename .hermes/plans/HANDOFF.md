@@ -75,6 +75,11 @@
 5. **CI**：全套 **347 passed**（+30 新 tests）+ eval_gate --all 全綠（golden 28 files 316 passed + py_compile 33 / regression 16 / stress 65）+ `--lock` 一致（30 files）；新 hash `05ec926cefc0e5e1`
 6. **pass2 新脆弱位**：⑬ stt_stats 格式耦合 ⑭ mouth tts_ok 格式依賴 ⑮ 跨午夜 edge ⑯ suggestions 冇 consumer（記入 REMAINING_WORK）
 
+### Discord Voice Out + CPU temp session（2026-09-01 凌晨）
+1. **Discord Voice Out ✅ live**：Hermes 每次 Discord 回覆 SK 自動用 Jarvis TTS 唸英文短版（skill `jarvis-voice-out`；上個 session 尾已接好，SK 實測聽到聲）
+2. **CPU temp ✅（N/A → 實時 ~70°C）**：裝 LibreHardwareMonitor（portable `%LOCALAPPDATA%\LibreHardwareMonitor`，tray-only 54MB）+ PawnIO kernel driver（AMD 讀溫必要；setup flag `-silent` 唔係 `/S`）+ LHM Remote Web Server 8085（config key `runWebServerMenuItem=true`）+ `hw_monitor.py` CPU temp WMI→LHM HTTP fallback + Task Scheduler「JARVIS LHM Sensor」onlogon /rl highest（admin 先讀到 AMD sensor）。**坑**：兩個 LHM instance race = 讀 0（GitHub #2363）；AMD 冇 MSAcpi thermal zone（WMI 一定 None）。完整方案已寫入 skill `windows-hardware-monitoring`
+3. HUD main.js 每 2s poll 自動攞到 CPU TEMP（SK 確認 HUD 有數）
+
 ### 脆弱位修復 session（2026-08-31 晚，SK「find 脆弱位就即刻修，修到冇 bug」+「any code 改動一律經 cursor」）
 1. **Cursor review**（cursor-review-e2e3-2026-08-31.md）：**11 findings（2 HIGH / 5 MED / 4 LOW）全部處理**
 2. **HIGH #1**：`_compute_latency` midnight `0.0` truthiness（`not ft` 食咗 00:00:00）→ `ft is None`
@@ -99,7 +104,7 @@
 - ✅ **E3 Response 延遲**：已完成（mouth tts_ok timestamp + self_monitor resp_lat）——>5s 會 notable
 - ✅ **文檔**：docs/hermes-bridge-auth.md + docs/settings-field-map.md
 - 🟡 **等數據**：self_monitor.log / clarify_log / stt_stats.log 累積 ≥7 日先有真 finding signal（而家 fingerprint 多數 NONE）
-- 🟡 **G 人手實測**（等 SK）：Tier 1（BGM 誤觸 / 喊完→有聲 ≤3s）、聲紋 enrollment（要新 mic）、AEC voice call、Settings tab（HTML 已齊）
+- 🟡 **G 人手實測（等新 mic——SK 2026-09-01 決定買新 mic，mic 相關全部 pause）**：headset wake / Tier 1（BGM 誤觸、喊完→有聲 ≤3s）/ 聲紋 enrollment（要新 mic）/ AEC voice call / Settings tab（HTML 已齊——呢項唔關 mic 事，可以隨時測）
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
 
