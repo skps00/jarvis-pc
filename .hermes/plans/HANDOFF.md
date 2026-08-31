@@ -17,7 +17,13 @@
 - **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
 - **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
 - **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**
-- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `1061218`（onnxruntime pin）；working tree 乾淨
+- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `4f8d048`（HANDOFF 補返 Discord Voice Out + CPU temp session）；working tree 乾淨
+
+## 今日（2026-09-01 daily reset 後 session）
+
+- **check history 補返 HANDOFF**：上個 session 尾做咗嘅 Discord Voice Out + CPU temp 未入 HANDOFF——已補（commit `4f8d048`）
+- **SK 計劃買新 mic**（上個 session 尾已講：「wait me buy a new mic first」）——mic 相關全部 pause（wake 實測 / 聲紋 enrollment / AEC voice call / Tier 1 / STT 準確度）
+- **what next 選項（SK 未揀，下次 session 問）**：Settings tab 人手實測（唔關 mic，隨時可測）/ Iron Man 視覺完整化（SK 上次 cancel 過）/ 等數據累積（≥7 日先接 cron monitor）
 
 ## 今日完成（2026-08-31）
 
