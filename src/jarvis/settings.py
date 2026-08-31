@@ -136,6 +136,8 @@ class Settings:
     mage_prompt_default: str = "Describe this image in detail."
     # F3 (2026-08-29): pycaw voice-call detect failure → fail-closed (mute passive TTS)
     vc_fail_closed: bool = False
+    # Discord Voice Out: Hermes Discord reply → JARVIS speaks English short version
+    discord_voice_out: bool = True
 
 
 _cache: Settings | None = None

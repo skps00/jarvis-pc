@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>JARVIS HUD vD — Data-Viz Concept</title>
+<style>
+  /* 概念 prototype：每個視覺元素綁定真實數據（假數據示範） */
+  :root {
+    --blue: #00aaf8; --blue-dim: rgba(0,170,248,0.25);
+    --white: rgba(234,246,255,0.95);
+    --glow: rgba(0,170,248,0.55);
+    --amber: #ffb300; --red: #ff4d5e; --green: #19f0d8;
+    --dark: #020509;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width: 1280px; height: 720px; overflow: hidden;
+    background: radial-gradient(ellipse at center, #04101c 0%, var(--dark) 70%);
+    color: var(--white);
+    font-family: 'Orbitron', 'Rajdhani', monospace;
+    position: relative;
+  }
+
+  /* 掃描線背景 */
+  .scanlines {
+    position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(90,212,255,0.03) 0px, transparent 2px, transparent 4px);
+    animation: scan 9s linear infinite;
+  }
+  @keyframes scan { from { background-position-y: 0; } to { background-position-y: 60px; } }
+
+  /* ===== 中央核心 + 數據環 ===== */
+  .stage { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; }
+
+  .health-ring { position: absolute; width: 340px; height: 340px; border-radius: 50%; }
+  /* 四象限負載環：conic-gradient 段 = CPU/GPU/RAM/NET 使用率（假數據） */
+  .health-ring .seg {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      var(--green) 0deg 63deg, transparent 63deg 90deg,
+      var(--green) 90deg 153deg, transparent 153deg 180deg,
+      var(--amber) 180deg 234deg, transparent 234deg 270deg,
+      var(--green) 270deg 288deg, transparent 288deg 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+    opacity: 0.9;
+    animation: spin 40s linear infinite;
+  }
+  .quad-labels { position: absolute; inset: 0; border-radius: 50%; }
+  .quad-labels span {
+    position: absolute; font-size: 10px; letter-spacing: 2px; color: rgba(234,246,255,0.7);
+  }
+  .quad-labels .q1 { top: 6%; left: 50%; transform: translateX(-50%); }   /* CPU */
+  .quad-labels .q2 { top: 50%; right: 2%; transform: translateY(-50%); }   /* GPU */
+  .quad-labels .q3 { bottom: 6%; left: 50%; transform: translateX(-50%); } /* RAM */
+  .quad-labels .q4 { top: 50%; left: 2%; transform: translateY(-50%); }    /* NET */
+
+  /* 雷達掃描（扇形） */
+  .radar {
+    position: absolute; inset: 26px; border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(0,170,248,0.30), transparent 70deg);
+    animation: spin 4s linear infinite;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .radar-ring { position: absolute; inset: 26px; border-radius: 50%; border: 1px solid var(--blue-dim); }
+  .radar-tick { position: absolute; width: 2px; height: 6px; background: rgba(0,170,248,0.5); left: 50%; top: 26px; transform-origin: 0 318px; }
+  .radar-tick:nth-child(2) { transform: rotate(30deg); } .radar-tick:nth-child(3) { transform: rotate(60deg); }
+  .radar-tick:nth-child(4) { transform: rotate(90deg); } .radar-tick:nth-child(5) { transform: rotate(120deg); }
+  .radar-tick:nth-child(6) { transform: rotate(150deg); } .radar-tick:nth-child(7) { transform: rotate(180deg); }
+  .radar-tick:nth-child(8) { transform: rotate(210deg); } .radar-tick:nth-child(9) { transform: rotate(240deg); }
+  .radar-tick:nth-child(10) { transform: rotate(270deg); } .radar-tick:nth-child(11) { transform: rotate(300deg); }
+  .radar-tick:nth-child(12) { transform: rotate(330deg); }
+
+  /* 核心 */
+  .core { position: relative; width: 130px; height: 130px; border-radius: 50%;
+    border: 2px solid rgba(0,229,255,0.5);
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle, rgba(0,170,248,0.25), rgba(2,10,20,0.8) 70%);
+    box-shadow: 0 0 34px var(--glow), inset 0 0 24px rgba(0,170,248,0.3);
+    animation: core-idle 4.5s ease-in-out infinite;
+    z-index: 3;
+  }
+  @keyframes core-idle { 0%,100% { box-shadow: 0 0 14px var(--glow); } 50% { box-shadow: 0 0 44px rgba(0,170,248,0.5); } }
+  .core .label { font-size: 15px; letter-spacing: 5px; color: var(--white); text-shadow: 0 0 12px var(--glow); }
+  .core .sub { position:absolute; bottom:-24px; font-size: 9px; letter-spacing: 3px; color: rgba(234,246,255,0.6); }
+
+  /* ===== 狀態光環（呼吸 = JARVIS 狀態）===== */
+  .status-ring {
+    position: absolute; inset: -14px; border-radius: 50%;
+    border: 1px solid rgba(0,170,248,0.4);
+    animation: status-breathe 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes status-breathe { 0%,100% { transform: scale(1); opacity: 0.35; } 50% { transform: scale(1.05); opacity: 0.75; } }
+  .status-badge { position: absolute; top: 28%; right: 20%; font-size: 10px; letter-spacing: 2px; color: var(--green); text-shadow: 0 0 8px rgba(25,240,216,0.6); }
+
+  /* ===== 數據流（兩側即時事件）===== */
+  .stream { position: absolute; top: 8%; bottom: 8%; width: 220px; display:flex; flex-direction:column; gap: 8px; opacity: 0.85; }
+  .stream.left { left: 4%; } .stream.right { right: 4%; text-align: right; }
+  .stream .head { font-size: 10px; letter-spacing: 3px; color: var(--blue); opacity: 0.8; margin-bottom: 4px; }
+  .stream .ev {
+    font-size: 11px; color: rgba(234,246,255,0.75);
+    border-left: 2px solid var(--blue-dim); padding-left: 8px;
+    animation: ev-in 0.5s ease-out;
+    opacity: 0.7;
+  }
+  .stream.right .ev { border-left: none; border-right: 2px solid var(--blue-dim); padding-left: 0; padding-right: 8px; }
+  .stream .ev b { color: var(--blue); font-weight: 400; }
+  .stream .ev .t { color: rgba(234,246,255,0.35); font-size: 9px; }
+  @keyframes ev-in { from { opacity: 0; transform: translateY(-6px); } }
+
+  /* 頂部狀態 */
+  .topbar { position: absolute; top: 3%; left: 3%; right: 3%; display:flex; justify-content:space-between; font-size: 12px; letter-spacing: 2px; color: rgba(234,246,255,0.8); z-index: 5; }
+  .topbar .clock { color: var(--white); text-shadow: 0 0 12px var(--glow); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="scanlines"></div>
+  <div class="topbar">
+    <span>J.A.R.V.I.S. <span style="color:#19f0d8">●LIVE</span></span>
+    <span class="clock">02:30:15</span>
+  </div>
+
+  <!-- 中央核心 + 數據環 -->
+  <div class="stage">
+    <div class="health-ring">
+      <div class="seg"></div>
+      <div class="quad-labels">
+        <span class="q1">CPU 42%</span><span class="q2">GPU 21%</span>
+        <span class="q3">RAM 58%</span><span class="q4">NET 1.2M</span>
+      </div>
+      <div class="radar-ring"></div>
+      <div class="radar-tick"></div><div class="radar-tick"></div><div class="radar-tick"></div>
+      <div class="radar-tick"></div><div class="radar-tick"></div><div class="radar-tick"></div>
+      <div class="radar-tick"></div><div class="radar-tick"></div><div class="radar-tick"></div>
+      <div class="radar-tick"></div><div class="radar-tick"></div><div class="radar-tick"></div>
+      <div class="radar-tick"></div>
+      <div class="radar"></div>
+      <div class="core">
+        <div class="status-ring"></div>
+        <span class="label">JARVIS</span>
+        <span class="sub">LISTENING</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-badge">● WAKE ON</div>
+
+  <!-- 左數據流 -->
+  <div class="stream left">
+    <div class="head">EVENT LOG</div>
+    <div class="ev"><b>wake_fire</b> <span class="t">02:29:58</span></div>
+    <div class="ev"><b>alert</b> game ready <span class="t">02:28:12</span></div>
+    <div class="ev"><b>open</b> Cursor <span class="t">02:25:40</span></div>
+    <div class="ev"><b>tts</b> ok <span class="t">02:24:05</span></div>
+    <div class="ev"><b>stt</b> GPU 0.03 <span class="t">02:23:47</span></div>
+  </div>
+
+  <!-- 右數據流 -->
+  <div class="stream right">
+    <div class="head">SENSORS</div>
+    <div class="ev">GPU <b>44°C</b> <span class="t">21%</span></div>
+    <div class="ev">CPU <b>N/A</b> <span class="t">—</span></div>
+    <div class="ev">VRAM <b>4.6/32.6G</b> <span class="t">14%</span></div>
+    <div class="ev">POWER <b>106W</b> <span class="t">/600W</span></div>
+    <div class="ev">MIC <b>-38dB</b> <span class="t">live</span></div>
+  </div>
+</body>
+</html>

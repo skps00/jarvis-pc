@@ -458,6 +458,10 @@
       <label for="vc_fail_closed">語音偵測失效→保守靜音</label>
       <div class="check-row"><input type="checkbox" id="vc_fail_closed" title="pycaw 失效時當 voice call（mute 被動出聲）"></div>
     </div>
+    <div class="field">
+      <label for="discord_voice_out">Discord Voice Out</label>
+      <div class="check-row"><input type="checkbox" id="discord_voice_out" title="Hermes 喺 Discord 回覆時由 JARVIS 唸英文短版"></div>
+    </div>
   </div>
 </details>
     </div>
@@ -599,6 +603,7 @@
       document.getElementById('mage_enabled').checked = !!s.mage_enabled;
       document.getElementById('mage_prompt_default').value = s.mage_prompt_default || '';
       document.getElementById('vc_fail_closed').checked = !!s.vc_fail_closed;
+      document.getElementById('discord_voice_out').checked = !!s.discord_voice_out;
       document.getElementById('alertAppsSummary').value = buildAlertAppsSummary(s);
       setHint(alertTestStatus, '', '');
     } catch (e) {
@@ -676,6 +681,7 @@
       mage_enabled: document.getElementById('mage_enabled').checked,
       mage_prompt_default: document.getElementById('mage_prompt_default').value.trim(),
       vc_fail_closed: document.getElementById('vc_fail_closed').checked,
+      discord_voice_out: document.getElementById('discord_voice_out').checked,
     };
   }
 

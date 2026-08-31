@@ -632,6 +632,7 @@ function clampSettingsPatch(obj) {
   }
   if ('mage_enabled' in out) out.mage_enabled = !!out.mage_enabled;
   if ('vc_fail_closed' in out) out.vc_fail_closed = !!out.vc_fail_closed;
+  if ('discord_voice_out' in out) out.discord_voice_out = !!out.discord_voice_out;
   return out;
 }
 

@@ -27,6 +27,7 @@ from jarvis.settings import (
     preset_from_label,
     probe_connection,
     save_settings,
+    save_settings_patch,
     uses_cloud_asr,
 )
 from jarvis.ear import transcribe_mimo, transcribe_openai_audio, transcribe_path
@@ -356,6 +357,19 @@ def test_uses_hermes_voice_frontend():
     )
 
 
+def test_discord_voice_out_default_and_patch():
+    assert Settings().discord_voice_out is True
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        with _isolated_settings(tmp):
+            invalidate_settings_cache()
+            save_settings(Settings())
+            save_settings_patch({"discord_voice_out": False})
+            invalidate_settings_cache()
+            loaded = load_settings(force=True)
+            assert loaded.discord_voice_out is False
+
+
 if __name__ == "__main__":
     for fn in (
         test_openai_chat_url,
@@ -374,6 +388,7 @@ if __name__ == "__main__":
         test_normalize_hotkey_human_and_pynput,
         test_tts_settings_clamp_and_defaults,
         test_uses_hermes_voice_frontend,
+        test_discord_voice_out_default_and_patch,
     ):
         fn()
         print("ok", fn.__name__)
