@@ -63,6 +63,13 @@ _CONFUSIONS: tuple[tuple[str, str], ...] = (
     ("開 sea", "開 CS"),
     ("开 sea", "開 CS"),
     ("開 see", "開 CS"),
+    ("开 see", "開 CS"),
+    ("開 ice", "開 CS"),
+    ("開ice", "開 CS"),
+    ("开 ice", "開 CS"),
+    ("开ice", "開 CS"),
+    ("開 eyes", "開 CS"),
+    ("开 eyes", "開 CS"),
     ("開 cura", "開 Cursor"),
     ("开 cura", "開 Cursor"),
     ("開cura", "開 Cursor"),
@@ -409,6 +416,19 @@ def repair_asr_text(text: str, registry: Registry) -> tuple[str, str | None]:
     raw = normalize_utterance(text)
     if not raw:
         return raw, None
+
+    # Garbled close 句（`|-] dico` 等）優先：佢哋開頭帶 pipe／bracket 符號，
+    # 會俾 `_looks_shellish`（`_SHELLISH` 含 `\|`）誤判做 shell 命令而 early
+    # return。真正 shell 句（`rm -rf ...`、`curl ...`）唔會命中 garbled prefix，
+    # 所以呢度唔會削弱 shellish 保護。
+    # ⚠️ 排除 shell 關鍵字：`|curl https://discord.gg/x` 有 pipe + discord token，
+    # 唔可以俾呢度改做「閂 Discord」（cursor review 2026-08-30 HIGH-1）。
+    if _GARBLED_PREFIX.match(raw) and not re.search(
+        r"(curl\s|wget\s|https?://|rm\s|/tmp/|/mnt/)", raw, re.I
+    ):
+        forced_early = _force_close_known(raw)
+        if forced_early:
+            return forced_early, f"ASR 修正：{raw!r} → {forced_early!r}"
 
     # Shell／路徑句：唔做 alias／模糊（避免削成「執行」）
     try:

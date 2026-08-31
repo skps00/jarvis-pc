@@ -1,7 +1,8 @@
-"""Thin bridge: jarvis → Hermes (Phase1 + Phase1.5 Approve).
+"""Thin bridge: jarvis → Windows Hermes (same instance as Discord gateway).
 
-Primary: local Hermes API Server ``127.0.0.1:8642`` Runs + SSE approval.
-Fallback: ``hermes chat -q`` via WSL (no TTY → fail-closed on dangerous cmds).
+Primary: local Hermes API Server ``127.0.0.1:8642`` Runs + SSE approval
+(on the Windows ``hermes gateway`` that also hosts Discord).
+Fallback: ``hermes chat -q`` via ``%LOCALAPPDATA%\\hermes`` venv (not WSL).
 Never ``--yolo``. Hands (open/close/power) stay in engine — not here.
 """
 
@@ -9,11 +10,13 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import secrets
 import shlex
 import socket
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -76,6 +79,27 @@ _IMAGE_MIME = {
     ".gif": "image/gif",
     ".bmp": "image/bmp",
 }
+
+
+def _hermes_home() -> Path:
+    raw = os.environ.get("HERMES_HOME")
+    if raw:
+        return Path(raw)
+    return Path.home() / "AppData" / "Local" / "hermes"
+
+
+def _hermes_python() -> Path:
+    return _hermes_home() / "hermes-agent" / "venv" / "Scripts" / "python.exe"
+
+
+def _hermes_env() -> dict[str, str]:
+    env = dict(os.environ)
+    home = str(_hermes_home())
+    env["HERMES_HOME"] = home
+    agent = str(_hermes_home() / "hermes-agent")
+    prev = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = agent if not prev else f"{agent}{os.pathsep}{prev}"
+    return env
 
 AskApproveFn = Callable[[str], bool]
 
@@ -479,55 +503,62 @@ def _api_auth_ok() -> tuple[bool, str]:
 
 
 def _kill_api_port() -> None:
-    """Free local :8642 inside WSL (key mismatch / stale smoke gateway)."""
-    try:
-        subprocess.run(
-            [
-                "wsl",
-                "-d",
-                "Ubuntu",
-                "-e",
-                "bash",
-                "-lc",
-                "fuser -k 8642/tcp 2>/dev/null || true",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            creationflags=_no_window_flags(),
-        )
-    except Exception:
-        pass
+    """Free local :8642 (stale / wrong-key listener). Windows: taskkill PID."""
+    pids: set[int] = set()
+    if sys.platform == "win32":
+        try:
+            out = subprocess.check_output(
+                ["netstat", "-ano", "-p", "tcp"],
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=_no_window_flags(),
+            )
+        except OSError:
+            out = ""
+        needle = f":{API_PORT}"
+        for line in out.splitlines():
+            u = line.upper()
+            if "LISTENING" not in u:
+                continue
+            if needle not in line:
+                continue
+            parts = line.split()
+            if parts and parts[-1].isdigit():
+                pids.add(int(parts[-1]))
+        for pid in pids:
+            try:
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/F"],
+                    capture_output=True,
+                    creationflags=_no_window_flags(),
+                    timeout=15,
+                )
+            except Exception:
+                pass
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline and _port_listening(API_HOST, API_PORT):
         time.sleep(0.3)
 
 
 def ensure_api_server(*, wait_sec: float = 90.0) -> tuple[bool, str]:
-    """Start Hermes gateway API server on :8642 if needed (no console flash)."""
+    """Start Windows Hermes gateway API on :8642 if needed (no console flash)."""
     if _port_listening(API_HOST, API_PORT):
         ok, why = _api_auth_ok()
         if ok:
             return True, f"API 已喺 {API_BASE}"
-        # Stale / wrong-key listener (e.g. smoke script) — recycle port
         _kill_api_port()
         if _port_listening(API_HOST, API_PORT):
             return False, f"{why}；清埠失敗，請手動停 hermes gateway"
 
-    key = load_or_create_api_key()
-    # Quote key for bash; key is hex-safe but keep shlex
-    kq = shlex.quote(key)
-    inner = (
-        f"{_WSL_PATH_EXPORT}; "
-        "export API_SERVER_ENABLED=true; "
-        f"export API_SERVER_KEY={kq}; "
-        f"export API_SERVER_HOST={API_HOST}; "
-        f"export API_SERVER_PORT={API_PORT}; "
-        "hermes gateway run"
-    )
+    py = _hermes_python()
+    if not py.is_file():
+        return False, f"搵唔到 Hermes python：{py}"
     try:
         proc = subprocess.Popen(
-            ["wsl", "-d", "Ubuntu", "-e", "bash", "-lc", inner],
+            [str(py), "-m", "hermes_cli.main", "gateway", "run"],
+            cwd=str(_hermes_home()),
+            env=_hermes_env(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -535,8 +566,8 @@ def ensure_api_server(*, wait_sec: float = 90.0) -> tuple[bool, str]:
             errors="replace",
             creationflags=_no_window_flags(),
         )
-    except FileNotFoundError:
-        return False, "找不到 wsl（請確認 WSL2）"
+    except OSError as exc:
+        return False, f"啟動 Windows Hermes 失敗：{exc}"
 
     deadline = time.monotonic() + max(5.0, wait_sec)
     while time.monotonic() < deadline:
@@ -770,21 +801,44 @@ def _chat_via_cli(
     image_wsl: str | None,
     timeout_sec: float,
 ) -> HermesReply:
-    """Fallback: hermes chat -q (no Approve UI)."""
-    inner = _build_inner_bash(text, resume=resume, image_wsl=image_wsl)
+    """Fallback: Windows ``hermes chat -q`` (same HERMES_HOME as Discord)."""
+    py = _hermes_python()
+    if not py.is_file():
+        return HermesReply(
+            False, "", "", "", resume, error=f"搵唔到 Hermes python：{py}"
+        )
+    cmd = [
+        str(py),
+        "-m",
+        "hermes_cli.main",
+        "chat",
+        "-q",
+        text + _SPEAK_QUERY_HINT,
+        "-Q",
+        "--max-turns",
+        "12",
+        "--source",
+        "jarvis",
+    ]
+    if image_wsl:
+        cmd += ["--image", image_wsl]
+    if resume:
+        cmd += ["--resume", resume]
     try:
         proc = subprocess.run(
-            ["wsl", "-d", "Ubuntu", "-e", "bash", "-lc", inner],
+            cmd,
             capture_output=True,
             text=True,
             timeout=timeout_sec,
             encoding="utf-8",
             errors="replace",
+            env=_hermes_env(),
+            cwd=str(_hermes_home()),
             creationflags=_no_window_flags(),
         )
-    except FileNotFoundError:
+    except OSError as exc:
         return HermesReply(
-            False, "", "", "", None, error="找不到 wsl（請確認 WSL2）"
+            False, "", "", "", resume, error=f"Hermes CLI 失敗：{exc}"
         )
     except subprocess.TimeoutExpired:
         hint = f"Hermes 逾時（{int(timeout_sec)}s）"
@@ -835,7 +889,7 @@ def chat(
                 False, "", "", "", None, error=f"搵唔到圖：{ip}"
             )
         image_file = ip
-        image_wsl = windows_to_wsl_path(ip)
+        image_wsl = str(ip)
 
     # Vision + tools often slower than plain chat
     if image_file and timeout_sec < 180.0:

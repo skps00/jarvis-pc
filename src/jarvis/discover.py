@@ -172,6 +172,8 @@ def _load_start_apps() -> list[tuple[str, str]]:
             [
                 "powershell",
                 "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
                 "-Command",
                 "Get-StartApps | Select-Object Name, AppID | ConvertTo-Json -Compress",
             ],

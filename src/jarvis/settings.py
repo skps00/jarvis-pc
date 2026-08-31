@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field, fields
@@ -83,6 +84,9 @@ class Settings:
     record_seconds: float = 4.0
     wake_mic_device: int | None = None  # None = system default
     text_wake: bool = False  # STT-as-wake; default off (game false fires)
+    # Phase 6 A4：speaker gate（聲紋）——係 SK 先醒，其他人講嘢唔觸發
+    speaker_gate: bool = True
+    speaker_threshold: float = 0.50  # cosine vs voice_profile.npy
     # Phase1: Hermes thin bridge (default off — today's jarvis)
     hermes_enabled: bool = False
     # Trusted flag persisted as preference; shell enforces 30min + restart→Safe
@@ -93,9 +97,17 @@ class Settings:
     hotkey: str = DEFAULT_HOTKEY
     # Piper TTS (English SPEAK / ok / fail)
     tts_enabled: bool = True
+    tts_ack: bool = True  # D2：收到指令先唸「Yes, Sir.」確認（感知延遲最低）
     tts_length_scale: float = 0.85  # <1 faster
     tts_volume: float = 1.6  # 1.0 = Piper default
     tts_output_device: int | None = None  # sounddevice output index; None = default
+    # STT preload: SenseVoice CPU 載入實測 ~3.5GB RAM（2026-08-31）。Default False
+    # = lazy load（第一次喚醒先載，慳 RAM）；True = 啟動即預載（首次喚醒快 5-8s）。
+    stt_preload: bool = False
+    # Phase 6 A3：AEC（聲學迴聲消除）——WASAPI loopback 攞喇叭 reference 濾走自己 TTS /
+    # voice call 對方聲，唔誤觸 wake。default off（測試 OK 先開）。
+    aec_enabled: bool = False
+    aec_reference_device: str = ""  # 空 = 自動揀 TTS output 對應 loopback
     # Voice alerts (Discord unread / Cursor done) — English TTS
     alert_voice: bool = True
     alert_discord: bool = True
@@ -116,9 +128,18 @@ class Settings:
     alert_tts: str = "hermes"
     alerts_mcp_port: int = 8765
     alerts_mcp_token: str = ""  # empty → env / auto file
+    # P0: RTX GPU health via nvidia-smi → Hermes (no HUD)
+    alert_gpu_health: bool = True
+    alert_gpu_poll_s: float = 5.0
+    # Mage-VL local vision ("eyes") — lazy ~10GB VRAM; default off
+    mage_enabled: bool = False
+    mage_prompt_default: str = "Describe this image in detail."
+    # F3 (2026-08-29): pycaw voice-call detect failure → fail-closed (mute passive TTS)
+    vc_fail_closed: bool = False
 
 
 _cache: Settings | None = None
+_cache_mtime: float = 0.0
 
 
 def settings_path() -> Path:
@@ -199,7 +220,7 @@ def _clamp(s: Settings) -> Settings:
         s.wake_threshold = float(s.wake_threshold)
     except (TypeError, ValueError):
         s.wake_threshold = 0.50
-    s.wake_threshold = max(0.35, min(0.99, s.wake_threshold))
+    s.wake_threshold = max(0.25, min(0.99, s.wake_threshold))
     try:
         s.wake_cd_seconds = float(s.wake_cd_seconds)
     except (TypeError, ValueError):
@@ -211,10 +232,13 @@ def _clamp(s: Settings) -> Settings:
         s.record_seconds = 4.0
     s.record_seconds = max(1.0, min(15.0, s.record_seconds))
     if s.wake_mic_device is not None:
-        try:
-            s.wake_mic_device = int(s.wake_mic_device)
-        except (TypeError, ValueError):
-            s.wake_mic_device = None
+        if isinstance(s.wake_mic_device, str):
+            s.wake_mic_device = s.wake_mic_device.strip() or None
+        else:
+            try:
+                s.wake_mic_device = int(s.wake_mic_device)
+            except (TypeError, ValueError):
+                s.wake_mic_device = None
     s.hermes_enabled = bool(s.hermes_enabled)
     s.hermes_trusted = bool(s.hermes_trusted)
     vf = (getattr(s, "voice_frontend", None) or VOICE_FRONTEND_HERMES)
@@ -227,6 +251,14 @@ def _clamp(s: Settings) -> Settings:
     except ValueError:
         s.hotkey = DEFAULT_HOTKEY
     s.tts_enabled = bool(s.tts_enabled)
+    s.tts_ack = bool(getattr(s, "tts_ack", True))
+    s.stt_preload = bool(getattr(s, "stt_preload", False))
+    s.speaker_gate = bool(getattr(s, "speaker_gate", True))
+    try:
+        s.speaker_threshold = float(getattr(s, "speaker_threshold", 0.50))
+    except (TypeError, ValueError):
+        s.speaker_threshold = 0.50
+    s.speaker_threshold = max(0.10, min(0.99, s.speaker_threshold))
     try:
         s.tts_length_scale = float(s.tts_length_scale)
     except (TypeError, ValueError):
@@ -238,10 +270,13 @@ def _clamp(s: Settings) -> Settings:
         s.tts_volume = 1.6
     s.tts_volume = max(0.30, min(3.0, s.tts_volume))
     if s.tts_output_device is not None:
-        try:
-            s.tts_output_device = int(s.tts_output_device)
-        except (TypeError, ValueError):
-            s.tts_output_device = None
+        if isinstance(s.tts_output_device, str):
+            s.tts_output_device = s.tts_output_device.strip() or None
+        else:
+            try:
+                s.tts_output_device = int(s.tts_output_device)
+            except (TypeError, ValueError):
+                s.tts_output_device = None
     s.alert_voice = bool(s.alert_voice)
     s.alert_discord = bool(s.alert_discord)
     s.alert_cursor = bool(s.alert_cursor)
@@ -262,12 +297,32 @@ def _clamp(s: Settings) -> Settings:
     if mode not in ("hermes", "piper", "off"):
         mode = "hermes"
     s.alert_tts = mode
+    s.alert_gpu_health = bool(getattr(s, "alert_gpu_health", True))
+    try:
+        s.alert_gpu_poll_s = float(getattr(s, "alert_gpu_poll_s", 5.0))
+    except (TypeError, ValueError):
+        s.alert_gpu_poll_s = 5.0
+    s.alert_gpu_poll_s = max(2.0, min(60.0, s.alert_gpu_poll_s))
     try:
         s.alerts_mcp_port = int(getattr(s, "alerts_mcp_port", 8765))
     except (TypeError, ValueError):
         s.alerts_mcp_port = 8765
     s.alerts_mcp_port = max(1024, min(65535, s.alerts_mcp_port))
     s.alerts_mcp_token = str(getattr(s, "alerts_mcp_token", "") or "").strip()
+    if isinstance(s.aec_enabled, str):
+        s.aec_enabled = s.aec_enabled.lower() not in ("0", "false", "off", "no", "")
+    else:
+        s.aec_enabled = bool(s.aec_enabled)
+    s.aec_reference_device = str(getattr(s, "aec_reference_device", "") or "").strip()
+    s.mage_enabled = bool(getattr(s, "mage_enabled", False))
+    s.mage_prompt_default = (
+        str(
+            getattr(s, "mage_prompt_default", "Describe this image in detail.")
+            or "Describe this image in detail."
+        ).strip()
+        or "Describe this image in detail."
+    )
+    s.vc_fail_closed = bool(getattr(s, "vc_fail_closed", False))
     return s
 
 
@@ -384,6 +439,34 @@ def hotkey_preset_label(pynput_hk: str) -> str:
     return hotkey_display(hk)
 
 
+# ---- H4 (2026-08-29): DPAPI-encrypt secrets at rest ----
+# Only pure API keys consumed by this process are encrypted. Cross-process bearer
+# tokens (alerts MCP token, Hermes bridge key) stay plaintext because every reader
+# would need to decrypt — see docs/hermes_bridge_auth_rotation.md.
+
+_SECRET_FIELDS: frozenset[str] = frozenset(
+    {"llm_api_key", "asr_api_key", "mimo_api_key"}
+)
+
+
+def _decrypt_dict(raw: dict[str, Any]) -> dict[str, Any]:
+    from jarvis.dpapi import decrypt_secret
+
+    return {
+        k: (decrypt_secret(str(v)) if k in _SECRET_FIELDS else v)
+        for k, v in raw.items()
+    }
+
+
+def _encrypt_dict(merged: dict[str, Any]) -> dict[str, Any]:
+    from jarvis.dpapi import encrypt_secret
+
+    return {
+        k: (encrypt_secret(str(v)) if k in _SECRET_FIELDS else v)
+        for k, v in merged.items()
+    }
+
+
 def _from_dict(data: dict[str, Any]) -> Settings:
     known = {f.name for f in fields(Settings)}
     kwargs = {k: v for k, v in data.items() if k in known}
@@ -396,16 +479,24 @@ def load_settings(*, force: bool = False) -> Settings:
     """
     Load settings.json; seed from env only when file missing.
 
-    Cached in-process; pass force=True after save or external edit.
+    Cached in-process; invalidated when settings.json mtime changes
+    (e.g. Electron main.js writes directly). Pass force=True to re-read.
     """
-    global _cache
-    if _cache is not None and not force:
-        return _cache
+    global _cache, _cache_mtime
     path = SETTINGS_PATH
+    mtime = 0.0
+    if path.is_file():
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            mtime = 0.0
+    if _cache is not None and not force and mtime == _cache_mtime:
+        return _cache
     if path.is_file():
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
+                raw = _decrypt_dict(raw)  # H4: decrypt dpapi: secrets on read
                 s = _from_dict(raw)
             else:
                 s = default_settings()
@@ -415,6 +506,7 @@ def load_settings(*, force: bool = False) -> Settings:
         s = default_settings()
     s = _fill_from_env(s)
     _cache = s
+    _cache_mtime = mtime
     return s
 
 
@@ -462,21 +554,126 @@ def _fill_from_env(s: Settings) -> Settings:
 
 def save_settings(s: Settings) -> Path:
     """Write settings.json and refresh cache."""
-    global _cache
+    global _cache, _cache_mtime
     s = _clamp(s)
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    existing: dict[str, Any] = {}
+    if SETTINGS_PATH.is_file():
+        try:
+            raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                existing = raw
+        except (OSError, json.JSONDecodeError):
+            pass
+    merged = {**existing, **asdict(s)}
+    merged = _encrypt_dict(merged)  # H4: encrypt secrets at rest
     SETTINGS_PATH.write_text(
-        json.dumps(asdict(s), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(merged, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     _cache = s
+    try:
+        _cache_mtime = os.path.getmtime(SETTINGS_PATH)
+    except OSError:
+        _cache_mtime = 0.0
     return SETTINGS_PATH
 
 
 def invalidate_settings_cache() -> None:
     """Drop in-process cache (tests / after external write)."""
-    global _cache
+    global _cache, _cache_mtime
     _cache = None
+    _cache_mtime = 0.0
+
+
+# ---- H2 (2026-08-29): single-writer settings patch (dir-lock + atomic + pending-apply) ----
+
+_PATCH_LOCK: Path | None = None
+_pending_apply: dict[str, Any] | None = None
+
+
+def _patch_lock_path() -> Path:
+    global _PATCH_LOCK
+    if _PATCH_LOCK is None:
+        _PATCH_LOCK = SETTINGS_DIR / ".settings.lockdir"
+    return _PATCH_LOCK
+
+
+def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:
+    """Single-writer settings update: dir-lock + merge + atomic replace + pending-apply.
+
+    Cross-process safe — Electron (HTTP), self-monitor, and any sidecar code all
+    route settings writes through here, so concurrent writers can't lose keys.
+    Returns the merged dict written to disk.
+    """
+    global _cache, _cache_mtime, _pending_apply
+    patch = dict(patch or {})
+    lock = _patch_lock_path()
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    deadline = time.time() + 5.0
+    while True:
+        try:
+            lock.mkdir(exist_ok=False)
+            break
+        except FileExistsError:
+            if time.time() > deadline:
+                try:
+                    lock.rmdir()
+                except OSError:
+                    pass
+                continue
+            time.sleep(0.02)
+    try:
+        existing: dict[str, Any] = {}
+        if SETTINGS_PATH.is_file():
+            try:
+                raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    existing = raw
+            except (OSError, json.JSONDecodeError):
+                pass
+        merged = {**existing, **patch}
+        # Clamp only the patched fields using the same rules as _clamp() —
+        # do NOT overwrite the patch with stale load_settings() values.
+        try:
+            from dataclasses import replace
+
+            base = load_settings()
+            s2 = _clamp(
+                replace(base, **{k: v for k, v in merged.items() if hasattr(base, k)})
+            )
+            for k in list(merged.keys()):
+                if hasattr(s2, k):
+                    merged[k] = getattr(s2, k)
+        except Exception:  # noqa: BLE001
+            pass
+        merged = _encrypt_dict(merged)  # H4: encrypt secrets at rest
+        tmp = SETTINGS_PATH.with_suffix(SETTINGS_PATH.suffix + ".tmp")
+        tmp.write_text(
+            json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        tmp.replace(SETTINGS_PATH)
+        try:
+            s = load_settings()
+            _cache = s
+            _cache_mtime = os.path.getmtime(SETTINGS_PATH)
+        except Exception:  # noqa: BLE001
+            invalidate_settings_cache()
+        _pending_apply = dict(patch)
+        return merged
+    finally:
+        try:
+            lock.rmdir()
+        except OSError:
+            pass
+
+
+def consume_pending_apply() -> dict[str, Any] | None:
+    """Pop the pending-apply patch so sidecar can reload live values (e.g. wake_threshold)."""
+    global _pending_apply
+    p = _pending_apply
+    _pending_apply = None
+    return p
 
 
 def apply_llm_preset(s: Settings, preset: str) -> Settings:

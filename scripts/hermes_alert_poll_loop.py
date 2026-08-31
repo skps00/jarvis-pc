@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Tight poll (~2s): peek → Hermes TTS → ack. Meets <3s better than cron.
+"""Tight poll (~1s): peek → Hermes TTS → ack. Meets <3s better than cron.
 
 Hermes cron min interval is 1 minute and gateway ticks ~60s — too slow for alerts.
 Run this alongside ``jarvis-mcp`` / ``jarvis serve``.
+Override: ``JARVIS_ALERT_POLL_S`` (default 1).
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ _speak_hermes = _mod._speak_hermes
 def main() -> int:
     from jarvis.alert_store import AlertStore
 
-    interval = float(os.environ.get("JARVIS_ALERT_POLL_S", "2") or "2")
+    interval = float(os.environ.get("JARVIS_ALERT_POLL_S", "1") or "1")
     st = AlertStore()
     print(f"[ok] alert poll loop every {interval}s → {st.path}", flush=True)
     while True:

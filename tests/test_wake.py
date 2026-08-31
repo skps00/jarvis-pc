@@ -46,13 +46,12 @@ def test_default_threshold():
     from jarvis.wake import (
         CUSTOM_DEFAULT_THRESHOLD,
         DEFAULT_THRESHOLD,
-        _REARM_BELOW,
         recommended_threshold,
     )
 
     assert 0.5 <= DEFAULT_THRESHOLD <= 0.6
-    assert 0.25 <= CUSTOM_DEFAULT_THRESHOLD <= 0.45
-    assert _REARM_BELOW < CUSTOM_DEFAULT_THRESHOLD
+    # Dead Colab onnx must NOT lower thr（0.05–0.2 會 false fires）→ 同 default 一樣 0.50
+    assert CUSTOM_DEFAULT_THRESHOLD == DEFAULT_THRESHOLD
     assert recommended_threshold() in (DEFAULT_THRESHOLD, CUSTOM_DEFAULT_THRESHOLD)
 
 

@@ -1,0 +1,42 @@
+{
+  "date": "2026-08-09",
+  "url": "desktop+http://127.0.0.1:8765/mcp",
+  "healthScore": 94,
+  "branch": "feature/hermes-alerts-mcp",
+  "commit": "972349523c699aa2ebde78e79fe8b6e6aee1d24a",
+  "issues": [
+    {
+      "id": "ISSUE-001",
+      "title": "AskQuestion may not fire preToolUse",
+      "severity": "medium",
+      "category": "functional",
+      "fixStatus": "best-effort"
+    },
+    {
+      "id": "ISSUE-002",
+      "title": "pytest missing from project env",
+      "severity": "low",
+      "category": "ux",
+      "fixStatus": "verified"
+    },
+    {
+      "id": "ISSUE-003",
+      "title": "No visual QA of companion window",
+      "severity": "low",
+      "category": "visual",
+      "fixStatus": "verified"
+    }
+  ],
+  "categoryScores": {
+    "console": 100,
+    "links": 100,
+    "visual": 85,
+    "functional": 94,
+    "ux": 95,
+    "performance": 100,
+    "content": 100,
+    "accessibility": 85
+  },
+  "testsPassed": 48,
+  "fixesApplied": 3
+}

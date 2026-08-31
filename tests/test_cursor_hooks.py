@@ -121,14 +121,15 @@ def test_hook_script_pretool_switchmode() -> None:
         assert "plan" in rows[-1]["phrase"].lower()
 
 
-def test_hook_command_windows_uses_cmd() -> None:
+def test_hook_command_windows_no_cmd_flash() -> None:
     if sys.platform != "win32":
         return
     cmd = hook_command()
-    assert cmd.lower().startswith("cmd /c")
+    assert "cmd /c" not in cmd.lower()
     assert HOOK_MARKER in cmd
     assert " -u " in cmd
-    assert "pythonw" not in cmd.lower()
+    # Prefer pythonw when sibling exists
+    assert "python" in cmd.lower()
 
 
 def test_install_merges_stop() -> None:

@@ -392,6 +392,7 @@ def test_ensure_api_recycles_wrong_key_port():
 
     def fake_popen(*a, **k):
         calls["popen"] += 1
+        calls["argv"] = list(a[0] if a else k.get("args") or [])
         return FakeProc()
 
     listen_state = {"n": 0}
@@ -416,5 +417,7 @@ def test_ensure_api_recycles_wrong_key_port():
         ok, msg = hb.ensure_api_server(wait_sec=2.0)
     assert calls["kill"] >= 1
     assert calls["popen"] >= 1
+    assert "wsl" not in " ".join(str(x) for x in calls.get("argv") or []).lower()
+    assert "hermes_cli.main" in " ".join(str(x) for x in calls.get("argv") or [])
     assert ok
     assert "API" in msg

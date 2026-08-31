@@ -18,9 +18,10 @@ from jarvis.settings import Settings, invalidate_settings_cache  # noqa: E402
 from jarvis.settings_ui import SettingsWindow  # noqa: E402
 
 
-def test_settings_window_builds_four_tabs() -> None:
+def test_settings_window_builds_five_tabs() -> None:
     """Regression: ISSUE-003 — settings UI constructs without crash.
 
+    Tabs: 提醒 / Hermes / 系統 / 音訊診斷 / 進階 (advanced tab added in WIP).
     Found by /qa on 2026-08-09
     Report: .gstack/qa-reports/qa-report-jarvis-pc-2026-08-09.md
     """
@@ -49,7 +50,7 @@ def test_settings_window_builds_four_tabs() -> None:
                     notebooks = [c for c in kids if isinstance(c, ttk.Notebook)]
                     assert notebooks, "expected Notebook tabs"
                     nb = notebooks[0]
-                    assert nb.index("end") == 4
+                    assert nb.index("end") == 5
                     win.win.destroy()
     finally:
         root.destroy()

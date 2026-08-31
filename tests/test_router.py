@@ -246,6 +246,21 @@ def test_close_garbled_discord():
         assert i.profile_id == "discord", (raw, fixed, i)
 
 
+def test_garbled_pipe_with_shell_token_not_closed():
+    """`|curl https://discord.gg/x` 唔可以變成「閂 Discord」(cursor HIGH-1)."""
+    from jarvis.asr_repair import repair_asr_text
+
+    r = _reg()
+    from jarvis.config import load_registry
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    real = root / "config" / "profiles.yaml"
+    reg = load_registry(real) if real.is_file() else r
+    fixed, note = repair_asr_text("|curl https://discord.gg/x", reg)
+    assert "閂" not in fixed and "close" not in fixed.lower(), (fixed, note)
+
+
 def test_whatsapp_garbled_open_close():
     """what石 / 闩 石 should map to WhatsApp when profile exists."""
     from jarvis.asr_repair import repair_asr_text

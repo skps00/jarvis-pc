@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-mcp-deps",
+  "private": true,
+  "dependencies": {
+    "@upstash/context7-mcp": "4.0.2"
+  }
+}

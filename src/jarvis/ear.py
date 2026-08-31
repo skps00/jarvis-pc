@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import tempfile
+import threading
 import urllib.error
 import urllib.request
 import wave
@@ -14,6 +15,7 @@ from pathlib import Path
 _sensevoice = None
 _fun_asr = None
 _fun_asr_failed: str | None = None  # sticky fail → always SenseVoice fallback
+_sensevoice_lock = threading.Lock()  # lazy load 可能由任意 thread 觸發
 _FUN_ASR_IDS = (
     "FunAudioLLM/Fun-ASR-Nano-2512",
     "iic/Fun-ASR-Nano-2512",
@@ -23,6 +25,21 @@ _FUN_ASR_LOAD_TIMEOUT_S = 120.0
 
 # Default listen window — slightly longer helps short Cantonese commands.
 DEFAULT_SECONDS = 4.0
+
+
+def _preferred_device() -> str:
+    """cuda:0 如果 torch.cuda 可用（RTX 5090），否則 cpu。"""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            from jarvis.gpu_policy import should_stt_use_gpu
+
+            if should_stt_use_gpu():
+                return "cuda:0"
+    except Exception:
+        pass
+    return "cpu"
 
 
 def record_wav(seconds: float = DEFAULT_SECONDS, sample_rate: int = 16000) -> Path:
@@ -71,26 +88,32 @@ def pcm_to_wav(pcm: "np.ndarray", *, sample_rate: int = 16000) -> Path:
 
 
 def _get_sensevoice():
-    """Load SenseVoiceSmall once (FunASR)."""
+    """Load SenseVoiceSmall once (FunASR). Thread-safe lazy: first caller
+    loads, everyone else reuses the cache. Loading costs ~3.5GB RAM (CPU) so
+    by default it only happens on first wake (stt_preload=False)."""
     global _sensevoice
     if _sensevoice is not None:
         return _sensevoice
-    try:
-        from funasr import AutoModel
-    except ImportError as exc:
-        missing = getattr(exc, "name", None) or str(exc)
-        raise RuntimeError(
-            f"SenseVoice 依賴唔齊（缺 {missing}）。"
-            "請：pip install \"jarvis-pc[ear]\" 同 torch／torchaudio，然後重啟 serve"
-        ) from exc
+    with _sensevoice_lock:
+        if _sensevoice is not None:
+            return _sensevoice
+        try:
+            from funasr import AutoModel
+        except ImportError as exc:
+            missing = getattr(exc, "name", None) or str(exc)
+            raise RuntimeError(
+                f"SenseVoice 依賴唔齊（缺 {missing}）。"
+                "請：pip install \"jarvis-pc[ear]\" 同 torch／torchaudio，然後重啟 serve"
+            ) from exc
 
-    # ponytail: CPU small model；準度靠 asr_repair + hotwords 補
-    _sensevoice = AutoModel(
-        model="iic/SenseVoiceSmall",
-        trust_remote_code=True,
-        disable_update=True,
-    )
-    return _sensevoice
+        # ponytail: CPU small model；準度靠 asr_repair + hotwords 補
+        _sensevoice = AutoModel(
+            model="iic/SenseVoiceSmall",
+            trust_remote_code=True,
+            disable_update=True,
+            device=_preferred_device(),
+        )
+        return _sensevoice
 
 
 def _get_fun_asr():
@@ -124,6 +147,7 @@ def _get_fun_asr():
                     model=model_id,
                     trust_remote_code=True,
                     disable_update=True,
+                    device=_preferred_device(),
                 )
             except Exception as exc:  # noqa: BLE001
                 box["e"] = exc

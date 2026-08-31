@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
-from jarvis.asr_fix import repair_asr_text
+from jarvis.asr_repair import repair_asr_text
 from jarvis.brain import (
     answer_query,
     has_clear_open_verb,
@@ -56,7 +57,8 @@ def execute_utterance(
     if repair_asr:
         utterance, note = repair_asr_text(text, registry)
         if note:
-            lines.append(f"[fix] {note}")
+            lines.append(f"[repair] {note}")
+            print(f"[engine] asr_repair={note}", flush=True)
 
     if not (utterance or "").strip():
         lines.append(
@@ -132,12 +134,33 @@ def _dispatch_hermes(
 ) -> RunResult:
     """query/unknown → Hermes bridge (Hands never called here)."""
     lines.append(f"[hermes] kind={intent.kind}")
+    mage_desc = None
     if image_path:
         lines.append(f"[hermes] image={image_path}")
+        try:
+            from jarvis.settings import load_settings
+            cfg = load_settings()
+            if cfg.mage_enabled:
+                from jarvis.mage_engine import get_mage_engine
+                engine = get_mage_engine()
+                prompt = str(getattr(cfg, "mage_prompt_default", "") or "Describe this image in detail.")
+                t0 = time.time()
+                mage_desc = engine.understand_image(str(image_path), prompt=prompt)
+                elapsed = time.time() - t0
+                lines.append(f"[mage] {mage_desc[:200]}")
+                lines.append(f"[mage] load+infer {elapsed:.1f}s")
+        except Exception as exc:  # noqa: BLE001 — vision must not break the reply path
+            lines.append(f"[mage] 失敗：{exc}")
+
+    # If we got a local description, send text+description to Hermes instead of the raw image
+    effective_image = None if mage_desc else image_path
+    effective_text = utterance
+    if mage_desc:
+        effective_text = f"{utterance}\n\n[image description from JARVIS local vision: {mage_desc}]"
     try:
         reply = hermes_chat(
-            utterance,
-            image_path=image_path,
+            effective_text,
+            image_path=effective_image,
             ask_approve=ask_confirm,
             dry_run=dry_run,
         )

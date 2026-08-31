@@ -329,8 +329,10 @@ def test_tts_settings_clamp_and_defaults():
     a2 = _clamp(Settings(alert_cd_seconds=0.1))
     assert a2.alert_cd_seconds == 0.1
     assert _clamp(Settings(alert_tts="piper")).alert_tts == "piper"
-    bad = _clamp(Settings(tts_output_device="nope"))  # type: ignore[arg-type]
-    assert bad.tts_output_device is None
+    # tts_output_device 支援存名（str = device 名，Windows index 會 reorder）；空 → None
+    named = _clamp(Settings(tts_output_device="耳機 (2- Arctis Nova 7)"))
+    assert named.tts_output_device == "耳機 (2- Arctis Nova 7)"
+    assert _clamp(Settings(tts_output_device="  ")).tts_output_device is None
     f = _clamp(Settings(asr_provider="fun_asr"))
     assert f.asr_provider == ASR_FUN_ASR
     vf = _clamp(Settings(voice_frontend="JARVIS"))

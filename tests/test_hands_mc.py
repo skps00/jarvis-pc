@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -14,8 +15,11 @@ from jarvis.config import Profile, Registry
 from jarvis import memory as mem
 from jarvis.hands import (
     _cmdline_matches_instance,
+    _image_running,
     _launch_or_focus_steam,
     _launch_or_focus_shell_app,
+    _pid_alive,
+    _pids_for_images,
     _remember_launch_pids,
     _role_layout_rect,
     close_profile,
@@ -202,6 +206,17 @@ def test_role_layout_rect():
     assert (x, y, w, h, how) == (100, 50, 400, 300, "角")
 
 
+def test_toolhelp_sees_self():
+    if sys.platform != "win32":
+        return
+    me = Path(sys.executable).name
+    pids = _pids_for_images([me])
+    assert os.getpid() in pids
+    assert _image_running(me)
+    assert _pid_alive(os.getpid())
+    assert not _pid_alive(0)
+
+
 if __name__ == "__main__":
     test_cmdline_matches_instance()
     test_steam_focus_when_running()
@@ -214,4 +229,5 @@ if __name__ == "__main__":
     test_shell_app_focus_when_already_running()
     test_shell_app_launches_when_not_running()
     test_role_layout_rect()
+    test_toolhelp_sees_self()
     print("all passed")

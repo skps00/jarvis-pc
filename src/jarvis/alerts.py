@@ -179,6 +179,8 @@ def alert_phrase_for(kind: str, *, app_label: str = "") -> str:
         return "Cursor needs your approval."
     if kind == "whatsapp":
         return "WhatsApp has a new message."
+    if kind == "gpu_health":
+        return "GPU health warning."
     if kind.startswith("extra:"):
         label = (app_label or kind[6:] or "App").strip()
         # Piper ASCII-only — strip non-ascii from label
@@ -539,6 +541,8 @@ class AlertWatcher:
         self._always = True  # toast poll (works while focused)
         self._cd = 0.0  # 0 = no cooldown
         self._last_speak = 0.0
+        self._gpu_health = True
+        self._gpu_poll_s = 5.0
         self._discord_prev: int | None = None
         self._cursor_was_busy = False
         self._cursor_busy_since = 0.0
@@ -549,6 +553,7 @@ class AlertWatcher:
         self._toast_epoch = 0.0  # monotonic; skip toasts created before start
         self._lock = threading.Lock()
         self._toast_thread: threading.Thread | None = None
+        self._sensor_thread: threading.Thread | None = None
 
     def configure(
         self,
@@ -564,6 +569,8 @@ class AlertWatcher:
         always: bool | None = None,
         extra: str | list[str] | None = None,
         cd_seconds: float | None = None,
+        gpu_health: bool | None = None,
+        gpu_poll_s: float | None = None,
     ) -> None:
         if enabled is not None:
             self._enabled = bool(enabled)
@@ -587,6 +594,10 @@ class AlertWatcher:
             self._extra = parse_extra_apps(extra)
         if cd_seconds is not None:
             self._cd = max(0.0, float(cd_seconds))
+        if gpu_health is not None:
+            self._gpu_health = bool(gpu_health)
+        if gpu_poll_s is not None:
+            self._gpu_poll_s = max(2.0, float(gpu_poll_s))
 
     def start(self) -> None:
         if sys.platform != "win32":
@@ -603,11 +614,15 @@ class AlertWatcher:
         self._toast_thread = threading.Thread(
             target=self._toast_loop, daemon=True, name="jarvis-alert-toast"
         )
+        self._sensor_thread = threading.Thread(
+            target=self._sensor_loop, daemon=True, name="jarvis-alert-sensor"
+        )
         self._hook_thread.start()
         self._poll_thread.start()
         self._toast_thread.start()
+        self._sensor_thread.start()
         self._log(
-            "[ok] 語音提醒已開（Cursor：設定可選 hooks／Toast／UIA／標題）"
+            "[ok] 語音提醒已開（Cursor＋GPU health／nvidia-smi）"
         )
 
     def stop(self, *, join_timeout: float = 1.5) -> None:
@@ -618,12 +633,18 @@ class AlertWatcher:
                 ctypes.windll.user32.PostMessageW(hwnd, WM_DESTROY, 0, 0)
             except Exception:
                 pass
-        for th in (self._hook_thread, self._poll_thread, self._toast_thread):
+        for th in (
+            self._hook_thread,
+            self._poll_thread,
+            self._toast_thread,
+            self._sensor_thread,
+        ):
             if th is not None and th.is_alive() and th is not threading.current_thread():
                 th.join(timeout=join_timeout)
         self._hook_thread = None
         self._poll_thread = None
         self._toast_thread = None
+        self._sensor_thread = None
         self._hwnd = None
 
     def emit_test(self) -> None:
@@ -632,6 +653,47 @@ class AlertWatcher:
             AlertEvent(kind="test", phrase="Alert system ready.", detail="manual test"),
             force=True,
         )
+
+    def _sensor_loop(self) -> None:
+        """Poll NVML/smi → gpu_health → alerts (P0 5090 safety)."""
+        try:
+            from jarvis.sensors.backend import default_gpu_backend
+            from jarvis.sensors.gpu_health import GpuHealthMonitor
+        except Exception as exc:  # noqa: BLE001
+            self._log(f"[warn] GPU sensor import fail: {exc}")
+            return
+        backend = default_gpu_backend()
+        monitor = GpuHealthMonitor()
+        monitor.set_log(self._log)
+        logged_ok = False
+        while not self._stop.is_set():
+            poll = max(2.0, float(self._gpu_poll_s))
+            if self._enabled and self._gpu_health:
+                try:
+                    snap = backend.read()
+                    if snap.ok and not logged_ok:
+                        self._log(
+                            f"[ok] GPU sensor：{snap.name or 'NVIDIA'} "
+                            f"({snap.source or '?'} poll {poll:.0f}s)"
+                        )
+                        logged_ok = True
+                    elif not snap.ok and logged_ok:
+                        self._log(f"[warn] GPU sensor: {snap.error}")
+                        logged_ok = False
+                    hit = monitor.evaluate(snap)
+                    if hit is not None:
+                        # Per-reason cooldown inside monitor; bypass global alert_cd.
+                        self._emit(
+                            AlertEvent(
+                                kind=hit.kind,
+                                phrase=hit.phrase,
+                                detail=hit.detail,
+                            ),
+                            force=True,
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    self._log(f"[warn] GPU sensor: {exc}")
+            self._stop.wait(poll)
 
     def _log(self, msg: str) -> None:
         if self._on_log:

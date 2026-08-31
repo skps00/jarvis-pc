@@ -7,6 +7,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -264,8 +265,11 @@ def test_looks_ambiguous():
 
 
 def test_engine_query_without_key():
-    with mock.patch("jarvis.engine.llm_configured", return_value=False):
-        result = execute_utterance("幫我查點樣開 Chrome", repair_asr=False)
+    # hermes_enabled=False so the local-brain query path is exercised
+    # (real settings have Hermes on, which would route to the bridge).
+    with mock.patch("jarvis.engine.load_settings", return_value=SimpleNamespace(hermes_enabled=False)):
+        with mock.patch("jarvis.engine.llm_configured", return_value=False):
+            result = execute_utterance("幫我查點樣開 Chrome", repair_asr=False)
     assert result.ok
     assert any("caption" in line or "查詢" in line for line in result.lines)
     assert any("warn" in line.lower() or "API_KEY" in line for line in result.lines)
@@ -281,13 +285,15 @@ def test_engine_ambiguous_brain_then_dry_run():
             "speak_caption": "新開",
         }
     )
-    with mock.patch("jarvis.engine.llm_configured", return_value=True):
-        with mock.patch("jarvis.brain._chat", return_value=fake):
-            result = execute_utterance(
-                "開 完全未知軟體xyzabc",
-                dry_run=True,
-                repair_asr=False,
-            )
+    # hermes_enabled=False so the ambiguous→brain path is exercised.
+    with mock.patch("jarvis.engine.load_settings", return_value=SimpleNamespace(hermes_enabled=False)):
+        with mock.patch("jarvis.engine.llm_configured", return_value=True):
+            with mock.patch("jarvis.brain._chat", return_value=fake):
+                result = execute_utterance(
+                    "開 完全未知軟體xyzabc",
+                    dry_run=True,
+                    repair_asr=False,
+                )
     assert any("[brain]" in line for line in result.lines), result.lines
     assert any("browser-main" in line or "force_new" in line for line in result.lines)
     assert result.ok

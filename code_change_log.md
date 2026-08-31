@@ -1,5 +1,232 @@
 # 代碼變更與問題日誌
 
+## [2026-08-28 21:30:00] 操作類型：新增
+
+- **文件路徑**：`src/jarvis/hwinfo_shm.py`
+- **變更摘要**：HWiNFO64 shared memory reader——`shm_available()`、`read_sensors()`、`summary()`；ctypes 讀 `Global\HWiNFO_SENSORSMAP2`。
+- **狀態**：✅ py_compile 待驗證
+
+## [2026-08-28 19:50:00] 操作類型：新增 | 修改
+
+- **文件路徑**：`src/jarvis/mage_engine.py`（新）；`src/jarvis/settings.py`；`src/jarvis/shell_app.py`；`scripts/mage_vision.py`（新）
+- **變更摘要**：Mage-VL 本機睇圖整合——lazy `MageVLEngine`（spike `check_imports` monkeypatch + streammind_gate cache fix）；settings 加 `mage_enabled`／`mage_prompt_default`；shell 語音／文字指令 `(睇圖|看圖) <path>`；CLI `scripts/mage_vision.py`。
+- **狀態**：✅ py_compile 待驗證
+
+## [2026-08-28 19:40:00] 操作類型：修改
+
+- **文件路徑**：`src/jarvis/shell_app.py`；`jarvis-hud/settings.html`；`jarvis-hud/settings-preload.js`；`jarvis-hud/main.js`；`tools/patches/phase8_2_task_a_apply.py`
+- **變更摘要**：Phase 8.2 Task A/B——Electron settings 加 LLM／Hermes／Alerts 三個 `<details>` 進階區 + IPC（open/probe/test-alert）；`JARVIS_ELECTRON_HOST=1` 時 skip tkinter companion（headless serve，queue→stdout/serve.log + voice_status.json）。
+- **備註**：HUD 檔在 sibling repo；patch 在 `tools/patches/`，跑 `python tools/patches/phase8_2_task_a_apply.py` 套用。
+- **狀態**：✅ shell_app 已改；HUD 待 apply script
+
+
+- **文件路徑**：`src/jarvis/mcp_alerts_http.py`；`%LOCALAPPDATA%\\hermes\\scripts\\jarvis_watchdog.py`；`jarvis-hud/main.js`
+- **變更摘要**：alerts MCP 加免 auth `GET /health`（`ok`/`service`/`ts`/`wake_on`）；watchdog 優先探 `/health`、8765 TCP 作舊版 fallback；HUD `settings:save` 加 JS clamp 對齊 Python `_clamp()`。
+- **狀態**：✅ 完成（py_compile + node --check 待驗證）
+
+## [2026-08-28 18:25:00] 操作類型：新增 | 修改
+
+- **文件路徑**：`src/jarvis/gpu_policy.py`（新）；`src/jarvis/ear.py`
+- **變更摘要**：GPU 資源策略——gaming + VRAM 壓力高時 STT 讓出 GPU（`should_stt_use_gpu`）；`ear._preferred_device()` 接入 policy gate。
+- **狀態**：✅ 完成（py_compile 待驗證）
+
+## [2026-08-28 18:20:00] 操作類型：新增
+
+- **文件路徑**：`scripts/jarvis_self_monitor.py`
+- **變更摘要**：JARVIS 自我監控 cron 腳本——解析 wake_debug.log／serve.log 統計、安全 auto-tune wake_threshold（0.25–0.75）、寫 self_monitor.log； notable 時才 stdout。
+- **狀態**：✅ 完成（py_compile 待驗證）
+
+## [2026-08-28 17:00:00] 操作類型：修改
+
+- **文件路徑**：`src/jarvis/settings.py`；`src/jarvis/settings_ui.py`
+- **變更摘要**：`save_settings` 改 merge 現有 JSON（未知 key 唔再被 UI save 清走）；音訊診斷分頁加 AEC 開關 + loopback reference Combobox，`_save` 寫入 `aec_enabled`／`aec_reference_device`。
+- **狀態**：✅ 完成（py_compile 待驗證）
+
+## [2026-08-28 16:55:00] 操作類型：新增
+
+- **文件路徑**：`src/jarvis/settings_ui.py`
+- **變更摘要**：新增「音訊診斷」分頁——live mic RMS（sounddevice InputStream 16k）、3 秒錄音波形、喇叭 speak 測試；背景 thread + after() UI；關窗 clean stop InputStream；sounddevice ImportError 提示。
+- **狀態**：✅ 完成（py_compile 待本機驗證）
+
+## [2026-08-28 01:30:00] 操作類型：新增 | 修改
+
+- **文件路徑**：`TODOS.md`（合併主線）；`.hermes/plans/2026-08-28-HANDOFF.md`（新）
+- **變更摘要**：TODOS.md 合併 JARVIS master plan 剩餘主線（A4 speaker gate 收尾、AEC、Streaming TTS、狀態 daemon、Context 管道、JARVIS ONE、Proactive、喚醒詞重訓、C: 碟、CPU 溫度）＋保留 deferred follow-ups；寫 2026-08-28 HANDOFF（今日：popup 根治、Volcengine 擱置、Cursor CLI 上線、三批驗證、job inventory）。
+- **狀態**：✅ 完成
+
+## [2026-08-27 09:51:00] 操作類型：修改
+
+- **文件路徑**：`%LOCALAPPDATA%\hermes\sessions\sessions.json`；`state.db` gateway_routing
+- **變更摘要**：Gateway 死咗（01:22 後無 process）；清 Discord DM `resume_pending` 後 `hermes gateway start`，避免再開機再開 01:15 嗰輪 computer_use。
+- **遇到的問題**：
+  - 問題1：01:15「做頭四個」未答完 → 01:18 SIGKILL → auto-resume → 01:22 再死；之後到 09:50 **無 gateway**（Startup VBS 只 login 唔 sleep-wake）
+  - 解決方案：清 stale resume；start gateway。今次 log **無** Scheduled auto-resume
+  - 狀態：✅ 已解決（Discord 下一句應 idle-reset 新 session；舊 01:15 工冇做完）
+- **備註**：`session_reset both` 喺 gateway 死嗰陣唔會 fire。Windows sleep 殺 python 係重複模式。
+
+## [2026-08-26 22:29:00] 操作類型：修改
+
+- **文件路徑**：`%LOCALAPPDATA%\hermes\config.yaml`
+- **變更摘要**：`session_reset.mode` `none` → `both`（idle 180 分 或每日 06:00 換 session），避免 Discord DM 連日堆爆。
+- **遇到的問題**：
+  - 問題1：以為會 auto renew；實際 `mode: none`，同一條 DM 用兩日 → ~29.7 萬 token／389 tool turns，最後 SIGKILL 冇覆
+  - 解決方案：`both` + idle 180 + `at_hour: 6`（唔用 4，避開通宵工）
+  - 狀態：✅ 已解決（要 gateway restart；舊肥 session 仍要 Discord `/new`）
+- **備註**：backup `config.yaml.bak-20260826-2229`。背景 process <24h 可擋 idle；daily 6 點保底。
+
+## [2026-08-25 00:58:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hermes_bridge.py；tests/test_hermes_bridge.py；`%LOCALAPPDATA%\hermes\.env`；`%LOCALAPPDATA%\hermes\config.yaml`
+- **變更摘要**：Jarvis 同 Discord 打同一隻 Windows Hermes（DeepSeek）；Jarvis 唔再起 WSL 第二 gateway。
+- **遇到的問題**：
+  - 問題1：`ensure_api_server` 用 `wsl hermes gateway run`，同 Discord 嘅 Windows gateway 分開
+  - 解決方案：Windows Hermes 開 `API_SERVER_*` :8642；bridge 用 `%LOCALAPPDATA%\hermes` python；CLI fallback 都用呢隻
+  - 狀態：✅ 已解決
+- **備註**：Trusted toolsets 暫時仍打 WSL `hermes tools`（另路）。
+
+## [2026-08-20 19:48:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py；tests/test_hands_mc.py
+- **變更摘要**：30 分監控確認 `jarvis serve` 每 ~2s `tasklist`→`conhost`；改 Toolhelp 列行程，不再 spawn console。
+- **遇到的問題**：
+  - 問題1：`CREATE_NO_WINDOW` 仍會生 `conhost.exe`（Win10）；標題常被看成 cmd
+  - 解決方案：`_pids_for_images` / `_image_running` / `_chrome_running` / `_pid_alive` 改行程內 snapshot
+  - 狀態：✅ 已解決
+- **備註**：30 分 log：cmd.exe=0；JARVIS tasklist conhost=337；Cursor git conhost=92。
+
+## [2026-08-20 19:16:00] 操作類型：新增
+
+- **文件路徑**：scripts/_watch_cmd_flash_30m.py
+- **變更摘要**：30 分鐘監控 cmd/conhost 父鏈，分辨 Jarvis vs Cursor。
+- **遇到的問題**：無
+- **備註**：pythonw 背景跑；結果寫 `%TEMP%\jarvis_cmd_watch_30m.txt`。
+
+## [2026-08-13 17:05:00] 操作類型：修改
+
+- **文件路徑**：`%USERPROFILE%\.cursor\mcp.json`；scripts/mcp_stdio_no_console.py
+- **變更摘要**：修「黑窗停約 1 秒／仍出現」— `.venv\Scripts\pythonw.exe` 係 CUI shim（PE subsystem=3），會開 console；改用 pythoncore-3.14 真 GUI pythonw。
+- **遇到的問題**：
+  - 問題1：process tree = venv pythonw(CUI) → uv python.exe(CUI) → node；黑窗來自 shim
+  - 解決方案：mcp command 改 `pythoncore-3.14-64\pythonw.exe`（subsystem=2）
+  - 狀態：✅ 已解決（要 Reload Cursor 殺舊 MCP）
+- **備註**：另有 AMD `AMDRSServ` cmd、同 `${workspaceFolder}` 未展開嘅 codegraph 殘留，Reload 可清。
+
+## [2026-08-13 16:18:00] 操作類型：新增 | 修改
+
+- **文件路徑**：tools/mcp-deps/（local context7）；`%USERPROFILE%\.cursor\mcp.json`
+- **變更摘要**：check 後修 context7 — 唔再用 npx（會再 spawn `cmd /c context7-mcp`）；改直跑固定 index.js + pythonw proxy。
+- **遇到的問題**：
+  - 問題1：15s watch 無 HOOK；live 仍見 `cmd /c context7-mcp`（npx 副作用）
+  - 問題2：同期另有 `gradlew.bat`（super_minecraft）無關 Jarvis
+  - 解決方案：npm install 到 tools/mcp-deps；mcp.json 直指 dist/index.js
+  - 狀態：✅ 已解決（要 Reload MCP）
+- **備註**：hooks 仍空。codegraph 已用 proxy。
+
+## [2026-08-13 14:22:00] 操作類型：新增
+
+- **文件路徑**：scripts/mcp_stdio_no_console.py；`%USERPROFILE%\.cursor\mcp.json`
+- **變更摘要**：MCP 黑窗「停約 1 秒」— 因直接起 console 版 `node.exe`；改 pythonw + CREATE_NO_WINDOW stdio proxy。
+- **遇到的問題**：
+  - 問題1：先前去 cmd 閃，改直跑 node → CUI subsystem 窗留約 1s
+  - 解決方案：`pythonw` 跑 proxy，子行程 node 帶 CREATE_NO_WINDOW，stdin/out 直通
+  - 狀態：✅ 已解決（要 Reload Cursor／重載 MCP）
+- **備註**：hooks 仍保持卸載。
+
+## [2026-08-12 22:40:00] 操作類型：修改
+
+- **文件路徑**：`%USERPROFILE%\.cursor\hooks.json`（uninstall）
+- **變更摘要**：關 Jarvis Cursor hooks — WMI 證實「更多閃」= Cursor 外層 PowerShell×每次 preToolUse（18s 內 22 次），唔係 MCP cmd。
+- **遇到的問題**：
+  - 問題1：mcp 改 node 後 cmd 少咗，但 hook PowerShell+conhost 更多（agent tool 狂打 preToolUse）
+  - 解決方案：`cursor-hooks uninstall` 清 hooks.json；alerts 改靠 UIA／其他
+  - 狀態：✅ 已解決（要 Reload Cursor）
+- **備註**：之後若要 Cursor 完叮叮，要等 Cursor 支援無窗 hook，或改用非 PowerShell 啟動方式（而家無）。
+
+## [2026-08-12 20:50:00] 操作類型：修改
+
+- **文件路徑**：`%USERPROFILE%\.cursor\mcp.json`（非 jarvis-pc 源碼）
+- **變更摘要**：修 CMD 持續閃 — MCP `codegraph`／`context7` 唔再經 `.cmd`／`npx.cmd`；改直接 `node.exe`。
+- **遇到的問題**：
+  - 問題1：WMI 證實 hooks 已改 pythonw 後仍閃；兇手係 `cmd /c codegraph.cmd` + `cmd /c npx`（多 workspace 各起一次）
+  - 解決方案：mcp.json command 改 codegraph 內建 node.exe + npx-cli.js
+  - 狀態：✅ 已解決（要 Cursor 重載 MCP）
+- **備註**：Jarvis hooks 外層仍有 Cursor PowerShell wrapper（較輕）。若仲煩可 `jarvis cursor-hooks uninstall`。
+
+## [2026-08-12 16:05:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/cursor_hooks.py；tests/test_cursor_hooks.py；%USERPROFILE%\.cursor\hooks.json
+- **變更摘要**：修 CMD 狂閃 — Cursor hooks 唔再用 `cmd /c`；改 `pythonw -u`（stdin 已驗證）。
+- **遇到的問題**：
+  - 問題1：WMI 抓到每次 hook = PowerShell → cmd /c → python → conhost 閃
+  - 解決方案：hooks.json command = `"pythonw" -u script`；re-install
+  - 狀態：✅ 已解決
+- **備註**：要 Cursor reload hooks／重開窗。GPU NVML 路徑非兇手。
+
+## [2026-08-12 02:08:00] 操作類型：修改
+
+- **文件路徑**：scripts/hermes_alert_speak_once.py；src/jarvis/sensors/*；alerts.py；settings；docs；tests；pyproject.toml
+- **變更摘要**：eng-review go — Hermes-only TTS＋Windows taskkill timeout；NVML primary；dynamic calib／per-reason cooldown／gap clear；csv.reader；tests／docs。
+- **遇到的問題**：無
+- **備註**：T1–T9；deferred push／HWiNFO／MC／GPU-Z 仍喺 TODOS。
+
+## [2026-08-12 01:58:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/hands.py；src/jarvis/mouth.py；scripts/hermes_alert_speak_once.py；src/jarvis/shell_app.py；src/jarvis/discover.py
+- **變更摘要**：掃背景 subprocess／彈窗風險；修 `_start_detached` 唔再用 DETACHED（閃 CMD）；powershell 加 `-WindowStyle Hidden`；mouth／ffplay 加固。
+- **遇到的問題**：
+  - 問題1：`DETACHED_PROCESS` 令 `CREATE_NO_WINDOW` 失效（舊日誌已證）
+  - 解決方案：改 `CREATE_NO_WINDOW|CREATE_NEW_PROCESS_GROUP`（同 restart）
+  - 狀態：✅ 已解決
+- **備註**：主窗／Hands 確認／按掣開 browser 仍保留（使用者主動 UI）。Cursor hooks `cmd /c` 靠 Cursor 藏窗，唔改（pythonw 會斷 stdin）。
+
+## [2026-08-12 01:50:00] 操作類型：修改
+
+- **文件路徑**：TODOS.md；`~/.gstack/projects/jarvis-pc/` eng-review artifacts
+- **變更摘要**：eng-review 完結 — D13 Hermes push TODO；寫 test-plan／tasks／design GSTACK REVIEW REPORT。
+- **遇到的問題**：無
+- **備註**：實作未開始；等 user 說 build。
+
+## [2026-08-12 01:45:00] 操作類型：修改
+
+- **文件路徑**：TODOS.md
+- **變更摘要**：eng-review 加 deferred GPU-Z failover backend TODO（D12 A+）。
+- **遇到的問題**：無
+- **備註**：—
+
+## [2026-08-12 01:44:00] 操作類型：修改
+
+- **文件路徑**：TODOS.md
+- **變更摘要**：eng-review 加 deferred Minecraft／Prism ready alert TODO。
+- **遇到的問題**：無
+- **備註**：D11＝A。
+
+## [2026-08-12 01:32:00] 操作類型：修改
+
+- **文件路徑**：TODOS.md
+- **變更摘要**：eng-review 加 deferred HWiNFO SHM backend TODO。
+- **遇到的問題**：無
+- **備註**：D10＝A Add to TODOS。
+
+## [2026-08-12 01:10:00] 操作類型：修改
+
+- **文件路徑**：src/jarvis/sensors/backend.py
+- **變更摘要**：`nvidia-smi` subprocess 加 `CREATE_NO_WINDOW`，停 GPU health poll 每 5s 閃 CMD。
+- **遇到的問題**：
+  - 問題1：P0 sensor loop 無 hidden console flag；nvidia-smi 係 console subsystem
+  - 解決方案：creationflags=CREATE_NO_WINDOW
+  - 狀態：✅ 已解決（需重啟 companion）
+- **備註**：若仍閃：查 Cursor hooks `cmd /c`（偶發）或 mouth/ffplay 後備。Eng-review 進行中：speak=A、GPU動態=A、cooldown=A。
+
+## [2026-08-12 00:20:00] 操作類型：新增 | 修改
+
+- **文件路徑**：src/jarvis/sensors/*；alerts.py；settings.py；settings_ui.py；shell_app.py；scripts/hermes_alert_poll_loop.py；tests/test_gpu_health.py；.gstack design doc
+- **變更摘要**：Office-hours APPROVE（B+C，HUD 延後）→ P0 RTX 5090 `gpu_health`：nvidia-smi 後端＋clock／溫門檻→alerts 入隊；Hermes poll 預設 1s。
+- **遇到的問題**：
+  - 問題1：5090 公開 Hotspot 鎖；smi `temperature.memory` 可能 N/A
+  - 解決方案：主訊號＝核心溫＋高負載時 clock 跌；濾 255；Mem 有數先用
+  - 狀態：✅ 已解決（實作）
+- **備註**：設計稿 `~/.gstack/projects/jarvis-pc/skps9-feature-hermes-alerts-mcp-design-20260811-222632.md` Status=APPROVED。
+
 ## [2026-08-11 11:40:00] 操作類型：修改
 
 - **文件路徑**：src/jarvis/cursor_hooks.py；scripts/cursor_hook_alert.py；src/jarvis/alerts.py；docs/hermes_alerts_mcp.md；tests/test_cursor_hooks.py

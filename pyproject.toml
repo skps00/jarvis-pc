@@ -14,6 +14,7 @@ dependencies = [
   "Pillow>=10.0.0,<12",
   "pynput>=1.7.6,<2",
   "ToJyutping>=3.0,<4",
+  "nvidia-ml-py>=12.535.0,<13",
 ]
 
 [dependency-groups]
@@ -33,13 +34,21 @@ ear = [
   "sounddevice>=0.4.6,<0.6",
   "numpy>=1.24,<3",
   "funasr>=1.1.0,<2",
-  "torch>=2.0.0",
-  "torchaudio>=2.0.0",
+  "torch>=2.0.0,<3",
+  "torchaudio>=2.0.0,<3",
 ]
 wake = [
   "jarvis-pc[ear]",
   "openwakeword>=0.6.0,<0.7",
   "onnxruntime>=1.16.0,<2",
+  "piper-tts>=1.5.0,<2",
+]
+aec = [
+  "pyaec>=1.0.0,<2",
+  "pyaudiowpatch>=0.2.0,<1",
+]
+speaker = [
+  "speechbrain>=1.0.0,<2",
 ]
 alerts = [
   "winrt-runtime>=3.0,<4",

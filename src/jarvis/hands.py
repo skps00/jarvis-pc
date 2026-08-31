@@ -29,27 +29,69 @@ class LaunchResult:
     profile_id: str | None = None
 
 
+_TH32CS_SNAPPROCESS = 0x00000002
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_ERROR_ACCESS_DENIED = 5
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", wintypes.DWORD),
+        ("cntUsage", wintypes.DWORD),
+        ("th32ProcessID", wintypes.DWORD),
+        ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+        ("th32ModuleID", wintypes.DWORD),
+        ("cntThreads", wintypes.DWORD),
+        ("th32ParentProcessID", wintypes.DWORD),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", wintypes.DWORD),
+        ("szExeFile", wintypes.WCHAR * 260),
+    ]
+
+
+def _snapshot_processes() -> list[tuple[int, str]]:
+    """(pid, exe_name) via Toolhelp. No tasklist → no conhost flash."""
+    if sys.platform != "win32":
+        return []
+    k32 = ctypes.windll.kernel32
+    snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if snap in (0, -1, wintypes.HANDLE(-1).value):
+        return []
+    out: list[tuple[int, str]] = []
+    pe = _PROCESSENTRY32W()
+    pe.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
+    ok = k32.Process32FirstW(snap, ctypes.byref(pe))
+    while ok:
+        out.append((int(pe.th32ProcessID), pe.szExeFile))
+        ok = k32.Process32NextW(snap, ctypes.byref(pe))
+    k32.CloseHandle(snap)
+    return out
+
+
+def _norm_image(name: str) -> str:
+    n = name.strip().lower()
+    return n if n.endswith(".exe") else f"{n}.exe"
+
+
 def _chrome_running() -> bool:
     """Return True if a chrome.exe process exists (Windows)."""
-    if sys.platform != "win32":
-        return False
-    try:
-        out = subprocess.check_output(
-            ["tasklist", "/FI", "IMAGENAME eq chrome.exe", "/NH"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    return "chrome.exe" in out.lower()
+    return _image_running("chrome.exe")
 
 
 def _start_detached(args: list[str], cwd: str | None = None) -> None:
-    """Start a process without waiting (Windows-friendly)."""
+    """Start a process without waiting (Windows-friendly).
+
+    Do **not** use ``DETACHED_PROCESS``: it makes ``CREATE_NO_WINDOW`` a no-op
+    and console children (cmd/powershell/python) flash a CMD. Match shell_app
+    restart: ``CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP``. GUI apps still
+    open normally; console wrappers stay hidden.
+    """
     kwargs: dict = {}
     if sys.platform == "win32":
-        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) | int(
+            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        )
+        kwargs["creationflags"] = flags
         kwargs["close_fds"] = True
     subprocess.Popen(args, cwd=cwd, **kwargs)
 
@@ -189,20 +231,11 @@ def _process_names(launch: dict) -> list[str]:
 
 
 def _image_running(image: str) -> bool:
-    """True if tasklist finds image name (Windows)."""
+    """True if a process with this image name exists (Windows)."""
     if sys.platform != "win32":
         return False
-    name = image if image.lower().endswith(".exe") else f"{image}.exe"
-    try:
-        out = subprocess.check_output(
-            ["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    return name.lower() in out.lower()
+    want = _norm_image(image)
+    return any(name.lower() == want for _, name in _snapshot_processes())
 
 
 def _any_process_running(names: list[str]) -> bool:
@@ -232,65 +265,27 @@ def _kill_images(names: list[str]) -> None:
         raise OSError("; ".join(errors))
 
 
-def _win_subprocess_text_kwargs() -> dict:
-    """Decode Windows CLI (tasklist etc.) as OEM/ANSI, not UTF-8.
-
-    ``PYTHONUTF8=1`` makes ``text=True`` use utf-8 and blow up on cp950
-    ``INFO: 沒有…`` lines (byte 0xb8…).
-    """
-    if sys.platform != "win32":
-        return {"text": True}
-    return {
-        "text": True,
-        "encoding": "mbcs",
-        "errors": "replace",
-    }
-
-
 def _pids_for_images(names: list[str]) -> set[int]:
-    """PIDs currently running for given image names (Windows tasklist)."""
+    """PIDs currently running for given image names (Windows Toolhelp)."""
     found: set[int] = set()
     if sys.platform != "win32" or not names:
         return found
-    for image in names:
-        name = image if image.lower().endswith(".exe") else f"{image}.exe"
-        try:
-            out = subprocess.check_output(
-                ["tasklist", "/FI", f"IMAGENAME eq {name}", "/FO", "CSV", "/NH"],
-                stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                **_win_subprocess_text_kwargs(),
-            )
-        except (OSError, subprocess.CalledProcessError):
-            continue
-        for line in out.splitlines():
-            line = line.strip()
-            if not line or line.upper().startswith("INFO:"):
-                continue
-            # "Discord.exe","12345","Console","1","12,345 K"
-            parts = line.strip('"').split('","')
-            if len(parts) < 2:
-                continue
-            try:
-                found.add(int(parts[1]))
-            except ValueError:
-                continue
+    want = {_norm_image(n) for n in names}
+    for pid, exe in _snapshot_processes():
+        if exe.lower() in want:
+            found.add(pid)
     return found
 
 
 def _pid_alive(pid: int) -> bool:
     if sys.platform != "win32" or pid <= 0:
         return False
-    try:
-        out = subprocess.check_output(
-            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-            stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            **_win_subprocess_text_kwargs(),
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    return str(pid) in out and "INFO:" not in out.upper()
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if h:
+        k32.CloseHandle(h)
+        return True
+    return ctypes.get_last_error() == _ERROR_ACCESS_DENIED
 
 
 def _wait_new_pids(
@@ -419,6 +414,8 @@ def _java_processes() -> list[tuple[int, str]]:
             [
                 "powershell",
                 "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
                 "-Command",
                 "Get-CimInstance Win32_Process -Filter "
                 "\"Name='javaw.exe' OR Name='java.exe'\" "
@@ -747,7 +744,17 @@ def _launch_script(launch: dict) -> None:
     cwd = launch.get("working_dir")
     shell = str(launch.get("shell") or "bat").lower()
     if shell == "ps1":
-        cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)]
+        # -WindowStyle Hidden: belt + suspenders with CREATE_NO_WINDOW on Popen
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(path),
+        ]
     else:
         cmd = ["cmd", "/c", str(path)]
     extra = [str(a) for a in (launch.get("args") or [])]
@@ -1125,6 +1132,8 @@ def _resolve_lnk_target(lnk: str | Path) -> Path | None:
             [
                 "powershell",
                 "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
                 "-Command",
                 "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
                 f"'{str(path).replace(chr(39), chr(39)+chr(39))}'); "

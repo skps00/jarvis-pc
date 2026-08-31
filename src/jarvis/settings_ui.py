@@ -1,6 +1,11 @@
 """Jarvis companion settings (multi-tab).
 
-Tabs: 提醒 · Hermes · 系統 · 進階（Piper／legacy wake／LLM）。
+Tabs: 提醒 · Hermes · 系統 · 音訊診斷 · 進階（Piper／legacy wake／LLM）。
+
+⚠️ 已凍結（2026-08-29）：settings 已由 Electron settings.html 取代（JARVIS ONE 0.4.x，
+Electron HUD 管設定）。此 tkinter 版本只保留俾「非 Electron fallback」（人手
+`python -m jarvis serve` 冇 JARVIS_ELECTRON_HOST 時）。新功能唔好加喺度——
+加去 jarvis-hud/settings.html（Electron）。
 """
 
 from __future__ import annotations
@@ -42,9 +47,79 @@ def list_input_mics() -> list[tuple[int | None, str]]:
     return _list_audio_combo(kind="input")
 
 
+def list_input_mics_deduped() -> tuple[list[tuple[int | None, str]], dict[str, str]]:
+    """Wake mic 下拉清單：同名裝置去重（Windows 列同一個 mic 多個變體）。
+
+    揀 44.1kHz 變體（16k wake stream 必開到；48k 變體會 PaErrorCode -9997）。
+    回傳 (rows, label→真實裝置名)；save 時存**名**（唔存 index，防 reboot 移位）。
+    """
+    rows: list[tuple[int | None, str]] = [(None, "（系統預設）")]
+    label_to_name: dict[str, str] = {"（系統預設）": ""}
+    try:
+        import sounddevice as sd
+
+        default_idx = sd.default.device[0]
+        by_name: dict[str, list[tuple[int, float]]] = {}
+        for i, d in enumerate(sd.query_devices()):
+            if int(d.get("max_input_channels") or 0) <= 0:
+                continue
+            raw = str(d.get("name") or f"device {i}").strip()
+            sr = float(d.get("default_samplerate") or 0)
+            by_name.setdefault(raw, []).append((i, sr))
+        for name, cands in by_name.items():
+            best = cands[0]
+            for i, sr in cands[1:]:
+                if abs(sr - 44100.0) < abs(best[1] - 44100.0):
+                    best = (i, sr)
+            i, _sr = best
+            lab_name = name if len(name) <= 52 else name[:49] + "…"
+            mark = " ★預設" if i == default_idx else ""
+            lab = f"{i}: {lab_name}{mark}"
+            rows.append((i, lab))
+            label_to_name[lab] = name
+    except Exception:
+        pass
+    return rows, label_to_name
+
+
 def list_output_speakers() -> list[tuple[int | None, str]]:
     """Return ``(device_index_or_None, label)`` for speaker Combobox."""
     return _list_audio_combo(kind="output")
+
+
+def list_output_speakers_deduped() -> tuple[list[tuple[int | None, str]], dict[str, str]]:
+    """喇叭下拉清單：同名裝置去重（Windows 列同一個 device 多個變體）。
+
+    揀 44.1kHz 變體（同 input 版一致）；save 時存**名**（防 reboot 移位）。
+    回傳 (rows, label→真實裝置名)。
+    """
+    rows: list[tuple[int | None, str]] = [(None, "（系統預設）")]
+    label_to_name: dict[str, str] = {"（系統預設）": ""}
+    try:
+        import sounddevice as sd
+
+        default_idx = sd.default.device[1]
+        by_name: dict[str, list[tuple[int, float]]] = {}
+        for i, d in enumerate(sd.query_devices()):
+            if int(d.get("max_output_channels") or 0) <= 0:
+                continue
+            raw = str(d.get("name") or f"device {i}").strip()
+            sr = float(d.get("default_samplerate") or 0)
+            by_name.setdefault(raw, []).append((i, sr))
+        for name, cands in by_name.items():
+            best = cands[0]
+            for i, sr in cands[1:]:
+                if abs(sr - 44100.0) < abs(best[1] - 44100.0):
+                    best = (i, sr)
+            i, _sr = best
+            lab_name = name if len(name) <= 52 else name[:49] + "…"
+            mark = " ★預設" if i == default_idx else ""
+            lab = f"{i}: {lab_name}{mark}"
+            rows.append((i, lab))
+            label_to_name[lab] = name
+    except Exception:
+        pass
+    return rows, label_to_name
 
 
 def _list_audio_combo(*, kind: str) -> list[tuple[int | None, str]]:
@@ -71,20 +146,46 @@ def _list_audio_combo(*, kind: str) -> list[tuple[int | None, str]]:
 
 
 def _pick_device_label(
-    rows: list[tuple[int | None, str]], saved: int | None
+    rows: list[tuple[int | None, str]],
+    saved: int | str | None,
+    label_to_name: dict[str, str] | None = None,
 ) -> tuple[str, list[tuple[int | None, str]]]:
-    """Match saved index to label; append orphan row if missing."""
-    cur_lab = "（系統預設）"
-    for idx, lab in rows:
-        if saved is None and idx is None:
-            return lab, rows
-        if saved is not None and idx == int(saved):
-            return lab, rows
-    if saved is not None:
+    """Match saved (index or name) to label; append orphan row if missing."""
+    if saved is None:
+        return "（系統預設）", rows
+    if isinstance(saved, int):
+        for idx, lab in rows:
+            if idx == int(saved):
+                return lab, rows
+        # int index 已 reorder：用 device 名反查 label（防顯示「裝置已唔見」）
+        if label_to_name:
+            try:
+                import sounddevice as sd
+
+                name = str(
+                    sd.query_devices(int(saved)).get("name") or ""
+                ).strip()
+                for lab, nm in label_to_name.items():
+                    if nm == name:
+                        return lab, rows
+            except Exception:
+                pass
         orphan = f"{saved}: （裝置已唔見／離線）"
         rows = list(rows) + [(int(saved), orphan)]
         return orphan, rows
-    return cur_lab, rows
+    # str（裝置名）：反查 label
+    if label_to_name:
+        for lab, name in label_to_name.items():
+            if name == saved:
+                return lab, rows
+    for idx, lab in rows:
+        if lab == saved:
+            return lab, rows
+    orphan = f"（{str(saved)[:40]}）"
+    rows = list(rows) + [(None, orphan)]
+    if label_to_name is not None:
+        label_to_name[orphan] = str(saved)
+    return orphan, rows
 
 
 class SettingsWindow:
@@ -104,13 +205,22 @@ class SettingsWindow:
         s = load_settings(force=True)
         self._custom = list(s.custom_models)
 
+        self._mic_test_running = False
+        self._mic_test_stream = None
+        self._mic_test_after_id: str | None = None
+        self._mic_latest_rms = 0.0
+        self._mic_recording = False
+
         nb = ttk.Notebook(self.win)
         nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         self._build_alerts_tab(self._add_scroll_tab(nb, "提醒"), s)
         self._build_hermes_tab(self._add_scroll_tab(nb, "Hermes"), s)
         self._build_sys_tab(self._add_scroll_tab(nb, "系統"), s)
+        self._build_audio_diag_tab(self._add_scroll_tab(nb, "音訊診斷"), s)
         self._build_advanced_tab(self._add_scroll_tab(nb, "進階"), s)
+
+        self.win.bind("<Destroy>", self._on_settings_destroy, add="+")
 
         btn = tk.Frame(self.win)
         btn.pack(fill=tk.X, padx=8, pady=(0, 8))
@@ -405,16 +515,26 @@ class SettingsWindow:
             width=12,
         ).grid(row=12, column=1, sticky="w", pady=2)
 
+        self.var_alert_gpu = tk.BooleanVar(
+            value=bool(getattr(s, "alert_gpu_health", True))
+        )
+        tk.Checkbutton(
+            frm,
+            text="GPU health（NVML/smi → Hermes；護 5090）",
+            variable=self.var_alert_gpu,
+        ).grid(row=13, column=0, columnspan=2, sticky="w", pady=2)
+
         bf = tk.Frame(frm)
-        bf.grid(row=13, column=0, columnspan=2, sticky="w", pady=8)
+        bf.grid(row=14, column=0, columnspan=2, sticky="w", pady=8)
         tk.Button(bf, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
 
         self._hint(
             frm,
-            14,
+            15,
             "Hooks 不穩可關 hooks、開 Toast。"
             " Install：python -m jarvis cursor-hooks install。"
-            " hermes＝入隊；piper＝本機；off＝唔讀。",
+            " hermes＝入隊；piper＝本機；off＝唔讀。"
+            " GPU：高負載 clock 跌／核心溫≥83°C 叮（無 HUD）。",
             cols=2,
         )
         frm.columnconfigure(1, weight=1)
@@ -474,6 +594,402 @@ class SettingsWindow:
             "桌面捷徑 JARVIS.lnk → companion；對話用 Hermes。",
             cols=2,
         )
+
+    def _on_settings_destroy(self, event: tk.Event) -> None:
+        if event.widget is not self.win:
+            return
+        self._stop_mic_test()
+
+    def _resolve_wake_mic_index(self, s: Settings) -> int | None:
+        dev = s.wake_mic_device
+        if dev is None or dev == "":
+            return None
+        if isinstance(dev, int):
+            return dev
+        from jarvis.wake import resolve_mic_name
+
+        return resolve_mic_name(str(dev))
+
+    def _mic_status_text(self, rms: float) -> tuple[str, str]:
+        if rms > 0.008:
+            return "● 正常", "#228822"
+        if rms >= 0.002:
+            return "⚠ 偏靜", "#cc8800"
+        return "✖ 無聲/斷連", "#cc2222"
+
+    def _build_audio_diag_tab(self, frm: tk.Frame, s: Settings) -> None:
+        """Live mic RMS + 3s recording + speaker playback test."""
+        self._audio_diag_settings = s
+
+        from jarvis import aec
+
+        row = 0
+        tk.Label(frm, text="AEC（迴聲消除）", font=("Segoe UI", 10, "bold")).grid(
+            row=row, column=0, columnspan=2, sticky="w", pady=4
+        )
+        row += 1
+        self.var_aec_enabled = tk.BooleanVar(value=bool(s.aec_enabled))
+        tk.Checkbutton(
+            frm,
+            text="啟用 AEC（濾走喇叭聲／YouTube BGM／voice call 對方聲）",
+            variable=self.var_aec_enabled,
+            wraplength=460,
+            justify="left",
+        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
+        row += 1
+
+        aec_labels: list[str] = ["自動"]
+        self._aec_label_to_name: dict[str, str] = {"自動": ""}
+        try:
+            for _idx, name, _rate in aec.list_loopback_devices():
+                display = name.replace("[Loopback]", "").strip() or name
+                if len(display) > 52:
+                    display = display[:49] + "…"
+                if display not in self._aec_label_to_name:
+                    aec_labels.append(display)
+                    self._aec_label_to_name[display] = name
+        except Exception:
+            pass
+
+        saved_ref = str(getattr(s, "aec_reference_device", "") or "").strip()
+        cur_aec = "自動"
+        if saved_ref:
+            for lab, nm in self._aec_label_to_name.items():
+                if nm == saved_ref:
+                    cur_aec = lab
+                    break
+            else:
+                disp = saved_ref.replace("[Loopback]", "").strip() or saved_ref
+                if len(disp) > 52:
+                    disp = disp[:49] + "…"
+                self._aec_label_to_name[disp] = saved_ref
+                if disp not in aec_labels:
+                    aec_labels.append(disp)
+                cur_aec = disp
+
+        self.var_aec_ref_label = tk.StringVar(value=cur_aec)
+        tk.Label(frm, text="AEC Reference（喇叭 reference）").grid(
+            row=row, column=0, sticky="w", pady=2
+        )
+        ttk.Combobox(
+            frm,
+            textvariable=self.var_aec_ref_label,
+            values=tuple(aec_labels),
+            state="readonly",
+            width=40,
+        ).grid(row=row, column=1, sticky="ew", pady=2)
+        row += 1
+        row = self._hint(
+            frm,
+            row,
+            "WASAPI loopback 做 echo reference；「自動」= 跟 TTS 喇叭揀。"
+            " 需要 pyaec + pyaudiowpatch。",
+            cols=2,
+        )
+
+        try:
+            import sounddevice as _sd  # noqa: F401
+        except ImportError:
+            tk.Label(
+                frm,
+                text="需要 sounddevice 套件先可以做音訊診斷（pip install sounddevice）。",
+                fg="#cc2222",
+                wraplength=480,
+                justify="left",
+            ).grid(row=row, column=0, columnspan=2, sticky="w", pady=8)
+            frm.columnconfigure(1, weight=1)
+            return
+
+        mic_rows, mic_label_to_name = list_input_mics_deduped()
+        if isinstance(s.wake_mic_device, str) and s.wake_mic_device:
+            mic_display = s.wake_mic_device
+        elif isinstance(s.wake_mic_device, int):
+            mic_display, _mic_rows = _pick_device_label(
+                mic_rows, s.wake_mic_device, mic_label_to_name
+            )
+        else:
+            mic_display = "（系統預設）"
+
+        tk.Label(frm, text="麥克風測試", font=("Segoe UI", 10, "bold")).grid(
+            row=row, column=0, columnspan=2, sticky="w", pady=4
+        )
+        row += 1
+        tk.Label(frm, text="Wake 麥克風").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Label(
+            frm,
+            text=mic_display,
+            wraplength=380,
+            justify="left",
+        ).grid(row=row, column=1, sticky="w", pady=2)
+        row += 1
+
+        bf = tk.Frame(frm)
+        bf.grid(row=row, column=0, columnspan=2, sticky="w", pady=4)
+        self._mic_test_btn = tk.Button(
+            bf, text="開始測試", command=self._toggle_mic_test
+        )
+        self._mic_test_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self._mic_rms_bar = ttk.Progressbar(
+            bf, orient=tk.HORIZONTAL, length=300, maximum=1.0, mode="determinate"
+        )
+        self._mic_rms_bar.pack(side=tk.LEFT, padx=(0, 8))
+        self._mic_status_lbl = tk.Label(bf, text="—", font=("Segoe UI", 9))
+        self._mic_status_lbl.pack(side=tk.LEFT)
+        row += 1
+
+        rec_bf = tk.Frame(frm)
+        rec_bf.grid(row=row, column=0, columnspan=2, sticky="w", pady=4)
+        self._mic_record_btn = tk.Button(
+            rec_bf, text="錄音 3 秒測試", command=self._record_mic_test
+        )
+        self._mic_record_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self._mic_record_result = tk.Label(rec_bf, text="", font=("Segoe UI", 9))
+        self._mic_record_result.pack(side=tk.LEFT)
+        row += 1
+
+        self._mic_wave_canvas = tk.Canvas(
+            frm, width=300, height=80, bg="#f4f4f4", highlightthickness=1
+        )
+        self._mic_wave_canvas.grid(row=row, column=0, columnspan=2, sticky="w", pady=4)
+        row += 1
+        row = self._hint(
+            frm,
+            row,
+            "戴住 Arctis 講嘢——如果長期 ✖ 無聲 = headset 休眠/斷連，唔係 JARVIS 問題。",
+            cols=2,
+        )
+
+        spk_rows, spk_label_to_name = list_output_speakers_deduped()
+        if isinstance(s.tts_output_device, str) and s.tts_output_device:
+            spk_display = s.tts_output_device
+        elif isinstance(s.tts_output_device, int):
+            spk_display, _spk_rows = _pick_device_label(
+                spk_rows, s.tts_output_device, spk_label_to_name
+            )
+        else:
+            spk_display = "（系統預設）"
+
+        tk.Label(frm, text="喇叭測試", font=("Segoe UI", 10, "bold")).grid(
+            row=row, column=0, columnspan=2, sticky="w", pady=(12, 4)
+        )
+        row += 1
+        tk.Label(frm, text="TTS 輸出").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Label(
+            frm,
+            text=spk_display,
+            wraplength=380,
+            justify="left",
+        ).grid(row=row, column=1, sticky="w", pady=2)
+        row += 1
+        tk.Button(frm, text="播放測試音", command=self._play_speaker_test).grid(
+            row=row, column=1, sticky="w", pady=4
+        )
+        frm.columnconfigure(1, weight=1)
+
+    def _toggle_mic_test(self) -> None:
+        if self._mic_test_running:
+            self._stop_mic_test()
+        else:
+            self._start_mic_test()
+
+    def _start_mic_test(self) -> None:
+        if self._mic_test_running:
+            return
+        self._mic_test_running = True
+        self._mic_latest_rms = 0.0
+        self._mic_test_btn.configure(text="停止")
+
+        s = getattr(self, "_audio_diag_settings", None) or load_settings(force=True)
+        device = self._resolve_wake_mic_index(s)
+
+        def work() -> None:
+            try:
+                import sounddevice as sd
+
+                def callback(indata, _frames, _time_info, _status) -> None:
+                    if not self._mic_test_running:
+                        return
+                    try:
+                        import numpy as np
+
+                        data = indata[:, 0] if indata.ndim > 1 else indata.reshape(-1)
+                        self._mic_latest_rms = float(
+                            np.sqrt(np.mean(data.astype(np.float64) ** 2))
+                        )
+                    except Exception:
+                        pass
+
+                stream = sd.InputStream(
+                    samplerate=16000,
+                    channels=1,
+                    blocksize=160,
+                    device=device,
+                    callback=callback,
+                )
+                self._mic_test_stream = stream
+                stream.start()
+                self.win.after(0, self._mic_test_ui_tick)
+            except Exception as exc:
+                err = str(exc)
+                self._mic_test_running = False
+
+                def fail() -> None:
+                    self._mic_test_btn.configure(text="開始測試")
+                    messagebox.showerror(
+                        "麥克風測試", f"無法開啟 InputStream：{err}", parent=self.win
+                    )
+
+                self.win.after(0, fail)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _stop_mic_test(self) -> None:
+        self._mic_test_running = False
+        if self._mic_test_after_id is not None:
+            try:
+                self.win.after_cancel(self._mic_test_after_id)
+            except Exception:
+                pass
+            self._mic_test_after_id = None
+        stream = self._mic_test_stream
+        self._mic_test_stream = None
+        if hasattr(self, "_mic_test_btn"):
+            try:
+                self._mic_test_btn.configure(text="開始測試")
+            except Exception:
+                pass
+
+        if stream is None:
+            return
+
+        def work() -> None:
+            try:
+                stream.stop()
+                stream.close()
+            except Exception:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _mic_test_ui_tick(self) -> None:
+        if not self._mic_test_running:
+            return
+        rms = self._mic_latest_rms
+        if hasattr(self, "_mic_rms_bar"):
+            self._mic_rms_bar["value"] = min(1.0, rms)
+        if hasattr(self, "_mic_status_lbl"):
+            text, color = self._mic_status_text(rms)
+            self._mic_status_lbl.configure(text=text, fg=color)
+        self._mic_test_after_id = self.win.after(100, self._mic_test_ui_tick)
+
+    def _record_mic_test(self) -> None:
+        if self._mic_recording:
+            return
+        self._mic_recording = True
+        self._mic_record_btn.configure(state=tk.DISABLED)
+        self._mic_record_result.configure(text="錄音中…")
+
+        s = getattr(self, "_audio_diag_settings", None) or load_settings(force=True)
+        device = self._resolve_wake_mic_index(s)
+
+        def work() -> None:
+            try:
+                import numpy as np
+                import sounddevice as sd
+
+                sr = 16000
+                frames = int(3.0 * sr)
+                audio = sd.rec(
+                    frames,
+                    samplerate=sr,
+                    channels=1,
+                    device=device,
+                    dtype="float32",
+                )
+                sd.wait()
+                flat = np.asarray(audio, dtype=np.float64).reshape(-1)
+                if flat.size == 0:
+                    raise RuntimeError("錄到空音訊")
+                win = max(160, int(sr * 0.05))
+                rms_vals: list[float] = []
+                for i in range(0, flat.size, win):
+                    chunk = flat[i : i + win]
+                    if chunk.size == 0:
+                        continue
+                    rms_vals.append(float(np.sqrt(np.mean(chunk**2))))
+                avg_rms = float(np.mean(rms_vals)) if rms_vals else 0.0
+                peak_rms = float(max(rms_vals)) if rms_vals else 0.0
+                verdict, _color = self._mic_status_text(avg_rms)
+                summary = f"avg={avg_rms:.4f}  peak={peak_rms:.4f}  —  {verdict}"
+
+                def apply() -> None:
+                    self._draw_mic_waveform(flat)
+                    self._mic_record_result.configure(text=summary)
+                    self._mic_record_btn.configure(state=tk.NORMAL)
+                    self._mic_recording = False
+
+                self.win.after(0, apply)
+            except Exception as exc:
+                err = str(exc)
+
+                def fail() -> None:
+                    self._mic_record_result.configure(text=f"錄音失敗：{err}")
+                    self._mic_record_btn.configure(state=tk.NORMAL)
+                    self._mic_recording = False
+
+                self.win.after(0, fail)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _draw_mic_waveform(self, audio) -> None:
+        if not hasattr(self, "_mic_wave_canvas"):
+            return
+        try:
+            import numpy as np
+        except ImportError:
+            return
+        canvas = self._mic_wave_canvas
+        canvas.delete("all")
+        w, h = 300, 80
+        mid = h // 2
+        flat = np.asarray(audio, dtype=np.float64).reshape(-1)
+        n = flat.size
+        if n < 2:
+            canvas.create_text(w // 2, mid, text="（無波形）")
+            return
+        step = max(1, n // w)
+        upper: list[float] = []
+        lower: list[float] = []
+        for x in range(w):
+            chunk = flat[x * step : min((x + 1) * step, n)]
+            if chunk.size == 0:
+                upper.extend([x, mid])
+                lower.extend([x, mid])
+                continue
+            peak = float(np.max(np.abs(chunk)))
+            amp = peak * (mid - 4)
+            upper.extend([x, mid - amp])
+            lower.extend([x, mid + amp])
+        canvas.create_line(*upper, fill="#0066cc")
+        canvas.create_line(*lower, fill="#0066cc")
+        canvas.create_line(0, mid, w, mid, fill="#cccccc")
+
+    def _play_speaker_test(self) -> None:
+        def work() -> None:
+            try:
+                from jarvis.mouth import speak
+
+                speak("Audio test, sir.", blocking=False)
+            except Exception as exc:
+                err = str(exc)
+                self.win.after(
+                    0,
+                    lambda e=err: messagebox.showerror(
+                        "喇叭測試", e, parent=self.win
+                    ),
+                )
+
+        threading.Thread(target=work, daemon=True).start()
 
     def _build_advanced_tab(self, frm: tk.Frame, s: Settings) -> None:
         from jarvis.mouth import available
@@ -567,8 +1083,10 @@ class SettingsWindow:
         self.lbl_tts_vol.grid(row=row, column=2, sticky="w")
         self._on_tts_vol(str(self.var_tts_vol.get()))
         row += 1
-        spk_rows = list_output_speakers()
-        cur_spk, spk_rows = _pick_device_label(spk_rows, s.tts_output_device)
+        spk_rows, self._spk_label_to_name = list_output_speakers_deduped()
+        cur_spk, spk_rows = _pick_device_label(
+            spk_rows, s.tts_output_device, self._spk_label_to_name
+        )
         self._spk_label_to_id = {lab: idx for idx, lab in spk_rows}
         self.var_tts_spk_label = tk.StringVar(value=cur_spk)
         tk.Label(frm, text="喇叭").grid(row=row, column=0, sticky="w", pady=2)
@@ -677,8 +1195,33 @@ class SettingsWindow:
         ).grid(row=row, column=1, sticky="w")
         row += 1
 
-        mic_rows = list_input_mics()
-        cur_lab, mic_rows = _pick_device_label(mic_rows, s.wake_mic_device)
+        # Phase 6 A4: speaker gate（聲紋）——係 SK 先醒
+        self.var_spk_gate = tk.BooleanVar(value=bool(getattr(s, "speaker_gate", True)))
+        self.var_spk_th = tk.DoubleVar(
+            value=float(getattr(s, "speaker_threshold", 0.50) or 0.50)
+        )
+        tk.Checkbutton(
+            frm,
+            text="Speaker gate（聲紋）——只有你叫先醒",
+            variable=self.var_spk_gate,
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
+        row += 1
+        tk.Label(frm, text="聲紋門檻").grid(row=row, column=0, sticky="w", pady=2)
+        tk.Scale(
+            frm,
+            from_=0.10,
+            to=0.99,
+            resolution=0.01,
+            orient=tk.HORIZONTAL,
+            length=220,
+            variable=self.var_spk_th,
+        ).grid(row=row, column=1, sticky="w")
+        row += 1
+
+        mic_rows, self._mic_label_to_name = list_input_mics_deduped()
+        cur_lab, mic_rows = _pick_device_label(
+            mic_rows, s.wake_mic_device, self._mic_label_to_name
+        )
         self._mic_label_to_id = {lab: idx for idx, lab in mic_rows}
         self.var_wake_mic_label = tk.StringVar(value=cur_lab)
         tk.Label(frm, text="麥克風").grid(row=row, column=0, sticky="w", pady=2)
@@ -712,7 +1255,7 @@ class SettingsWindow:
         frm.columnconfigure(1, weight=1)
 
     def _refresh_mic_list(self) -> None:
-        mic_rows = list_input_mics()
+        mic_rows, self._mic_label_to_name = list_input_mics_deduped()
         self._mic_label_to_id = {lab: idx for idx, lab in mic_rows}
         labels = tuple(lab for _idx, lab in mic_rows)
         self.cmb_mic.configure(values=labels)
@@ -720,7 +1263,7 @@ class SettingsWindow:
             self.var_wake_mic_label.set(labels[0] if labels else "（系統預設）")
 
     def _refresh_spk_list(self) -> None:
-        spk_rows = list_output_speakers()
+        spk_rows, self._spk_label_to_name = list_output_speakers_deduped()
         self._spk_label_to_id = {lab: idx for idx, lab in spk_rows}
         labels = tuple(lab for _idx, lab in spk_rows)
         self.cmb_spk.configure(values=labels)
@@ -971,8 +1514,10 @@ class SettingsWindow:
         asr_id = self._asr_label_to_id.get(
             self.var_asr_label.get(), ASR_SENSEVOICE
         )
-        wake_mic = self._mic_label_to_id.get(self.var_wake_mic_label.get())
-        tts_spk = self._spk_label_to_id.get(self.var_tts_spk_label.get())
+        # 存**名**（唔係 index）：Windows device index 重開機會 reorder，
+        # 名（44.1k 變體）先係穩定；runtime 用 resolve_mic_name 解析。
+        wake_mic = self._mic_label_to_name.get(self.var_wake_mic_label.get())
+        tts_spk = self._spk_label_to_name.get(self.var_tts_spk_label.get())
         try:
             alert_cd = float(self.var_alert_cd.get() or 0.0)
         except ValueError:
@@ -998,6 +1543,8 @@ class SettingsWindow:
             record_seconds=float(self.var_rec_sec.get()),
             wake_mic_device=wake_mic,
             text_wake=bool(self.var_text_wake.get()),
+            speaker_gate=bool(self.var_spk_gate.get()),
+            speaker_threshold=float(self.var_spk_th.get()),
             hermes_enabled=bool(self.var_hermes.get()),
             hermes_trusted=False,
             voice_frontend=str(self.var_voice_frontend.get() or "hermes"),
@@ -1006,6 +1553,11 @@ class SettingsWindow:
             tts_length_scale=float(self.var_tts_speed.get()),
             tts_volume=float(self.var_tts_vol.get()),
             tts_output_device=tts_spk,
+            aec_enabled=bool(self.var_aec_enabled.get()),
+            aec_reference_device=self._aec_label_to_name.get(
+                self.var_aec_ref_label.get(), ""
+            )
+            or "",
             alert_voice=bool(self.var_alert_voice.get()),
             alert_discord=bool(self.var_alert_discord.get()),
             alert_cursor=bool(self.var_alert_cursor.get()),
@@ -1018,6 +1570,7 @@ class SettingsWindow:
             alert_extra=self.var_alert_extra.get().strip(),
             alert_cd_seconds=alert_cd,
             alert_tts=str(self.var_alert_tts.get() or "hermes").strip().lower(),
+            alert_gpu_health=bool(self.var_alert_gpu.get()),
         )
         path = save_settings(s)
 

@@ -91,31 +91,27 @@ def clear_waiting() -> None:
 
 
 def _python_for_hook() -> Path:
-    """Prefer console ``python.exe`` (stdin reliable on Windows hooks).
+    """Prefer ``pythonw.exe`` — no console window on Windows.
 
-    ``pythonw`` can break Cursor's Windows hook launcher / stdin pipe.
-    Console flash is avoided via ``cmd /c start /b``-style? No — Cursor
-    hides hook windows; use ``python.exe -u`` under ``cmd /c``.
+    Cursor already pipes hook JSON via PowerShell ``$input | …``. Old
+    ``cmd /c`` + ``python.exe`` spawned visible CMD/conhost on every tool
+    event (WMI-confirmed 2026-08-12). ``pythonw`` accepts the same stdin pipe.
     """
     py = Path(sys.executable).resolve()
-    if py.name.lower() == "pythonw.exe":
-        console = py.with_name("python.exe")
-        if console.is_file():
-            return console
+    if sys.platform == "win32" and py.name.lower() == "python.exe":
+        pyw = py.with_name("pythonw.exe")
+        if pyw.is_file():
+            return pyw
     return py
 
 
 def hook_command() -> str:
     """Command string Cursor will spawn for hooks.
 
-    On Windows, wrap with ``cmd /c`` — community-confirmed fix when bare
-    quoted exe paths never run (forum: hooks not working on Windows).
+    Direct quoted exe — **no** ``cmd /c`` (that was the CMD flash).
     """
     script = hook_script_src()
     py = _python_for_hook()
-    if sys.platform == "win32":
-        # cmd /c "exe" "script" — paths quoted for spaces.
-        return f'cmd /c ""{py}" -u "{script}""'
     return f'"{py}" -u "{script}"'
 
 
@@ -179,7 +175,7 @@ def install() -> str:
         f"[ok] Cursor hooks (stop + preToolUse) → {path}\n"
         f"     cmd: {cmd}\n"
         f"     Enable Hooks in Cursor Settings; reload window.\n"
-        f"     Windows: uses cmd /c (required for reliable spawn).\n"
+        f"     Windows: pythonw (no cmd /c — avoids CMD flash).\n"
         f"     Debug: View → Output → Hooks. AskQuestion may still skip hooks."
     )
 

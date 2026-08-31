@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 from collections.abc import Callable
@@ -14,8 +15,8 @@ _SAMPLE_RATE = 16000
 DEFAULT_THRESHOLD = 0.50
 # Dead Colab onnx must NOT lower thr — that caused false fires at 0.05–0.2
 CUSTOM_DEFAULT_THRESHOLD = 0.50
-# Must fall below this before next wake（防分數黏高狂錄）
-_REARM_BELOW = 0.25
+# 分數持續低過 threshold 幾耐就重新武裝（修正「環境持續中等分數 → 叫唔醒」bug）
+_REARM_TIMEOUT_S = 2.0
 # After command/mic resume, ignore wakes this long
 _POST_RESUME_S = 3.0
 _COOLDOWN_S = 1.5
@@ -23,19 +24,34 @@ _COOLDOWN_S = 1.5
 _CMD_PRE_ROLL_S = 0.6  # keep "Jarvis" just before fire
 _CMD_MAX_S = 4.0  # hard cap
 _CMD_MIN_S = 0.45  # don't cut mid-wake
-_CMD_SPEECH_RMS = 0.035  # voice after wake
+_CMD_SPEECH_RMS = 0.02  # voice after wake（降低，令「開cs」等短細聲指令都判定做 speech）
 _CMD_SILENCE_RMS = 0.018  # end-of-utterance
-_CMD_SILENCE_FRAMES = 8  # ~640ms quiet → done
+_CMD_SILENCE_FRAMES = 5  # ~400ms quiet → done（縮短等待，D3）
 # STT text-wake: strict — game bleed used to schedule forever
 _RMS_GATE = 0.14
 _STT_SECONDS = 2.0
 _STT_COOLDOWN_S = 8.0
 _LOUD_FRAMES_NEED = 10  # ~800ms continuous loud
-_STT_TRAIL_S = 0.5
+_STT_TRAIL_S = 0.35
+_AGC_TARGET_RMS = 0.10  # target speech level (float32 scale, ~0.1)
+_AGC_MAX_GAIN = 8.0  # never amplify more than 8x (avoid noise boost)
+_AGC_NOISE_FLOOR = 0.0015  # below this: don't amplify (phantom speech from AGC)
+_STT_AGC_TARGET_RMS = 0.12  # command STT needs louder than OWW keyword detect
+_STT_AGC_MAX_GAIN = 24.0
 _BUF_CHUNKS = max(
     8, int(max(_STT_SECONDS, _CMD_PRE_ROLL_S + _CMD_MAX_S) * _SAMPLE_RATE / _CHUNK)
 )
 _WAKE_DEBUG_LOG = Path.home() / "AppData" / "Roaming" / "Jarvis" / "wake_debug.log"
+# Heartbeat：每 N 秒 log 一次 listening 狀態（rms/best/armed）——診斷「叫唔醒」用
+_HEARTBEAT_S = 60.0
+# Mic 健康：連續 N 個 heartbeat rms≈0（headset 休眠/斷連）→ mic_signal_ok=false
+# 寫入 voice_status.json，等 HUD/MCP 顯示真實狀態（2026-08-31）。
+_MIC_SILENT_RMS = 0.0005
+_MIC_SILENT_LIMIT = 3
+_mic_silent_streak = 0
+_aec_applied = 0
+_aec_skipped = 0
+_last_agc_log = 0.0
 
 CUSTOM_WAKE_DIR = Path.home() / "AppData" / "Roaming" / "Jarvis" / "wake"
 
@@ -72,6 +88,32 @@ def recommended_threshold() -> float:
     return DEFAULT_THRESHOLD
 
 
+def resolve_mic_name(name: str) -> int | None:
+    """Resolve 裝置名 → 而家可用嘅 index（16k wake stream 開到嘅）。
+
+    Windows sounddevice 會列出同一個 mic 多個變體（MME 44.1k / 48k、WDM…），
+    48k 變體開唔到 16k stream（PaErrorCode -9997「Invalid sample rate」）。
+    所以 settings 存**名**，喺度揀 44.1kHz 嘅 entry（16k 一定開到）。
+    """
+    if not name:
+        return None
+    import sounddevice as sd
+
+    best: int | None = None
+    for i, d in enumerate(sd.query_devices()):
+        if int(d.get("max_input_channels") or 0) <= 0:
+            continue
+        dname = str(d.get("name") or "").strip()
+        if dname != name:
+            continue
+        sr = float(d.get("default_samplerate") or 0)
+        if abs(sr - 44100.0) < 1.0:
+            return i  # 44.1k 變體：16k 必開到
+        if best is None:
+            best = i
+    return best
+
+
 def _hey_jarvis_model_paths() -> list[str]:
     import openwakeword
 
@@ -105,9 +147,11 @@ def _load_model() -> Any:
 
     openwakeword.utils.download_models()
     paths = _wake_model_paths()
+    # vad_threshold：openwakeword 內置 Silero VAD 過濾非語音噪音。
+    # 注意：0.5 太嚴會擋真人聲（叫唔醒）——暫時 disable（0），防誤觸靠 A2 rearm timeout + threshold。
     if paths:
-        return Model(wakeword_models=paths, inference_framework="onnx")
-    return Model(inference_framework="onnx")
+        return Model(wakeword_models=paths, inference_framework="onnx", vad_threshold=0)
+    return Model(inference_framework="onnx", vad_threshold=0)
 
 
 def _norm_wake_text(text: str) -> str:
@@ -204,6 +248,35 @@ def _wake_debug(msg: str) -> None:
         pass
 
 
+def _update_mic_signal(ok: bool) -> None:
+    """Patch `mic_signal_ok` into voice_status.json so HUD/MCP can show the
+    REAL mic health (headset asleep/disconnected = rms≈0 while UI claims armed).
+    Read-modify-write; best-effort — never break the wake loop over it."""
+    global _mic_silent_streak
+    was_bad = _mic_silent_streak >= _MIC_SILENT_LIMIT
+    if ok:
+        _mic_silent_streak = 0
+        if not was_bad:
+            return  # healthy and was healthy: leave the field as-is (no churn)
+        val: bool | None = True  # recovered — flip back once
+    else:
+        _mic_silent_streak += 1
+        if _mic_silent_streak < _MIC_SILENT_LIMIT:
+            return  # one quiet beat is not a disconnect yet
+        val = False
+    try:
+        p = _WAKE_DEBUG_LOG.with_name("voice_status.json")
+        if p.is_file():
+            data = json.loads(p.read_text(encoding="utf-8"))
+        else:
+            data = {}
+        data["mic_signal_ok"] = val
+        data["mic_signal_ts"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except (OSError, ValueError):
+        pass
+
+
 def _jarvis_score(scores: dict[str, Any]) -> float:
     best = 0.0
     for name, score in scores.items():
@@ -278,6 +351,133 @@ def _try_stt_wake_pcm(chunks: list[Any] | None) -> bool:
                 pass
 
 
+def _open_input_stream(sd, input_device: int | None, callback) -> Any:
+    """Open 16k mic InputStream；開唔到 -9997 就 WASAPI auto-convert retry。
+
+    Windows 部分裝置（48kHz WASAPI 變體）唔支援 16k stream →
+    PaErrorCode -9997 Invalid sample rate。社群解法（python-sounddevice
+    PR #492）：PortAudio ``paWinWasapiAutoConvert=64`` + WASAPI shared mode
+    自動轉換 sample rate —— 48k 裝置照開 16k stream。
+    """
+    kwargs: dict[str, Any] = dict(
+        samplerate=_SAMPLE_RATE,
+        channels=1,
+        dtype="float32",
+        blocksize=_CHUNK,
+        callback=callback,
+        device=input_device,
+    )
+    try:
+        return sd.InputStream(**kwargs)
+    except Exception as exc:
+        err = str(exc)
+        if "Invalid sample rate" in err or "-9997" in err:
+            try:
+                _wake_debug("stream_retry wasapi_autoconvert")
+                ex = sd.WasapiSettings()
+                ex._streaminfo.flags = 64  # paWinWasapiAutoConvert (PR #492)
+                return sd.InputStream(**kwargs, extra_settings=ex)
+            except Exception:
+                pass
+        raise
+
+
+def _init_speaker_gate() -> tuple[bool, float, bool]:
+    """Phase 6 A4: speaker gate init — return (gate_enabled, gate_thr, gate_ready)."""
+    gate_enabled = False
+    gate_thr = 0.50
+    gate_ready = False
+    try:
+        from jarvis.settings import load_settings as _ls
+        from jarvis.speaker_gate import (
+            model_device as _spk_model_device,
+            profile_exists as _spk_prof,
+            warm as _spk_warm,
+        )
+
+        _cfg = _ls()
+        gate_enabled = bool(getattr(_cfg, "speaker_gate", True))
+        gate_thr = float(getattr(_cfg, "speaker_threshold", 0.50) or 0.50)
+        if gate_enabled and _spk_prof():
+            _t0 = time.time()
+            gate_ready = bool(_spk_warm())
+            _wake_debug(
+                f"spk_gate {'ready' if gate_ready else 'warm_fail'} "
+                f"dev={_spk_model_device()} thr={gate_thr} "
+                f"load={time.time() - _t0:.1f}s"
+            )
+        else:
+            _wake_debug("spk_gate off (setting off / no profile)")
+    except Exception as exc:  # noqa: BLE001
+        _wake_debug(f"spk_gate init_fail {exc}")
+    return gate_enabled, gate_thr, gate_ready
+
+
+def _apply_aec(pcm, aec_chain, aec_processor, loopback, chunk_size):
+    """AEC for OWW predict path only; ring/command capture stays raw."""
+    global _aec_applied, _aec_skipped
+    predict_pcm = pcm
+    if aec_chain is not None:
+        try:
+            predict_pcm = aec_chain.process(pcm)
+            _aec_applied += 1
+            if _aec_applied == 1:
+                _wake_debug("aec_first_apply")
+        except Exception:
+            pass
+    elif aec_processor is not None and loopback is not None:
+        try:
+            echo = loopback.get_chunk(chunk_size)
+            if echo is not None:
+                predict_pcm = aec_processor.process(pcm, echo)
+                _aec_applied += 1
+                if _aec_applied == 1:
+                    _wake_debug("aec_first_apply")
+            else:
+                _aec_skipped += 1
+        except Exception:
+            pass
+    return predict_pcm
+
+
+def _apply_agc(predict_pcm, now):
+    """AGC boost for OWW predict only (ring/STT/command stay raw)."""
+    global _last_agc_log
+    import numpy as np
+
+    rms_f = float(
+        np.sqrt(np.mean((predict_pcm.astype(np.float32) / 32767.0) ** 2))
+    )
+    if rms_f < _AGC_NOISE_FLOOR:
+        return predict_pcm
+    if rms_f < _AGC_TARGET_RMS:
+        gain = min(_AGC_MAX_GAIN, _AGC_TARGET_RMS / max(rms_f, 1e-4))
+        predict_pcm = (
+            (predict_pcm.astype(np.float32) * gain).clip(-32767, 32767).astype(np.int16)
+        )
+        if gain > 1.5 and now - _last_agc_log >= 10.0:
+            _last_agc_log = now
+            _wake_debug(f"agc_gain={gain:.1f} rms={rms_f:.3f}")
+    return predict_pcm
+
+
+def _apply_stt_agc(pcm):
+    """Stronger AGC for command PCM right before STT (not OWW / ring buffer)."""
+    import numpy as np
+
+    if pcm is None or getattr(pcm, "size", 0) <= 0:
+        return pcm
+    rms_f = float(np.sqrt(np.mean((pcm.astype(np.float32) / 32767.0) ** 2)))
+    if rms_f < _AGC_NOISE_FLOOR:
+        return pcm
+    if rms_f < _STT_AGC_TARGET_RMS:
+        gain = min(_STT_AGC_MAX_GAIN, _STT_AGC_TARGET_RMS / max(rms_f, 1e-4))
+        pcm = (pcm.astype(np.float32) * gain).clip(-32767, 32767).astype(np.int16)
+        if gain > 1.5:
+            _wake_debug(f"[ear] agc_gain={gain:.2f} rms={rms_f:.3f}")
+    return pcm
+
+
 def run_wake_loop(
     on_detect: Callable[[], None],
     *,
@@ -288,6 +488,9 @@ def run_wake_loop(
     pause_event: threading.Event | None = None,
     text_wake: bool | None = None,
     input_device: int | None = None,
+    aec_processor: Any = None,
+    loopback: Any = None,
+    aec_chain: Any = None,
 ) -> None:
     """
     Stream mic → OWW (custom jarvis and/or hey_jarvis) → on_detect/on_command.
@@ -316,11 +519,14 @@ def run_wake_loop(
     pause = pause_event or threading.Event()
     model = _load_model()
     _wake_debug(f"wake_loop_start paths={_wake_model_paths()} thr={threshold}")
+
+    gate_enabled, gate_thr, gate_ready = _init_speaker_gate()
     cool_until = 0.0
     armed = True
     stt_pending = threading.Event()
     fire_pending = threading.Event()
     loud_frames = 0
+    below_thr_since = None
     last_stt = 0.0
     stt_due = 0.0
     pcm_ring: deque[Any] = deque(maxlen=_BUF_CHUNKS)
@@ -331,13 +537,17 @@ def run_wake_loop(
     cmd_chunks: list[Any] = []
     cmd_speech_seen = False
     cmd_silent_frames = 0
+    last_best = 0.0
+    peak_best = 0.0
+    peak_rms = 0.0
 
     def _trip(reason: str) -> None:
         """Signal wake hit. Keep stream open; VAD-capture command audio."""
-        nonlocal cool_until, armed, loud_frames, stt_due
+        nonlocal cool_until, armed, loud_frames, stt_due, below_thr_since
         nonlocal cmd_detected_at, cmd_audio, cmd_chunks
         nonlocal cmd_speech_seen, cmd_silent_frames
         armed = False
+        below_thr_since = None
         loud_frames = 0
         stt_due = 0.0
         stt_pending.clear()
@@ -374,6 +584,7 @@ def run_wake_loop(
         if pcm_array is not None and on_command is not None:
             _wake_debug("dispatch_on_command")
             try:
+                pcm_array = _apply_stt_agc(pcm_array)
                 on_command(pcm_array)
             except Exception as exc:
                 _wake_debug(f"on_command_fail {exc}")
@@ -386,15 +597,20 @@ def run_wake_loop(
                 _wake_debug(f"on_detect_fail {exc}")
 
     def _callback(indata, frames, time_info, status) -> None:  # noqa: ARG001
-        nonlocal cool_until, armed, loud_frames, stt_due, stt_snapshot
+        nonlocal cool_until, armed, loud_frames, stt_due, stt_snapshot, below_thr_since
         nonlocal cmd_detected_at, cmd_audio, cmd_chunks
-        nonlocal cmd_speech_seen, cmd_silent_frames
+        nonlocal cmd_speech_seen, cmd_silent_frames, last_best, peak_best, peak_rms
+        global _aec_applied, _aec_skipped
         if stop.is_set() or pause.is_set() or stt_pending.is_set() or fire_pending.is_set():
             return
         now = time.time()
         mono = indata[:, 0] if indata.ndim > 1 else indata.flatten()
         rms = float(np.sqrt(np.mean(np.square(mono))))
+        peak_rms = max(peak_rms, rms)
         pcm = (np.clip(mono, -1.0, 1.0) * 32767.0).astype(np.int16)
+        predict_pcm = _apply_aec(
+            pcm, aec_chain, aec_processor, loopback, _CHUNK
+        )
         with pcm_lock:
             pcm_ring.append(pcm.copy())
 
@@ -431,22 +647,33 @@ def run_wake_loop(
 
         if now < cool_until:
             return
+        predict_pcm = _apply_agc(predict_pcm, now)
         try:
-            scores = model.predict(pcm)
+            scores = model.predict(predict_pcm)
         except Exception:
             return
         if not scores:
             return
         best = _jarvis_score(scores)
-        if best < _REARM_BELOW:
-            armed = True
-        if armed and best >= threshold:
-            _trip(
-                f"oww_fire best={best:.3f} thr={threshold} "
-                f"hey={float(scores.get('hey_jarvis_v0.1', 0)):.3f} "
-                f"jarvis={float(scores.get('jarvis', 0)):.3f}"
-            )
-            return
+        last_best = best
+        peak_best = max(peak_best, best)
+        if best >= threshold:
+            below_thr_since = None
+            if armed:
+                _trip(
+                    f"oww_fire best={best:.3f} thr={threshold} "
+                    f"hey={float(scores.get('hey_jarvis_v0.1', 0)):.3f} "
+                    f"jarvis={float(scores.get('jarvis', 0)):.3f}"
+                )
+                return
+        else:
+            # rearm timeout：分數持續低過 threshold _REARM_TIMEOUT_S 秒 → 重新武裝。
+            # 修正舊邏輯（要跌 < _REARM_BELOW 0.25 先 armed）——環境持續中等分數
+            # （0.25-0.5，例如 BGM 有人聲）會永遠唔 rearm → 叫唔醒。
+            if below_thr_since is None:
+                below_thr_since = now
+            elif now - below_thr_since >= _REARM_TIMEOUT_S:
+                armed = True
         if not use_text or not armed:
             return
         if rms >= _RMS_GATE:
@@ -475,6 +702,7 @@ def run_wake_loop(
         if stop.is_set():
             break
         armed = False
+        below_thr_since = None
         loud_frames = 0
         stt_due = 0.0
         stt_pending.clear()
@@ -491,17 +719,36 @@ def run_wake_loop(
         if pause.is_set():
             continue
         try:
-            with sd.InputStream(
-                samplerate=_SAMPLE_RATE,
-                channels=1,
-                dtype="float32",
-                blocksize=_CHUNK,
-                callback=_callback,
-                device=input_device,
-            ):
+            with _open_input_stream(sd, input_device, _callback):
+                last_beat = time.time()  # 唔好即刻 log 第一個 beat
                 while not stop.is_set() and not pause.is_set():
                     if stt_pending.is_set() or fire_pending.is_set():
                         break
+                    _nb = time.time()
+                    if _nb - last_beat >= _HEARTBEAT_S:
+                        last_beat = _nb
+                        with pcm_lock:
+                            _rbuf = list(pcm_ring)[-5:]
+                            _ring_n = len(pcm_ring)
+                        _rms_beat = 0.0
+                        if _rbuf:
+                            _rms_beat = float(
+                                np.sqrt(
+                                    np.mean(
+                                        np.square(np.concatenate(_rbuf) / 32767.0)
+                                    )
+                                )
+                            )
+                        _update_mic_signal(_rms_beat > _MIC_SILENT_RMS)
+                        _wake_debug(
+                            f"wake_heartbeat ring={_ring_n} "
+                            f"rms={_rms_beat:.3f} peak_rms={peak_rms:.3f} "
+                            f"best={last_best:.3f} peak_best={peak_best:.3f} "
+                            f"armed={armed} "
+                            f"pause={pause.is_set()} cool={cool_until - _nb:.0f}s"
+                        )
+                        peak_best = 0.0
+                        peak_rms = 0.0
                     time.sleep(0.05)
         except Exception as exc:
             _wake_debug(f"stream_err {exc}")
@@ -521,6 +768,17 @@ def run_wake_loop(
                 if pcm is not None and pcm.size > 0
                 else "oww_cmd_pcm empty"
             )
+            # Phase 6 A4: speaker gate — 唔係 SK 把聲 → 唔醒（discard + re-arm）
+            if gate_enabled and gate_ready and pcm is not None and pcm.size > 0:
+                from jarvis.speaker_gate import verify_pcm as _speaker_verify
+
+                _res = _speaker_verify(pcm, threshold=gate_thr)
+                _wake_debug(
+                    f"spk_gate {_res['reason']} score={_res['score']:.3f} "
+                    f"accept={_res['accept']} skip={_res['skip']}"
+                )
+                if not _res["accept"]:
+                    continue
             _dispatch_detect(pcm)
             continue
 
@@ -533,14 +791,30 @@ def run_wake_loop(
         snap = list(stt_snapshot)
         stt_snapshot = []
         if use_text and armed and _try_stt_wake_pcm(snap):
-            pause.set()
-            cool_until = time.time() + _COOLDOWN_S
-            armed = False
-            _wake_debug("stt_fire")
-            if on_command is not None and snap:
-                pcm = np.concatenate(snap)
-                _dispatch_detect(pcm)
+            # Phase 6 A4: speaker gate on STT text-wake path too
+            _fire = True
+            if gate_enabled and gate_ready:
+                from jarvis.speaker_gate import verify_pcm as _speaker_verify
+
+                _pcm = np.concatenate(snap) if snap else None
+                _res = _speaker_verify(_pcm, threshold=gate_thr)
+                _wake_debug(
+                    f"spk_gate_stt {_res['reason']} score={_res['score']:.3f} "
+                    f"accept={_res['accept']} skip={_res['skip']}"
+                )
+                if not _res["accept"]:
+                    _fire = False
+            if _fire:
+                pause.set()
+                cool_until = time.time() + _COOLDOWN_S
+                armed = False
+                _wake_debug("stt_fire")
+                if on_command is not None and snap:
+                    pcm = np.concatenate(snap)
+                    _dispatch_detect(pcm)
+                else:
+                    _dispatch_detect()
             else:
-                _dispatch_detect()
+                cool_until = time.time() + _STT_COOLDOWN_S
         else:
             cool_until = time.time() + _STT_COOLDOWN_S

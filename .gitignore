@@ -28,3 +28,7 @@ Desktop.ini
 logs/
 speech_corpus/
 *.log
+
+# Local MCP helper deps (context7 pinned under tools/mcp-deps)
+tools/mcp-deps/node_modules/
+tools/mcp-deps/package-lock.json

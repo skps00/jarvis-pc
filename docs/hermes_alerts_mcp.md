@@ -8,17 +8,29 @@ Watcher (`jarvis serve`) enqueues short English pings; Hermes TTS speaks them.
 jarvis serve
   → AlertStore JSONL
   → HTTP MCP 127.0.0.1:8765/mcp   (Hermes tools / debug)
-  → poller ~2s (scripts/hermes_alert_poll_loop.py) → Hermes Edge TTS → ack
+  → poller ~1s (scripts/hermes_alert_poll_loop.py) → Hermes TTS (alert_tts=hermes) → ack
 
 Hermes cron (backup, ≥1m): jarvis-alerts-speak --no-agent
   → scripts under %LOCALAPPDATA%\hermes\scripts\jarvis_alert_speak_once.py
   needs: hermes gateway running
 ```
 
-## FACT — cron cannot do 2s
+## FACT — cron cannot do 1s
 
 Hermes schedule units are **minutes+** (`every 1m` min for intervals). Gateway ticks ~**60s**.  
-Eng plan 「~2s poll」→ use **`hermes_alert_poll_loop.py`** (started by `jarvis serve` when `alert_tts=hermes`). Cron = slow backup only.
+Eng plan 「≤1s poll」→ use **`hermes_alert_poll_loop.py`** (started by `jarvis serve` when `alert_tts=hermes`). Cron = slow backup only.
+
+## TTS modes (`alert_tts`)
+
+| Value | Behavior |
+|-------|----------|
+| `hermes` (default) | Hermes TTS subprocess only (60s hard timeout + `taskkill /F /T` on hang) |
+| `piper` | In-process Jarvis Piper mouth |
+| `off` | Drain/ack without speaking |
+
+## GPU health (P0)
+
+NVML (`nvidia-ml-py`) primary → nvidia-smi CSV fallback. Dynamic clock baseline + hard temp ceiling (≥90°C). Per-reason cooldown.
 
 ## Token / MCP
 
@@ -40,8 +52,15 @@ Verify:
 ```powershell
 hermes mcp list
 hermes mcp test jarvis-alerts
-# expect 4 tools: peek_alert, ack_alert, list_alerts, alert_stats
+# expect 10 tools: peek_alert, ack_alert, list_alerts, alert_stats,
+#   jarvis_speak, jarvis_wake_status, jarvis_sensors, jarvis_alert,
+#   jarvis_clarify_gate (Self-Evol Phase E: EVPI 問唔問), jarvis_autonomy_state (Phase D: 自主度等級)
 ```
+
+Self-Evol tools（2026-08-31 wiring）:
+- `jarvis_clarify_gate(task, task_type, unknowns[], assumptions[], confidence)` → `should_ask` + 保守假設；答案一律當 untrusted（R17）
+- `jarvis_autonomy_state()` → `level`（L0/L1a/L1b/L1c）+ `sandbox_ready` + 最近 H_auth events；level 持久化喺 `%APPDATA%\Jarvis\autonomy_state.json`
+- 詳情：skill `jarvis-self-evol-ops`
 
 ## Cron (backup)
 
