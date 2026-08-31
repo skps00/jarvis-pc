@@ -20,4 +20,4 @@
 -->
 
 [TREND-err-2026-08-31] 問題：serve.log 錯誤行連續 3 日上升（0→1→3；主因=SenseVoice 子程序輸出 GBK 中文 bytes，subprocess _readerthread 以 UTF-8 解碼失敗 → UnicodeDecodeError；次因=啟動時 jarvis-alerts-mcp thread 有一次 traceback，非致命）→ 建議：subprocess stdout 解碼加 errors="replace"（或 GBK fallback），順手排查 alerts-mcp 啟動 traceback；低優先，隨下次 sidecar 改動一齊做 → 風險：吞咗真錯誤（日誌診斷能力略降）；低 → 驗證：修後連續 3 日 err=0 且 serve.log 無 UnicodeDecodeError → 回滾：git revert 解碼參數改動
-狀態：🟡 待 SK（SK 唔使做嘢；JARVIS 下次改 sidecar 時處理）
+狀態：✅ 已修（2026-08-31 下午「fix them all」session：8 個 subprocess 位加 encoding="utf-8", errors="replace"；test_router warning 清零；詳見 REMAINING_WORK 資源優化 section）

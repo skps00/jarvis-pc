@@ -44,7 +44,7 @@ JARVIS ONE (Electron app)
 
 ## 遷移步驟
 
-### 8.1 一個入口（Electron 起時 spawn Python sidecar）⏳
+### 8.1 一個入口（Electron 起時 spawn Python sidecar）✅（2026-08-28）
 
 **做法**：
 - `jarvis-hud` Electron main 啟動時 spawn `python.exe -m jarvis serve`（CREATE_NO_WINDOW + redirect serve.log）
@@ -52,16 +52,16 @@ JARVIS ONE (Electron app)
 - 移除 jarvis-pc 自己嘅 tray（`start_tray` disable）——避免雙 tray
 
 **驗證**：
-- [ ] 一個 tray 一個 process tree
-- [ ] 退出 tray → sidecar 一齊收（無 orphan python）
-- [ ] 全程無 console 閃出
-- [ ] HUD/Dock/Media bridge/Reply server 照常 work
+- [x] 一個 tray 一個 process tree
+- [x] 退出 tray → sidecar 一齊收（無 orphan python）
+- [x] 全程無 console 閃出
+- [x] HUD/Dock/Media bridge/Reply server 照常 work
 
 **風險**：
-- sidecar 死咗 → Electron 要 detect + restart（有 watchdog cron 兜底，但 Electron 內建更好）
+- sidecar 死咗 → Electron 要 detect + restart（有 watchdog cron 兜底，但 Electron 內建更好）→ ⏳ 待查（8/29 死冇 respawn，8/31 兩次成功——下次再死查 main.js health-check）
 - python.exe spawn 要 `windowsHide: true`（Electron execFile）——已知坑
 
-### 8.2 視窗搬遷（tkinter → Electron Iron Man HTML）⏳
+### 8.2 視窗搬遷（tkinter → Electron Iron Man HTML）✅（2026-08-31）
 
 **做法**：
 - Companion/Settings 由 tkinter 搬去 Electron BrowserWindow（內嵌 HTML，同 HUD 視覺語言 #00aaf8 / Orbitron / Rajdhani）
@@ -69,15 +69,15 @@ JARVIS ONE (Electron app)
 - settings_ui.py 嘅功能（裝置列表、ASR/TTS/wake 設定）→ HTML form → 寫 settings.json（經 IPC 或者直接讀寫 JSON）
 
 **驗證**：
-- [ ] 無 tkinter 視窗（全 Electron）
-- [ ] 唔撳唔彈（on-demand）
-- [ ] 設定改動即時生效（同而家 apply_settings 邏輯）
+- [x] 無 tkinter 視窗（全 Electron）——tkinter SettingsWindow 凍結（shell_app open_settings → 統一由 Electron HUD 管）
+- [x] 唔撳唔彈（on-demand）
+- [x] 設定改動即時生效（同而家 apply_settings 邏輯）——sidecar POST /settings（H2 單一 writer）
 
 **風險**：
-- settings_ui.py 邏輯多（dedup 裝置列表、preset 等）——搬遷要小心保留
-- 雙重寫 settings.json 競態（HTML + Python 同時改）
+- settings_ui.py 邏輯多（dedup 裝置列表、preset 等）——搬遷要小心保留 → settings_ui.py 保留做 rollback
+- 雙重寫 settings.json 競態（HTML + Python 同時改）→ H2 單一 writer 解決
 
-### 8.3 語音 sidecar 化 ⏳
+### 8.3 語音 sidecar 化 ✅（2026-08-31）
 
 **做法**：
 - 保持 Python `jarvis serve` 做 voice（改動最少——8.1 已經 spawn 佢）
@@ -85,45 +85,45 @@ JARVIS ONE (Electron app)
 - 語音狀態（wake on/off、STT 結果、TTS 播放中）→ Electron HUD 顯示
 
 **驗證**：
-- [ ] 喊「hey jarvis」→ HUD 顯示 + 語音回應（全背景）
-- [ ] HUD 顯示 wake 狀態（監聽中/處理中）
+- [x] 喊「hey jarvis」→ HUD 顯示 + 語音回應（全背景）——A2 voice_status.json（wake on/off、STT 中、TTS 中、mic_signal_ok）
+- [x] HUD 顯示 wake 狀態（監聽中/處理中）
 
-### 8.4 HUD 融合 ⏳
+### 8.4 HUD 融合 ✅（2026-08-31）
 
 **做法**：
 - HUD overlay + Companion 共用 renderer 體系（一個 HTML/CSS/JS 架構，多 window 載入）
 - dock/遊戲隱藏/工作列處理保留
 
 **驗證**：
-- [ ] Iron Man 視覺統一（HUD + Companion + Settings 同一語言）
-- [ ] 遊戲中全部隱藏
+- [x] Iron Man 視覺統一（HUD + Companion + Settings 同一語言）——hud-theme.css（196 行共用 theme）；renderer/index.html 刻意唔 link（全屏 overlay CSS 衝突）
+- [x] 遊戲中全部隱藏（checkActivity）
 
-### 8.5 MCP 整合（Hermes ⇄ JARVIS 雙向）⏳
+### 8.5 MCP 整合（Hermes ⇄ JARVIS 雙向）✅（2026-08-31）
 
 **做法**：
-- Jarvis 已係 MCP server（8765）——加 tools：`mcp_jarvis_speak` / `mcp_jarvis_wake_status` / `mcp_jarvis_sensors` / `mcp_jarvis_alert`
+- Jarvis 已係 MCP server（8765）——加 tools：`mcp_jarvis_speak` / `mcp_jarvis_wake_status` / `mcp_jarvis_sensors` / `mcp_jarvis_alert` / `jarvis_clarify_gate` / `jarvis_autonomy_state`
 - Hermes `mcp_servers` config 已註冊 `jarvis-alerts`——擴展 tools 即可
 - 安全 gate：speak 工具限頻 + 只限 SK DM + playing 時拒絕（master plan 已列）
 
 **驗證**：
-- [ ] Hermes 內 call `mcp_jarvis_speak` 成功（Discord 傾偈叫 Jarvis 唸嘢）
-- [ ] MCP 死咗 → Hermes graceful fallback（文字）
+- [x] Hermes 內 call `mcp_jarvis_speak` 成功（Discord 傾偈叫 Jarvis 唸嘢）
+- [x] MCP 死咗 → Hermes graceful fallback（文字）
 
 ---
 
-## 執行次序建議
+## 執行結果（2026-08-31 全部完成 ✅）
 
-1. **8.1 先做**（一個入口）——最細、即時價值（tray 統一、退出乾淨）
-2. **8.5 MCP 加 tools**（唔使搬 GUI，獨立可驗證）
-3. **8.3 voice IPC**（HUD 顯示語音狀態）
-4. **8.2 + 8.4 GUI 搬遷**（最花工夫，最後）
+1. **8.1 一個入口** ✅ 2026-08-28
+2. **8.5 MCP 加 tools** ✅ 2026-08-31（jarvis_clarify_gate / jarvis_autonomy_state + restart 生效）
+3. **8.3 voice IPC** ✅ 2026-08-31（voice_status.json）
+4. **8.2 + 8.4 GUI 搬遷** ✅ 2026-08-31（settings.html 齊 + tkinter 凍結 + HUD 融合）
 
-## 每步完成條件
+## 每步完成條件（全部達成）
 
-- 8.1：一個 tray、退出乾淨、無 console 閃出
-- 8.5：`mcp_jarvis_speak` 由 Hermes call 成功 + 安全 gate 生效
-- 8.3：喊醒 → HUD 狀態顯示 + 語音回應
-- 8.2/8.4：零 tkinter、視覺統一
+- 8.1：一個 tray、退出乾淨、無 console 閃出 ✅
+- 8.5：`mcp_jarvis_speak` 由 Hermes call 成功 + 安全 gate 生效 ✅
+- 8.3：喊醒 → HUD 狀態顯示 + 語音回應 ✅（mic 修好後實測）
+- 8.2/8.4：零 tkinter、視覺統一 ✅
 
 ---
 

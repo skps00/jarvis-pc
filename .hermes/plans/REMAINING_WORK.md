@@ -185,10 +185,11 @@
 
 ---
 
-## 執行次序（一路做到晒）
+## 執行結果（2026-08-31 全部完成 ✅）
 
-1. **A1 settings 搬遷 MVP**（最常用設定 HTML）→ A2 voice_status IPC → A4 MCP tools
-2. **B Mage-VL engine** 整合
-3. **D1 Hermes push** → **D2 Minecraft alert** → **E2/E3 統計**
-4. **F1/F2 修復** → **A3 HUD 融合**
-5. 最後：**G 全部 SK 實測清單** + C 擴展連接（等 credentials）
+1. **A1 settings 搬遷 MVP** ✅ → A2 voice_status IPC ✅ → A4 MCP tools ✅
+2. **B Mage-VL engine** ✅（單幀 + video sampled）
+3. **D1 Hermes push** ✅ → **D2 Minecraft alert** ✅ → **E2/E3 統計** ✅（2026-08-31）
+4. **F1/F2 修復** ✅ → **A3 HUD 融合** ✅
+5. **C 擴展連接** ❌ 取消（SK：「用 Discord 就夠」）
+6. 剩低：**G 全部 SK 人手實測清單** + 排期項（自訓 wake / Discord voice out / Iron Man 視覺 / 刪舊目錄）+ 等數據（≥7 日接 cron monitor）
