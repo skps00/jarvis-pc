@@ -57,6 +57,13 @@
 ### wiring session（Self-Evol 4 module 接入主流程）
 - eval_gate --lock、MCP tools（clarify/autonomy）、AutonomyState persistence、skill jarvis-self-evol-ops、AGENTS.md Commands
 
+### 中文回覆 → 英文短版 TTS session（2026-09-01，SK：「I expect jarvis can reply me with a english version (shorted one)」）
+- **問題**：Hermes/HANDS 中文回覆 → mouth skip CJK → 沉默／只唸英文詞
+- **修復**：`brain.translate_to_english_short()`（純英文 passthrough；中文 → LLM 翻譯一句 ≤20 words 英文）；接入 `hermes_bridge.parse_hermes_output` + `_chat_via_api`（spoken 空時 fallback）+ `shell_app._pick_spoken_line`（[ok]/[fail] 中文 → 翻譯）
+- **驗證**：34 tests（新 test_brain_translate 6 + hermes_bridge 2 + shell_app 1）+ 全套 **378 passed** + eval_gate 全綠（golden 33 files）+ **真實 LLM 實測**：「已開 Cursor」→「Cursor is now open.」✅ / 長句 11 words ✅ / 純英文 passthrough ✅
+- **注意**：翻譯只喺「Hermes 冇出 SPEAK 英文」時先觸發（正常有 SPEAK 唔加 delay）；Hands 指令中文回覆每次 +1-2s LLM call
+- 新規則（SK 2026-09-01）：**開工前設計驗收標準；完成後實際運行項目逐項驗收（面板/按鈕/數據/報錯），全過先算完成**——已入 memory；主契約 AGENTS.md 更新等 SK 批准
+
 ### 2026-08-31 凌晨 session（修復 session）
 - Sidecar respawn（8/29 死因未明——下次再死要查 Electron health-check）、HUD window 消失修復
 

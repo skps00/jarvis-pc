@@ -239,6 +239,12 @@ def parse_hermes_output(raw: str) -> HermesReply:
     caption, spoken = split_speak_footer(cleaned)
     if not spoken:
         spoken = spoken_stub(cleaned)
+    if not spoken:
+        try:
+            from jarvis.brain import translate_to_english_short
+            spoken = translate_to_english_short(caption) or ""
+        except Exception:
+            spoken = ""
     return HermesReply(
         ok=True,
         caption=caption,
@@ -785,6 +791,12 @@ def _chat_via_api(
     caption, spoken = split_speak_footer(cleaned)
     if not spoken:
         spoken = spoken_stub(cleaned)
+    if not spoken:
+        try:
+            from jarvis.brain import translate_to_english_short
+            spoken = translate_to_english_short(caption) or ""
+        except Exception:
+            spoken = ""
     return HermesReply(
         ok=True,
         caption=caption,

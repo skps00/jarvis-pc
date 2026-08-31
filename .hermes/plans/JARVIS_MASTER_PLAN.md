@@ -96,37 +96,37 @@
 
 > **問題**：plan 越寫越長，核心痛點、voice call 安全、長遠願景混埋一齊，導致「寫 plan 幾日，code 一行未寫」。分三層，先做 Tier 1。
 
-### Tier 1 — 核心痛點（🔴 立即做，最細步最大效益）
+### Tier 1 — 核心痛點 ✅ 全部完成（2026-08-28/29）
 
 **SK 即時痛點：wake 唔準 / STT 慢 / response 慢。**
 
-| Step | 內容 |
-|---|---|
-| A2 | wake rearm 修復（叫唔醒元兇） |
-| A | wake VAD 防誤觸 |
-| B | STT GPU 加速（5090） |
-| D1/D2/D3 | streaming TTS + 短確認 + 縮短等待 |
+| Step | 內容 | 狀態 |
+|---|---|---|
+| A2 | wake rearm 修復（叫唔醒元兇） | ✅（_REARM_TIMEOUT_S） |
+| A | wake VAD 防誤觸 | ✅（vad_threshold=0 決策 + rearm timeout + threshold 自動調） |
+| B | STT GPU 加速（5090） | ✅（cuda:0，rtf 0.03-0.044） |
+| D1/D2/D3 | streaming TTS + 短確認 + 縮短等待 | ✅（D1 決定唔做 / D2 Yes Sir / D3 縮短） |
 
-### Tier 2 — Voice call 安全（🟡 Tier 1 完成後做）
+### Tier 2 — Voice call 安全 ✅ 全部實作上線（2026-08-28/29，等 SK 實測）
 
 **SK 痛點：同人 voice call 會洩漏 / 對方聲誤觸。**
 
-| Step | 內容 |
-|---|---|
-| A3 | AEC（**優先 WebRTC AEC3**，業界標準） |
-| A4 | Speaker verification（聲紋，已實測可行） |
-| chat_context | 社交場合偵測（Discord 標題 + voice_call） |
+| Step | 內容 | 狀態 |
+|---|---|---|
+| A3 | AEC（WebRTC AEC3 優先） | ✅ AecChain 多 reference 上線 |
+| A4 | Speaker verification（聲紋） | ✅ speaker_gate.py 上線（等 SK 真聲驗證/enrollment） |
+| chat_context | 社交場合偵測（Discord 標題 + voice_call） | ✅ activity_monitor chat_context + voice_call + vc_fail_closed |
 
-### Tier 3 — 願景（⏳ 長遠，逐步）
+### Tier 3 — 願景 ⏳ 大部分完成（剩排期項）
 
 **Iron Man 全 AI 夥伴：一個 app + 深度整合 + 擴展 + 自我整合。**
 
-| 項目 | 內容 |
-|---|---|
-| Phase 8 JARVIS ONE | Electron 一個 app |
-| Step 8.5 MCP 整合 | Hermes ⇄ JARVIS 雙向 |
-| Mage-VL | streaming 影片理解（「眼」） |
-| 自我整合/擴展 | 反編譯接入 + 更多平台/MCP |
+| 項目 | 內容 | 狀態 |
+|---|---|---|
+| Phase 8 JARVIS ONE | Electron 一個 app | ✅（8.1-8.5 全部完成） |
+| Step 8.5 MCP 整合 | Hermes ⇄ JARVIS 雙向 | ✅（jarvis-alerts + clarify/autonomy tools） |
+| Mage-VL | streaming 影片理解（「眼」） | ✅（mage_engine.py 單幀 + analyze_video_sampled） |
+| 自我整合/擴展 | 反編譯接入 + 更多平台/MCP | ✅（WeSight 實例 + skill third-party-app-integration；平台擴展 ❌ 取消——Discord 就夠） |
 
 **原則**：Tier 1 未完成前，唔好開始 Tier 2/3 嘅 code（避免完美主義陷阱）。每個 Tier 有明確「done 定義」先算完成。
 
@@ -147,12 +147,12 @@
 - [x] 音量突增（RMS > -20dB）+ 持續 ≥300ms → 中斷 `mouth.stop_play()`
 - [x] Echo Prevention（TTS 播放期間暫停偵測）
 
-## Phase 3 — streaming（🔴 部分完成——TTS streaming 未實現！）
+## Phase 3 — streaming ✅ 已完成（2026-08-28 決策）
 
 - [x] Hermes bridge SSE streaming（`/v1/runs/{id}/events` 讀 `message.delta`）
-- [x] 先唸短句確認「Yes, Sir.」概念已定（Open Questions #3）
-- [ ] **Streaming TTS**（`mouth.speak` 仍係一次過 `synthesize(整句)` → 等成句先播放）→ 已列入 Phase 6 D1
-- [ ] Streaming STT（可選）→ 已列入 Phase 6 後續
+- [x] 先唸短句確認「Yes, Sir.」概念已定（Open Questions #3）——D2 已實作
+- [x] **Streaming TTS** → **決定唔做**（2026-08-28 實測：Piper TTS 非 bottleneck（0.266s 一句）——`sd.OutputStream` streaming 反而令 voice out 失效（已 revert）。壓延遲靠 LLM 首 token + STT（bridge 唔好 fallback CLI））
+- [x] Streaming STT（可選）→ deferred（SenseVoice GPU rtf 0.03-0.044 已夠快）
 
 ## Phase 4 — 回覆語言 ✅ 已完成
 
@@ -160,7 +160,7 @@
 
 ---
 
-## Phase 6 — Wake/STT/Response 品質改善（⏳ 已確認未開始，優先於 Phase 8）
+## Phase 6 — Wake/STT/Response 品質改善 ✅ 全部完成（2026-08-28/29）
 
 > 2026-08-27 SK 確認：① wake 誤觸/叫唔醒 ② STT 慢/錯字多 ③ response 出聲太慢。
 > **對 SK 嘅好處：** 把聲變準（少誤觸）、變快（GPU STT）、變爽（streaming + 縮短等待）。
@@ -184,18 +184,18 @@
 
 ---
 
-## Phase 7 — Alert / 感應器平台（⏳ 依序）
+## Phase 7 — Alert / 感應器平台 ✅ 大部分完成（剩 💤 deferred 項）
 
 > 來源：`TODOS.md`。Sensor platform design APPROVED（NVML GPU 健康已 ship）。
 
 | 項目 | 內容 | 依賴 | 狀態 |
 |---|---|---|---|
-| **GPU-Z failover backend** | `GpuzBackend`（CSV/SHM）做 HWiNFO 後備 | HWiNFO SHM 先落地 | 💤 deferred |
-| **HWiNFO SHM backend** | CPU 溫度/功耗/風扇 + 5090 hotspot | NVML + speak-path 穩定 | 💤 deferred |
-| **Minecraft ready alert** | 偵測 Prism/MC ready → stub「Minecraft is ready.」 | hermes alert_tts 穩定 | 💤 deferred |
-| **Hermes push/notify** | AlertStore 入隊後主動 push（sub-second） | speak-path harden | 💤 deferred |
-| **screen/UIA「what did they say?」** | 短 ping 後可追問內容（UIA/OCR） | Alerts HTTP MCP 穩定 | 💤 deferred |
-| **remote Hermes → Windows alerts MCP** | VPN/SSH tunnel 支援（唔開 public port） | 本地 HTTP MCP 穩定 | 💤 deferred |
+| **GPU-Z failover backend** | `GpuzBackend`（CSV/SHM）做 HWiNFO 後備 | HWiNFO SHM 先落地 | ❌ 記錄唔做（GPU-Z 冇 public API，2026-08-31） |
+| **HWiNFO SHM backend** | CPU 溫度/功耗/風扇 + 5090 hotspot | NVML + speak-path 穩定 | ✅ 已做（gpu_metrics_with_fallback：nvidia-smi → HWiNFO SHM temp/VRAM/util → {}） |
+| **Minecraft ready alert** | 偵測 Prism/MC ready → stub「Minecraft is ready.」 | hermes alert_tts 穩定 | ✅ 已做（D2：_start_game_alert_watch + game_started 事件） |
+| **Hermes push/notify** | AlertStore 入隊後主動 push（sub-second） | speak-path harden | ✅ 已做（D1：hermes_alert_poll_loop ~1s peek→TTS→ack） |
+| **screen/UIA「what did they say?」** | 短 ping 後可追問內容（UIA/OCR） | Alerts HTTP MCP 穩定 | 💤 deferred（未做） |
+| **remote Hermes → Windows alerts MCP** | VPN/SSH tunnel 支援（唔開 public port） | 本地 HTTP MCP 穩定 | 💤 deferred（未做） |
 
 ---
 
@@ -625,19 +625,22 @@ JARVIS 定期自我檢查：
 
 ---
 
-## 🎯 Current Sprint（而家做緊咩——2026-08-27 起）
+## 🎯 Current Sprint（2026-08-31 狀態：Tier 1-3 基建全部完成 ✅）
 
-> **Tier 分層（見「MVP 分層」）：先 Tier 1，未完成唔開始 Tier 2/3。**
+> **Tier 分層（見「MVP 分層」）：全部完成。剩低 = SK 人手實測 + 排期項 + 等數據。**
 
-**而家第一步（Tier 1）：**
-1. **A2 wake rearm 修復**（叫唔醒元兇——最細、最高優先）
-2. **A wake VAD 防誤觸**
-3. **B STT GPU 加速**
-4. **D1/D2/D3** streaming TTS + 短確認 + 縮短等待
+**已完成（2026-08-27 → 08-31）：**
+1. **A2 wake rearm 修復** ✅
+2. **A wake VAD 防誤觸** ✅（vad_threshold=0 + rearm + threshold 自調）
+3. **B STT GPU 加速** ✅（cuda:0）
+4. **D1/D2/D3** ✅（D1 決定唔做 / D2 Yes Sir / D3 縮短）
+5. **Tier 2（A3 AEC / A4 聲紋 / chat_context）** ✅ 上線
+6. **Tier 3（Phase 8 JARVIS ONE / MCP / Mage-VL / Self-Evol）** ✅
 
-**Tier 1 完成定義**：① BGM 30s 0 誤觸 ② STT GPU ≥3x 快 ③ 喊完→有聲 ≤3s。
-
-**之後：Tier 2（voice call 安全）→ Tier 3（願景）。**
+**剩低：**
+- 🟡 **SK 人手實測**：headset wake / Tier 1 指標（BGM 30s 0 誤觸、喊完→有聲 ≤3s）/ 聲紋 enrollment / AEC voice call / Settings tab
+- ⏳ **排期項**：自訓 wake「jarvis」、Discord 回覆 voice out、Iron Man 視覺完整化、刪舊 jarvis-hud（下次重啟後）、Electron auto-respawn 調查（下次再死）
+- 🟡 **等數據**：self_monitor / clarify / stt_stats log ≥7 日 → 接 cron monitor
 
 ---
 

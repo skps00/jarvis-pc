@@ -421,3 +421,31 @@ def test_ensure_api_recycles_wrong_key_port():
     assert "hermes_cli.main" in " ".join(str(x) for x in calls.get("argv") or [])
     assert ok
     assert "API" in msg
+
+
+def test_parse_chinese_fallback_none_no_crash():
+    """CJK-only body: fallback returns None → spoken stays empty, no crash."""
+    from unittest import mock
+
+    raw = "已完成任務，沒有 SPEAK footer。"
+    with mock.patch(
+        "jarvis.brain.translate_to_english_short",
+        return_value=None,
+    ):
+        reply = parse_hermes_output(raw)
+    assert reply.ok
+    assert reply.spoken == ""
+
+
+def test_parse_chinese_fallback_translated():
+    """CJK-only body: fallback returns English → spoken set."""
+    from unittest import mock
+
+    raw = "已完成任務，沒有 SPEAK footer。"
+    with mock.patch(
+        "jarvis.brain.translate_to_english_short",
+        return_value="Done, sir.",
+    ):
+        reply = parse_hermes_output(raw)
+    assert reply.ok
+    assert reply.spoken == "Done, sir."

@@ -171,7 +171,16 @@ def _pick_spoken_line(lines: list[str]) -> str | None:
         m = re.match(r"^\[(?:ok|fail)\]\s*(.*)$", line)
         if m and m.group(1).strip():
             ok_fail = m.group(1).strip()
-    return speak or ok_fail
+    pick = speak or ok_fail
+    if pick and re.search(r"[\u4e00-\u9fff]", pick):
+        try:
+            from jarvis.brain import translate_to_english_short
+            translated = translate_to_english_short(pick)
+            if translated:
+                return translated
+        except Exception:
+            pass
+    return pick
 
 
 def _make_icon_image(*, recording: bool = False):

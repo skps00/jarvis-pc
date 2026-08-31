@@ -72,6 +72,7 @@ GOLDEN_SUITES: dict[str, dict[str, list[str]]] = {
             "tests/test_autonomy.py",
             "tests/test_autostart.py",
             "tests/test_brain.py",
+            "tests/test_brain_translate.py",
             "tests/test_clarify.py",
             "tests/test_clarify_stats.py",
             "tests/test_cursor_hooks.py",

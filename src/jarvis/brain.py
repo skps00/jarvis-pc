@@ -469,3 +469,51 @@ def resolve_ambiguous(text: str, registry: Registry) -> Intent | None:
             target_raw=text,
         )
     return intent
+
+
+_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+
+
+def translate_to_english_short(text: str, max_words: int = 20) -> str | None:
+    """Translate a (possibly CJK) caption into ONE short English sentence for TTS.
+
+    - Already pure-English text -> trimmed as-is (no LLM call).
+    - CJK text -> one OpenAI-compatible chat call, English-only translation.
+    - Returns None when no LLM key, LLM error, or empty input (caller keeps
+      current silence behavior rather than crash).
+    """
+    t = (text or "").strip()
+    if not t:
+        return None
+    if not _CJK_RE.search(t):
+        words = t.split()
+        if len(words) <= max_words:
+            return t
+        return " ".join(words[:max_words]).rstrip(".,;:") + "."
+    if not llm_configured():
+        return None
+    try:
+        out = _chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are JARVIS's TTS translator. Translate the user's message "
+                        "into ONE short English sentence (max 20 words) exactly as Jarvis "
+                        "would say it. Reply with the English translation only, no quotes, "
+                        "no explanation."
+                    ),
+                },
+                {"role": "user", "content": t},
+            ],
+            json_mode=False,
+        )
+    except Exception:
+        return None
+    out = (out or "").strip().strip('"').strip("'")
+    if not out or _CJK_RE.search(out):
+        return None
+    words = out.split()
+    if len(words) > max_words:
+        out = " ".join(words[:max_words]).rstrip(".,;:") + "."
+    return out
