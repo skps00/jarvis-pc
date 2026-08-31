@@ -16,7 +16,8 @@ from tkinter import messagebox, scrolledtext, ttk
 
 from jarvis.engine import RunResult, execute_utterance
 from jarvis.settings import Settings, hotkey_display, load_settings
-from jarvis.settings_ui import SettingsWindow
+# NOTE: jarvis.settings_ui (tkinter SettingsWindow) FROZEN 2026-08-31 (#12):
+# settings live in Electron settings.html. File kept for tests/rollback.
 
 # Windows single-instance (ctypes — no extra dep)
 _MUTEX_NAME = "Local\\JarvisPcServe.v1"
@@ -259,7 +260,7 @@ class JarvisShell:
         self._hotkey_listener = None
         self._busy = False
         self._hermes_trusted_until = 0.0  # monotonic; 0 = Safe
-        self._settings_win: SettingsWindow | None = None
+        self._settings_win = None  # tkinter SettingsWindow FROZEN (#12)
         self._show_watch_stop = threading.Event()
         self._pending_image: str | None = None
         self._wake_stop = threading.Event()
@@ -945,20 +946,10 @@ class JarvisShell:
         threading.Thread(target=work, daemon=True).start()
 
     def open_settings(self) -> None:
-        """Open settings Toplevel (one at a time)."""
-        if self._headless:
-            self.append_log("[ok] 設定由 Electron HUD 管（JARVIS ONE）")
-            return
-        if self._settings_win is not None:
-            try:
-                if self._settings_win.win.winfo_exists():
-                    self._settings_win.win.lift()
-                    self._settings_win.win.focus_force()
-                    return
-            except tk.TclError:
-                pass
-        self.request_show()
-        self._settings_win = SettingsWindow(self)
+        """Open settings. tkinter SettingsWindow is FROZEN (2026-08-31 #12):
+        settings now live in Electron settings.html (JARVIS ONE tray → 設定).
+        Keep the entry point as a no-op log so old callers don't crash."""
+        self.append_log("[ok] 設定由 Electron HUD 管（JARVIS ONE tray → 設定）")
 
     def open_hermes_dashboard(self) -> None:
         """Start/open Hermes web UI in browser (background; no WSL flash)."""

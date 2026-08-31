@@ -159,3 +159,62 @@ class MageVLEngine:
             skip_special_tokens=True,
         )
         return answer.strip()
+
+    def analyze_video_sampled(
+        self,
+        video_path: str,
+        prompt: str = "What is happening in this frame? Be concise.",
+        max_frames: int = 8,
+    ) -> str:
+        """Frame-sampled video understanding (2026-08-31 #10).
+
+        Replaces the deferred codec-native streaming gate (needs mamba_ssm,
+        not practical on Windows): extract up to `max_frames` evenly-spaced
+        frames with OpenCV, run Mage-VL on each, and merge the observations
+        with timestamps. Good enough for game HUD / short-clip reading.
+        """
+        import cv2
+        import tempfile
+
+        path = Path(video_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Video not found: {video_path}")
+
+        cap = cv2.VideoCapture(str(path))
+        if not cap.isOpened():
+            raise RuntimeError(f"Cannot open video: {video_path}")
+        try:
+            total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+            fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+            if total <= 0:
+                # Some formats report 0 frames — fall back to a conservative
+                # estimate; `step` adapts so we still sample `max_frames` times.
+                total = max_frames * 10
+            if max_frames <= 0:
+                max_frames = 1
+            step = max(1, total // max_frames)
+            if total < max_frames:
+                step = 1
+
+            observations: list[str] = []
+            with tempfile.TemporaryDirectory(prefix="mage_frames_") as td:
+                idx = 0
+                while idx < total and len(observations) < max_frames:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                    ok, frame = cap.read()
+                    if ok:
+                        frame_path = Path(td) / f"f{idx:05d}.jpg"
+                        cv2.imwrite(str(frame_path), frame)
+                        ts = idx / fps if fps else idx
+                        try:
+                            desc = self.understand_image(str(frame_path), prompt)
+                            observations.append(f"[{ts:.1f}s] {desc}")
+                        except Exception as exc:  # noqa: BLE001
+                            observations.append(f"[{ts:.1f}s] (frame error: {exc})")
+                    idx += step
+
+            if not observations:
+                return "(no frames extracted)"
+            return "\n".join(observations)
+        finally:
+            cap.release()

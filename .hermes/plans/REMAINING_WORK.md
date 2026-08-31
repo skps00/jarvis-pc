@@ -64,13 +64,9 @@
 
 ---
 
-## C. 擴展連接 🟡（等 SK 提供 credentials——最後做）
+## C. 擴展連接 ❌（2026-08-31 SK 決定：用 Discord 就夠，取消）
 
-- **C1. WhatsApp platform**：要 SK 掃 QR / API credentials
-- **C2. Telegram platform**：要 SK BotFather bot token
-- **C3. Philips Hue**：openhue skill 已有——要 bridge IP + token（SK 屋企有冇 Hue？）
-- **C4. MCP servers**：GitHub（gh CLI 已有——可以唔加）、Notion（SK 用唔用？）
-- 每加一個：背景執行 + 來源過濾（voice call 靜音等原則）
+~~C1 WhatsApp / C2 Telegram / C3 Hue / C4 MCP servers~~ —— **刪除**（SK：「del 5, we just use dc for now」）
 
 ---
 
@@ -174,6 +170,16 @@
 - **Git commit（#5）**：jarvis-pc 全部工作 commit `290ca61`（110 files，含 self-evol + bug fixes + 之前 session 工作；secrets scan 乾淨）
 - **Hermes memory 清理（#15）**：personal 98%→92%、user 98%→90%（合併重複報告偏好）
 - **#2 SenseVoice remote code warning**：查證為 transformers 載入 warning，fallback 到 pretrained params 照 work（serve.log 有成功 transcribe 證據），無功能影響——記錄唔修
+
+### ✅ 未完成項清單處理（2026-08-31，SK「do 4,6,8,10,11,12 / del 5」）
+
+- **#4+#12 Settings 完成**：settings.html 加 `stt_preload` toggle（load/save 全通）；tkinter SettingsWindow **凍結**（shell_app `open_settings` → 統一「由 Electron HUD 管」，import/attribute 移除；settings_ui.py 保留做 rollback）
+- **#6 L1a sandbox 決定 + 實作**：**Docker Desktop 勝出（8:2）**——WSL2 共享內核可讀 `~/.ssh`（R18 實測教訓），Docker 有真 namespace 隔離。新 `src/jarvis/sandbox.py`（SandboxRunner：lazy 開 daemon、`--network none`、只 mount allowlisted workdir、無 host env/credentials、fail-closed）+ 9 tests
+- **#8 prompt_pipeline Optimizer 本體完成**：`src/jarvis/prompt_optimizer.py`（GEPA 式反思進化：mutate→score→elitism；score-driven 先入 PatternStore；INVARIANT_BLOCK 不可改；只掃 mutation 新增敏感；NaN/範圍 guard）+ 10 tests
+- **#10 Mage-VL video 完成**：`MageVLEngine.analyze_video_sampled`（OpenCV 抽幀 + 逐幀理解 + timestamp 合併）——替代 deferred mamba_ssm streaming（Windows 唔 practical）+ 6 tests
+- **#11 GPU failover 完成**：`gpu_metrics_with_fallback`（nvidia-smi → HWiNFO SHM temp/VRAM/util → {}；**GPU-Z 冇 public API，記錄唔做**）+ 7 tests
+- **#5 刪除**（C 擴展連接 WhatsApp/Telegram/Hue）——SK 決定「用 Discord 就夠」；建議從 REMAINING_WORK 移除
+- **驗證**：全套 **317 passed**（+32 新 tests）+ eval_gate --all 全綠（golden 26 files + py_compile 31）+ --lock 一致（28 files）；hash `8db6be8acd0e85c6`
 
 ---
 

@@ -20,6 +20,15 @@
 
 ## 今日完成（2026-08-30 session）
 
+### 2026-08-31 未完成項處理 session（SK「do 4,6,8,10,11,12 / del 5」）
+1. **#12+#4 Settings**：settings.html 加 stt_preload；tkinter SettingsWindow 凍結（統一由 Electron 管）
+2. **#6 Sandbox 決定**：Docker Desktop 勝出（WSL2 唔夠隔離）→ `src/jarvis/sandbox.py`（lazy、network none、無 credentials）+ 9 tests
+3. **#8 Prompt Optimizer 完成**：`prompt_optimizer.py`（GEPA 進化 + score-driven PatternStore + injection 防禦）+ 10 tests
+4. **#10 Mage-VL video**：`analyze_video_sampled`（OpenCV 抽幀）替代 mamba_ssm streaming + 6 tests
+5. **#11 GPU failover**：`gpu_metrics_with_fallback`（nvidia-smi → HWiNFO SHM；GPU-Z 冇 API 記錄唔做）+ 7 tests
+6. **#5 刪除**：C 擴展連接取消（用 Discord 就夠）
+7. **驗證**：317 passed + eval_gate --all 全綠（hash 8db6be8acd0e85c6）
+
 ### 2026-08-31 資源優化 session（SK「5.5GB 太多」+ fix them all）
 1. **SenseVoice lazy load（記憶體 -65%）**：實測 SenseVoice CPU 載入 ~3.5GB → 新 settings `stt_preload`（default False）+ thread-safe lazy load；sidecar Private 5.5GB→1.9GB、WorkingSet 1.9GB→454MB
 2. **UnicodeDecodeError 徹底修**：8 個 subprocess 位加 errors="replace"（taskkill/powershell/nvidia-smi/pgrep/TTS）——中文 Windows GBK 輸出不再 kill reader thread，test warning 清零（self-evol TREND-err finding 已解決）

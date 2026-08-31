@@ -350,6 +350,13 @@
         <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">STT-as-wake（遊戲易誤觸，預設關）</span>
       </div>
     </div>
+    <div class="field">
+      <label for="stt_preload">STT 預載（SenseVoice）</label>
+      <div class="check-row">
+        <input type="checkbox" id="stt_preload">
+        <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">啟動即載入（首次喚醒快 5s，但食 ~3.5GB RAM；預設關 = 第一次喚醒先載）</span>
+      </div>
+    </div>
     <!-- 聲紋 -->
     <div class="field span2">
       <label for="speaker_threshold">聲紋門檻（speaker gate）</label>
@@ -568,6 +575,7 @@
       document.getElementById('wake_cd_seconds').value = s.wake_cd_seconds != null ? s.wake_cd_seconds : 3;
       document.getElementById('record_seconds').value = s.record_seconds != null ? s.record_seconds : 4;
       document.getElementById('text_wake').checked = !!s.text_wake;
+      document.getElementById('stt_preload').checked = !!s.stt_preload;
       document.getElementById('speaker_threshold').value = s.speaker_threshold != null ? s.speaker_threshold : 0.50;
       document.getElementById('speakerThresholdVal').textContent = Number(document.getElementById('speaker_threshold').value).toFixed(2);
       document.getElementById('hotkey').value = s.hotkey || '';
@@ -645,6 +653,7 @@
       wake_cd_seconds: parseFloat(document.getElementById('wake_cd_seconds').value),
       record_seconds: parseFloat(document.getElementById('record_seconds').value),
       text_wake: document.getElementById('text_wake').checked,
+      stt_preload: document.getElementById('stt_preload').checked,
       speaker_threshold: parseFloat(document.getElementById('speaker_threshold').value),
       hotkey: document.getElementById('hotkey').value.trim(),
       tts_enabled: document.getElementById('tts_enabled').checked,
