@@ -16,12 +16,14 @@
 - **Voice 診斷結論（2026-08-31 晚）**：① onnxruntime 1.28 = OWW 全 0（已修）② **Arctis headset 休眠 = mic rms=0.000（而家就係呢個狀態）——戴返/喚醒 headset 先叫到** ③ wake_threshold 0.75 可能偏高（self-monitor 調出嚟）——戴 headset 試完再決定
 - **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
 - **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
-- **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**
-- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `4f8d048`（HANDOFF 補返 Discord Voice Out + CPU temp session）；working tree 乾淨
+- **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**、**jarvis-session-handoff（每日 05:45，deliver local——reset 前自動對比 session → 更新 HANDOFF + commit docs，唔 push）**
+- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `bbde88b`（HANDOFF 加今日 2026-09-01 session 狀態 + what next 選項）；working tree 乾淨
 
 ## 今日（2026-09-01 daily reset 後 session）
 
 - **check history 補返 HANDOFF**：上個 session 尾做咗嘅 Discord Voice Out + CPU temp 未入 HANDOFF——已補（commit `4f8d048`）
+- **HANDOFF 加今日 session 狀態 + what next 選項**（commit `bbde88b`）
+- **建立 jarvis-session-handoff cron job**（job `7b4af62c87c3`，每日 05:45，deliver local）：每日 reset（06:00）前自動 session_search → 對比 HANDOFF → 有實際工作就更新 HANDOFF/REMAINING_WORK + commit docs（唔 push）；冇工作回 NO_WORK 唔郁檔；SK 規則「test before run」即刻 run 驗證（就係今次 run）
 - **SK 計劃買新 mic**（上個 session 尾已講：「wait me buy a new mic first」）——mic 相關全部 pause（wake 實測 / 聲紋 enrollment / AEC voice call / Tier 1 / STT 準確度）
 - **what next 選項（SK 未揀，下次 session 問）**：Settings tab 人手實測（唔關 mic，隨時可測）/ Iron Man 視覺完整化（SK 上次 cancel 過）/ 等數據累積（≥7 日先接 cron monitor）
 
