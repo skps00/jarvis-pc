@@ -11,7 +11,7 @@
 
 ## 現行狀態（2026-08-31 晚 session 尾）
 
-- **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**monorepo**：jarvis-hud 已搬入 `hud/` 子目錄，git 歷史保留）；3 個 .lnk 全指新位置；Electron 仲行緊舊位置 process（下次重啟切換）
+- **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**monorepo**：jarvis-hud 已搬入 `hud/` 子目錄，git 歷史保留）；3 個 .lnk 全指新位置；**2026-09-01 已重啟切換到新位置 + 舊 jarvis-hud 目錄已刪（釋放 765MB）**
 - **Sidecar 8765**：PID 37496（restart 多次）；health OK wake_on=true；**onnxruntime 已 downgrade 1.27.0**（1.28 bug 令 openwakeword 輸出全 0——已 pin `<1.28`）
 - **Voice 診斷結論（2026-08-31 晚）**：① onnxruntime 1.28 = OWW 全 0（已修）② **Arctis headset 休眠 = mic rms=0.000（而家就係呢個狀態）——戴返/喚醒 headset 先叫到** ③ wake_threshold 0.75 可能偏高（self-monitor 調出嚟）——戴 headset 試完再決定
 - **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
@@ -87,8 +87,8 @@
 
 ## 剩低（詳見 REMAINING_WORK.md）
 
-- ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修，**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
-- ⏳ **刪舊 jarvis-hud 目錄**（SK：「你之後處理」）：monorepo 搬遷後舊目錄仲喺度（運行緊 process 用緊）。**下次 JARVIS 重啟（用新位置成功運行）後刪**——刪前確認冇 process 由舊路徑 load
+- ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修 + stt_preload 已開（2026-09-01）+ sidecar 已重啟；**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
+- ✅ **刪舊 jarvis-hud 目錄**（2026-09-01 完成）：JARVIS 已重啟切換新位置 + 確認冇 process 由舊路徑 load → 已刪（釋放 765MB）
 - ⏳ **Electron auto-respawn 失效原因**（8/29 實測死咗冇 respawn；8/31 兩次都 respawn 成功）——下次再死要查 main.js health-check
 - ✅ **MCP tools restart**：已完成（jarvis_clarify_gate / jarvis_autonomy_state live）
 - ✅ **prompt_pipeline Optimizer**：已完成（prompt_optimizer.py）
