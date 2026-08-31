@@ -87,6 +87,7 @@
 
 - ✅ **cursor-agent bug review（2026-08-30 晚，已完成）**：11 findings 全部修好，報告 `plans/cursor-bug-review-2026-08-30.md`（HIGH：asr_repair shellish bypass / clarify asked-but-unanswered fallback / clarify EVPI 只問 impactful / autonomy promote 唔跳 L1a；MEDIUM：demote_if_needed / apply_optimized introduced-diff / format_simple single-pass / eval_gate utf-8 / self_review deque / hysteresis 隔離；LOW：dead symbols）
 - ✅ **bug bot（requesting-code-review，2026-08-30 已完成）**：static scan 乾淨 + 3 個 logic errors 修好（eval_gate catch / PatternStore malformed JSON / self_review --days）——246 tests 全綠
+- ⏳ **刪舊 jarvis-hud 目錄**（SK 2026-08-31：「你之後處理」）：monorepo 搬遷後，`C:\Users\skps9\Documents\Code_Project\jarvis-hud` 舊目錄仲喺度（運行緊嘅 process 用緊，唔可以即刻刪）。**下次 JARVIS 重啟（用新位置 hud\dist exe 成功運行）後刪除**——刪前確認冇 process 由舊路徑 load。
 - ⚠️ **MCP tools restart sidecar（8765）先生效**（jarvis_clarify_gate / jarvis_autonomy_state 已寫 code + tests 全綠，未 restart）——等 SK 批准重啟服務
 - ✅ **wiring 4 個新 module 入 Hermes 主流程已完成（2026-08-31）**：eval_gate→CI gate（--lock + 強制指令）、clarify→MCP tool、autonomy→persistence + MCP tool、prompt_pipeline→skill 規則（詳見 REMAINING_WORK「Wiring 完成」+ skill jarvis-self-evol-ops）
 - 🔴 **prompt_pipeline Optimizer 本體**（GEPA/DSPy 集成）——只有 Formatter + PatternStore，Optimizer 未實作（後續）
