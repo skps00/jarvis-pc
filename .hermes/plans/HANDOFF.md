@@ -60,6 +60,24 @@
 ### 2026-08-31 凌晨 session（修復 session）
 - Sidecar respawn（8/29 死因未明——下次再死要查 Electron health-check）、HUD window 消失修復
 
+### E2/E3 + 文檔 session（2026-08-31 晚，SK「do it」）
+1. **D2 確認已實現**：`shell_app._start_game_alert_watch`（run() 1781 已接）watch `sk_activity.json game_started` → enqueue `<Game> is ready, sir.`；今日補 phrase capitalize（minecraft → Minecraft）
+2. **E2 STT 準確度追蹤**：新 `src/jarvis/stt_stats.py`（serve.log `asr_repair=` → repair ratio + top confusions + suggestions ≥3 次先建議，唔自動 apply）+ `--fingerprint` REPAIR_RATIO + 寫 stt_stats.log；9 tests
+3. **E3 Response 延遲**：mouth `tts_ok` print 加 HH:MM:SS timestamp；self_monitor 計 `resp_lat`（oww_fire→tts_ok 0-60s；>5s notable）；9 tests
+4. **文檔**：`docs/hermes-bridge-auth.md`（auth 機制/風險/rotation 方法）+ `docs/settings-field-map.md`（48 fields ↔ settings key ↔ IPC ↔ clamp + 加新項 checklist）
+5. **CI**：全套 **347 passed**（+30 新 tests）+ eval_gate --all 全綠（golden 28 files 316 passed + py_compile 33 / regression 16 / stress 65）+ `--lock` 一致（30 files）；新 hash `05ec926cefc0e5e1`
+6. **pass2 新脆弱位**：⑬ stt_stats 格式耦合 ⑭ mouth tts_ok 格式依賴 ⑮ 跨午夜 edge ⑯ suggestions 冇 consumer（記入 REMAINING_WORK）
+
+### 脆弱位修復 session（2026-08-31 晚，SK「find 脆弱位就即刻修，修到冇 bug」+「any code 改動一律經 cursor」）
+1. **Cursor review**（cursor-review-e2e3-2026-08-31.md）：**11 findings（2 HIGH / 5 MED / 4 LOW）全部處理**
+2. **HIGH #1**：`_compute_latency` midnight `0.0` truthiness（`not ft` 食咗 00:00:00）→ `ft is None`
+3. **HIGH #2**：repair_ratio 窗口唔一致（repair_log full-read vs wake tail）→ `_REPAIR_WINDOW=2000` tail + engine 20000 行 rotation（`_maybe_rotate_repair_log`）
+4. **MED**：docstring overclaim（latency 係 heuristic 唔係 utterance pairing）、`capitalize()` 毀 CS2 → `game_ready_phrase`（first-char upper only）、`_consecutive_days` window 參數化、repair_log 寫失敗 silent → stderr warn、tests 補齊（test_engine/test_shell_app/00:00:00/ERROR exit 2）
+5. **LOW**：docstring repair_log primary、`_tail_lines` deque（兩檔）
+6. **舊脆弱位處理**：① self_review main fail-visible（parse 0 → ERROR+exit2）② 缺日唔當連續退化 ③ 註釋 ④⑦ 唔改（安全設計）⑫ ERROR 分支固定輸出
+7. **CI**：全套 **368 passed** + eval_gate --all 全綠（golden 30 files 337 / regression 16 / stress 68）+ `--lock` 一致（32 files）；hash `2a29a8ef41eb43c4`
+8. **規則更新（SK）**：any code 改動一律經 cursor-agent（cursor 改+review；自己唔好直接 patch jarvis code）
+
 ## 剩低（詳見 REMAINING_WORK.md）
 
 - ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修，**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
@@ -69,7 +87,11 @@
 - ✅ **prompt_pipeline Optimizer**：已完成（prompt_optimizer.py）
 - ✅ **L1a sandbox**：已決定 Docker Desktop + sandbox.py 完成（sandbox_ready 仲係 False——要真開 Docker 先 promote）
 - ✅ **clarify precision consumer**：已完成（clarify_stats.py）——剩「接 cron 等數據夠」
-- 🟡 **等數據**：self_monitor.log / clarify_log 累積 ≥7 日先有真 finding signal（而家 fingerprint 多數 NONE）
+- ✅ **D2 Minecraft ready alert**：已完成（_start_game_alert_watch + game_started 事件；capitalize 微調 2026-08-31）
+- ✅ **E2 STT 準確度追蹤**：已完成（stt_stats.py + 9 tests）——剩「等數據先接 cron monitor」
+- ✅ **E3 Response 延遲**：已完成（mouth tts_ok timestamp + self_monitor resp_lat）——>5s 會 notable
+- ✅ **文檔**：docs/hermes-bridge-auth.md + docs/settings-field-map.md
+- 🟡 **等數據**：self_monitor.log / clarify_log / stt_stats.log 累積 ≥7 日先有真 finding signal（而家 fingerprint 多數 NONE）
 - 🟡 **G 人手實測**（等 SK）：Tier 1（BGM 誤觸 / 喊完→有聲 ≤3s）、聲紋 enrollment（要新 mic）、AEC voice call、Settings tab（HTML 已齊）
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）

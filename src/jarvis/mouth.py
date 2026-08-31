@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -345,7 +346,8 @@ def speak(
                 try:
                     _play_once(a16, samplerate=sr, device=out_dev)
                     _last_error = None
-                    print("[mouth] tts_ok", flush=True)
+                    # E3: timestamp so self_monitor can compute wake→speech latency
+                    print(f"[mouth] tts_ok {time.strftime('%H:%M:%S')}", flush=True)
                     return True
                 except Exception as exc1:
                     if out_dev is None:
@@ -360,7 +362,7 @@ def speak(
                         )
                         _last_error = note
                         print(f"[mouth] {note}", file=sys.stderr)
-                        print("[mouth] tts_ok", flush=True)  # metric for self_monitor serve.log
+                        print(f"[mouth] tts_ok {time.strftime('%H:%M:%S')}", flush=True)  # metric for self_monitor serve.log
                         return True
                     except Exception as exc2:
                         _last_error = (

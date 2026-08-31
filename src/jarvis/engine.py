@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import os
+import re
+import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from jarvis.asr_repair import repair_asr_text
 from jarvis.brain import (
@@ -38,6 +43,52 @@ class RunResult:
     lines: list[str] = field(default_factory=list)
 
 
+# 同 stt_stats.parse_repair_pairs 一致：note 嘅第一個 'raw' → 'fixed' pair。
+# E2 (2026-08-31)：寫結構化 repair_log.jsonl 俾 stt_stats 讀（避免 parse serve.log 文字）。
+_RE_REPAIR_PAIR = re.compile(r"'([^']+)'\s*→\s*'([^']+)'")
+
+
+def _maybe_rotate_repair_log(path: Path) -> None:
+    """If repair_log grows past 20000 lines, keep only the last 10000."""
+    try:
+        if not path.is_file():
+            return
+        text = path.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
+        if len(lines) <= 20000:
+            return
+        keep = lines[-10000:]
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text("\n".join(keep) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def _log_repair_event(note: str, repair_log: Path | None = None) -> None:
+    """Append one structured repair event to the Jarvis repair_log.jsonl.
+
+    stt_stats 優先讀呢個檔；serve.log 文字 parse 只做 fallback。單 writer
+    （engine 係唯一 caller），append-only；壞行唔 crash。
+    """
+    m = _RE_REPAIR_PAIR.search(note or "")
+    if not m:
+        return
+    try:
+        path = (
+            repair_log
+            if repair_log is not None
+            else Path(os.environ.get("APPDATA", "")) / "Jarvis" / "repair_log.jsonl"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _maybe_rotate_repair_log(path)
+        row = {"ts": time.time(), "raw": m.group(1), "fixed": m.group(2)}
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"[warn] repair_log write failed: {exc}", file=sys.stderr)
+
+
 def execute_utterance(
     text: str,
     *,
@@ -59,6 +110,7 @@ def execute_utterance(
         if note:
             lines.append(f"[repair] {note}")
             print(f"[engine] asr_repair={note}", flush=True)
+            _log_repair_event(note)  # E2: 結構化 repair log（stt_stats 讀呢個）
 
     if not (utterance or "").strip():
         lines.append(

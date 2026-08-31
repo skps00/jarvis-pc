@@ -76,6 +76,7 @@ GOLDEN_SUITES: dict[str, dict[str, list[str]]] = {
             "tests/test_clarify_stats.py",
             "tests/test_cursor_hooks.py",
             "tests/test_discover.py",
+            "tests/test_engine.py",
             # NOTE: test_eval_gate.py intentionally NOT in golden — its
             # test_run_suite_golden_executes_real_checks re-runs this suite,
             # which would recurse into itself.
@@ -90,9 +91,12 @@ GOLDEN_SUITES: dict[str, dict[str, list[str]]] = {
             "tests/test_router.py",
             "tests/test_sandbox.py",
             "tests/test_self_review.py",
+            "tests/test_self_monitor.py",
             "tests/test_settings.py",
+            "tests/test_shell_app.py",
             "tests/test_shell_wake_restart.py",
             "tests/test_speaker_gate.py",
+            "tests/test_stt_stats.py",
             "tests/test_wake.py",
         ],
         "py_compile": [
@@ -127,6 +131,7 @@ GOLDEN_SUITES: dict[str, dict[str, list[str]]] = {
             "src/jarvis/settings.py",
             "src/jarvis/shell_app.py",
             "src/jarvis/speaker_gate.py",
+            "src/jarvis/stt_stats.py",
             "src/jarvis/wake.py",
         ],
     },

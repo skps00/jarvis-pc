@@ -19,6 +19,15 @@ from jarvis.settings import Settings, hotkey_display, load_settings
 # NOTE: jarvis.settings_ui (tkinter SettingsWindow) FROZEN 2026-08-31 (#12):
 # settings live in Electron settings.html. File kept for tests/rollback.
 
+
+def game_ready_phrase(game: str | None) -> str:
+    """'minecraft' -> 'Minecraft'; 'CS2' stays 'CS2' (first-char upper only)."""
+    g = (game or "").strip()
+    if not g:
+        return "game"
+    return g[:1].upper() + g[1:]
+
+
 # Windows single-instance (ctypes — no extra dep)
 _MUTEX_NAME = "Local\\JarvisPcServe.v1"
 _SHOW_EVENT_NAME = "Local\\JarvisPcServe.Show.v1"
@@ -1685,7 +1694,7 @@ class JarvisShell:
                         last_seen = key
                         self._enqueue_alert(
                             "game",
-                            f"{game} is ready, sir.",
+                            f"{game_ready_phrase(game)} is ready, sir.",
                             app="game",
                             log_prefix="game alert",
                         )

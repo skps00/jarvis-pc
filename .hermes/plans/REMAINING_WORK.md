@@ -14,7 +14,7 @@
 2. **H2 settings 單一 writer**——`settings.save_settings_patch()`（dir-lock + atomic + pending-apply）；sidecar `POST /settings` endpoint（Bearer auth）；Electron settings:save 改 POST（fallback 直接寫）；self-monitor 統一用 patch；shell_app `_start_settings_apply_watch`（live wake_threshold 更新）——實測 POST → `settings applied: wake_threshold=0.47` ✓
 3. **H3 Electron SPOF health**——`sidecarRunning()` 由 TCP connect 改 HTTP GET /health（防止 stale listener 當 healthy）
 
-**剩低（記低，唔急）：** ML 依賴 pin 已做（torch<3 + aec/speaker extras）、Mage-VL revision pin 已做、voice_status ISO + stale 灰已做（0.4.3）、settings clamp 統一已做（0.4.3）、activity 單一 writer（lock 已加）、Hermes bridge auth rotation 文檔、secrets DPAPI、tk settings_ui 凍結/移除、settings.html load/collect field-map（pass1 #3 skip）。
+**剩低（記低，唔急）：** ML 依賴 pin 已做（torch<3 + aec/speaker extras）、Mage-VL revision pin 已做、voice_status ISO + stale 灰已做（0.4.3）、settings clamp 統一已做（0.4.3）、activity 單一 writer（lock 已加）、secrets DPAPI、tk settings_ui 凍結/移除、**Hermes bridge auth rotation 文檔 ✅（2026-08-31：docs/hermes-bridge-auth.md）**、**settings.html load/collect field-map ✅（2026-08-31：docs/settings-field-map.md，pass1 #3 skip 補返）**。
 
 ---
 
@@ -73,7 +73,7 @@
 ## D. Phase 7 易做項 🔴
 
 - **D1. Hermes push/notify** ✅（2026-08-29 確認已由 sidecar 完成）：sidecar `_ensure_alert_poller` 起 `scripts/hermes_alert_poll_loop.py`（pythonw，~1s interval，peek→Hermes TTS→ack），比 Hermes cron（gateway tick ~60s、min 1m）快好多。serve.log 確認 `alert poller ~2s` spawn；實測 enqueue→4s 內 lease。**注意：唔好再加 Hermes cron poll**（會同 poller race / double speak）；用 MCP tools（peek/ack/speak）係俾 Hermes agent 主動查，唔係取代 poller。
-- **D2. Minecraft ready alert**：偵測 MC 啟動（javaw.exe 出現 + 標題「Minecraft*」→ 「Minecraft is ready, sir.」）——activity_monitor 已 detect playing；加「首次偵測」alert
+- **D2. Minecraft ready alert** ✅（2026-08-31 確認已實現）：`shell_app._start_game_alert_watch`（run() 1781 已接）watch `sk_activity.json` 嘅 `game_started`（activity_monitor 每次 game 轉變寫 `game_start_event.json` + flag）→ enqueue `"<Game> is ready, sir."`（今日補 phrase capitalize：「minecraft」→「Minecraft」）。generic 任何 game 都 alert（唔限 MC）。無重複：`(game, started)` last_seen + started=False 時 reset。
 - D3. HWiNFO SHM / GPU-Z failover：💤 重，deferred
 
 ---
@@ -81,8 +81,8 @@
 ## E. 自我迭代 🔴
 
 - **E1. 已做**：self-monitor script + cron（wake 誤觸/STT miss/rtf/AGC + threshold 自動調）
-- **E2. STT 準確度追蹤**：SenseVoice 轉錄後用戶更正（asr_repair 命中率）統計 → 自動加 hotwords
-- **E3. Response 延遲統計**：喊完 → 有聲時間（wake_debug 到 TTS 開始）→ 寫 log → 自動提示 bottleneck
+- **E2. STT 準確度追蹤** ✅（2026-08-31）：`src/jarvis/stt_stats.py`——engine 寫結構化 `repair_log.jsonl`（primary；serve.log `asr_repair=` 文字 parse 只做 fallback）→ repair ratio + top confusions + suggestions（同一 raw→fixed ≥3 次先建議，唔自動 apply 避免學錯 alias；`extract_alias_target` 提供 learn_stt_alias 目標）+ `--fingerprint`（`REPAIR_RATIO <r>|<h>|<n>` / NO_DATA）+ 寫 `stt_stats.log`；窗口一致（repair_log tail 2000 = wake fires 窗口；engine 20000 行 rotation）；11 tests 入 golden。⏳ 等真實數據累積先接 cron monitor（同 clarify_stats R2 一樣）。
+- **E3. Response 延遲統計** ✅（2026-08-31）：mouth `tts_ok` print 加 `HH:MM:SS` timestamp（serve.log）；self_monitor 計 `resp_lat`（最近 `oww_fire` → 最近 `tts_ok`，0-60s 先計，午夜 rollover；heuristic 未做 utterance 級 pairing——alert/ack 可能被計入，docstring 已註明；tts_ok 全無 ts → `lat_fmt_err` → `resp_lat=ERR` + notable fail-visible）；summary 入 self_monitor.log；12 tests 入 golden。
 
 ---
 
@@ -127,6 +127,8 @@
   - **Task 9**：`src/jarvis/autonomy.py`（per-operation 分級 L1a/L1b/L1c + 複合閘 promotion + hysteresis 0.90/0.85 + 即時自動 demotion + H_auth log + kill switch + rate_alarm 速率監控）+ `tests/test_autonomy.py` **13 tests 全過**
   - ⚠️ 4 個 pre-existing 測試失敗已修（settings_ui 5 tabs / asr_repair garbled `|-]` early repair / test_brain 兩個 mock hermes_enabled）——**232 tests 全綠**
 - **pass2 脆弱位（2026-08-30）**：① self_review.py 依賴 self_monitor.log 文字格式（格式耦合）② trend 缺日處理 ③ _TREND_METRICS 硬編碼 ④ clarify.py `_safest_option` heuristic ⑤ **clarify.py 未接入 agent 流程**（standalone library；接 Hermes clarify tool / sidecar brain 要寫 adapter）⑥ clarify precision log 冇 consumer（E4 校準 pipeline 未建）⑦ `_DEFAULT_ASSUMPTIONS` 硬編碼 ⑧ **eval_gate GOLDEN_SUITES + 路徑硬編碼**（改 suite 要改 code + 同步 golden-set.md，兩處 drift 風險；`--lock` 未實作）⑨ **prompt_pipeline Optimizer 本體未實作**（只有 Formatter + PatternStore + injection 防禦框架；GEPA/DSPy 集成係後續）⑩ **autonomy promote mapping 跳過 L1a**（sandbox 未建，L0 直接→L1b；建好 sandbox 要改）⑪ **4 個新 module 全部 standalone 未 wiring**（最大脆弱位：基建完成但未接入 Hermes 主流程——三個月後可能唔記得點用）⑫ cron monitor script ERROR 分支靠 stderr 穩定性（stderr 每次唔同會令每 tick 誤判 changed）
+- **2026-08-31 處理**：① ✅ self_review main 加 fail-visible（log 有內容但 parse 0 條 → ERROR + exit 2，唔再 silent NONE）② ✅ `_consecutive_days` 缺日唔當連續退化（window 參數化）③ 加註釋（有意設計：明確列出要監控 metric）④⑦ 唔改（有意識安全設計：hardcoded baseline 唔俾 untrusted 改）⑫ ✅ ERROR 分支固定輸出「ERROR」唔再每 tick 誤判 changed
+- **pass2 新脆弱位（2026-08-31 E2/E3 session）——全部已修（cursor review 11 findings）**：⑬ ✅ **stt_stats 格式耦合**→ engine 寫結構化 `repair_log.jsonl`（primary）+ serve.log 文字 fallback；窗口一致（`_REPAIR_WINDOW=2000` tail + engine 20000 行 rotation）⑭ ✅ **latency 格式依賴**→ `tts_ok_no_ts` 計數 → `lat_fmt_err` → `resp_lat=ERR` + notable（fail-visible）⑮ ✅ **跨午夜**→ dt<0 +86400（cursor review 再捉 `0.0` truthiness bug 已修）⑯ **stt_stats suggestions 冇 consumer**——等數據先接 cron monitor（同 ⑥ 一樣，唔係 code bug）
 
 ### ✅ Wiring 完成（2026-08-31 session）——pass2 ⑧⑪ 已修
 

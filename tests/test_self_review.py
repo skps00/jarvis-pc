@@ -112,6 +112,26 @@ def test_trend_requires_window_not_just_any_3():
     assert detect_trend(days, "fp") is False
 
 
+def test_trend_not_flagged_with_missing_days():
+    # ②: 中間缺日（8/29 → 9/1 gap）唔可以當「連續退化」
+    days = [
+        {"date": "2026-08-29", "fp": 1, "stt_rtf": 0.3},
+        {"date": "2026-09-01", "fp": 2, "stt_rtf": 0.3},
+        {"date": "2026-09-02", "fp": 3, "stt_rtf": 0.3},
+    ]
+    assert detect_trend(days, "fp") is False
+
+
+def test_trend_flagged_with_consecutive_days():
+    # 連續 3 日（真正相連曆日）→ 照 flag
+    days = [
+        {"date": "2026-08-29", "fp": 1, "stt_rtf": 0.3},
+        {"date": "2026-08-30", "fp": 2, "stt_rtf": 0.3},
+        {"date": "2026-08-31", "fp": 3, "stt_rtf": 0.3},
+    ]
+    assert detect_trend(days, "fp") is True
+
+
 # ---------------------------------------------------------------------------
 # build_findings / schema
 # ---------------------------------------------------------------------------
@@ -168,3 +188,19 @@ def test_fingerprint_deterministic():
     review1 = build_review(_days([1, 2, 3]), "2026-08-30 09:00:00")
     review2 = build_review(_days([1, 2, 3]), "2026-08-30 09:00:00")
     assert fingerprint(review1) == fingerprint(review2)
+
+
+def test_main_parse_fail_error(tmp_path, monkeypatch, capsys):
+    """Garbage-only self_monitor.log → --fingerprint prints ERROR, returns 2."""
+    import jarvis.self_review as sr
+
+    (tmp_path / "self_monitor.log").write_text("garbage\nnot a summary\n", encoding="utf-8")
+    monkeypatch.setattr(sr, "_jarvis_dir", lambda: tmp_path)
+    old_argv = sys.argv[:]
+    try:
+        sys.argv = ["self_review", "--fingerprint"]
+        rc = sr.main()
+    finally:
+        sys.argv = old_argv
+    assert rc == 2
+    assert "ERROR" in capsys.readouterr().out

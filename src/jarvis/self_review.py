@@ -117,11 +117,30 @@ def _metric_value(day: dict[str, object], metric: str) -> float | None:
     return None
 
 
+def _consecutive_days(days: list[dict[str, object]], window: int = _TREND_WINDOW) -> bool:
+    """②: 最近 window 內嘅日 entries 必須係連續曆日，缺日唔可以當「連續退化」。"""
+    dates = [str(d.get("date") or "") for d in days[-window:]]
+    if len(dates) < 2:
+        return True
+    try:
+        prev = datetime.strptime(dates[0], "%Y-%m-%d")
+        for ds in dates[1:]:
+            cur = datetime.strptime(ds, "%Y-%m-%d")
+            if (cur - prev).days != 1:
+                return False
+            prev = cur
+        return True
+    except ValueError:
+        return False
+
+
 def detect_trend(
     days: list[dict[str, object]], metric: str, window: int = _TREND_WINDOW
 ) -> bool:
     """True if metric degraded on `window` consecutive days (last `window` days)."""
     if len(days) < window:
+        return False
+    if not _consecutive_days(days, window):
         return False
     lower_better = metric in _LOWER_IS_BETTER
     recent = days[-window:]
@@ -145,6 +164,9 @@ def detect_trend(
 # Findings / review building
 # ---------------------------------------------------------------------------
 
+# 加新 metric 到 self_monitor.log summary 時，如果要 trend 監控，記得同步加落
+# 呢度 + _LOWER_IS_BETTER（方向定義）。硬編碼係有意：明確列出要監控嘅 metric，
+# 唔會因為 log 多咗 key 而自動出 finding（③）。
 _TREND_METRICS = ["fp", "stt_rtf", "stt_miss", "err"]
 
 
@@ -222,6 +244,12 @@ def main() -> int:
     base = _jarvis_dir()
     lines = _tail_lines(base / "self_monitor.log", _TAIL_LINES)
     entries = parse_log(lines)
+    if not entries and lines:
+        # ① fail-visible：log 有內容但一條 summary 都 parse 唔到 → self_monitor.log
+        # 格式改咗。唔好 silent 當 NONE（monitor 唔會醒）；出固定 ERROR marker（⑫ 已
+        # 保證持續 ERROR 唔 spam）。
+        print("ERROR", flush=True)
+        return 2
     days = aggregate_by_day(entries)
     if args.days > 0:
         days = days[-args.days:]  # honor --days: analyze the last N calendar days
