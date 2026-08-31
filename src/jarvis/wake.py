@@ -650,7 +650,10 @@ def run_wake_loop(
         predict_pcm = _apply_agc(predict_pcm, now)
         try:
             scores = model.predict(predict_pcm)
-        except Exception:
+        except Exception as exc:
+            # Diagnose OWW/onnxruntime failure (2026-08-31: silent except hid
+            # "Invalid input shape" — best stayed 0.001 forever).
+            _wake_debug(f"oww_predict_err {type(exc).__name__}: {exc}")
             return
         if not scores:
             return

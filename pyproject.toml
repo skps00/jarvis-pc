@@ -40,7 +40,9 @@ ear = [
 wake = [
   "jarvis-pc[ear]",
   "openwakeword>=0.6.0,<0.7",
-  "onnxruntime>=1.16.0,<2",
+  # ⚠️ 2026-08-31: onnxruntime 1.28 makes openwakeword output all-zeros
+  # (model inference broken). Pin <1.28 — 1.27 verified working.
+  "onnxruntime>=1.16.0,<1.28",
   "piper-tts>=1.5.0,<2",
 ]
 aec = [
