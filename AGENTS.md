@@ -1,20 +1,22 @@
-# AGENTS.md — JARVIS ONE（jarvis-pc + jarvis-hud）
+# AGENTS.md — JARVIS ONE（monorepo：sidecar + hud）
 
 > 本檔係 jarvis-pc 專案嘅 Agent context——**任何做 JARVIS 相關任務嘅 agent 都要先讀**。
 > 老闆：SK。回覆用**繁體中文**（專有名詞可原文）。人格見 `SOUL.md`（Hermes home 自動 load）。
 > 來源：2026-08-29 從 master plan / REMAINING_WORK / HANDOFF 濃縮。更新時同步改 `.hermes/plans/` 文件。
+> **2026-08-31 monorepo**：jarvis-hud 已搬入 `hud/` 子目錄（一個 repo、一個 remote、git 歷史保留）。
 
 ## 專案簡介
 
-**JARVIS ONE** = SK 嘅全方位 AI 語音助手（Iron Man JARVIS）。一個 Electron app（jarvis-hud）+ Python sidecar（jarvis-pc）。
+**JARVIS ONE** = SK 嘅全方位 AI 語音助手（Iron Man JARVIS）。一個 Electron app（`hud/`）+ Python sidecar（`src/jarvis/`），全部喺呢個 monorepo。
 
 ```
-┌─ jarvis-hud（Electron，`C:\Users\skps9\Documents\Code_Project\jarvis-hud`）────┐
+┌─ hud/（Electron，`C:\Users\skps9\Documents\Code_Project\jarvis-pc\hud`）────┐
 │  main.js（tray + HUD overlay + Companion + Settings + media bridge）          │
 │  renderer/index.html（HUD 全屏 overlay，Iron Man 視覺）                       │
 │  companion.html / home.html / settings.html（共用 hud-theme.css）            │
+│  dist/ + node_modules/ = .gitignore（唔 commit）                              │
 └──┬── spawn ────────────────────────────────────────────────────────────────┘
-┌─ jarvis-pc（Python sidecar，`C:\Users\skps9\Documents\Code_Project\jarvis-pc`）┐
+┌─ sidecar（Python，`C:\Users\skps9\Documents\Code_Project\jarvis-pc`）───────┐
 │  `python -m jarvis serve`（wake/STT/TTS/AEC/聲紋/LLM）                       │
 │  src/jarvis/（wake.py, mouth.py, ear.py, shell_app.py, settings.py,          │
 │              alert_store.py, mcp_alerts_http.py, hermes_bridge.py,           │
@@ -26,16 +28,18 @@
 
 | 項目 | 路徑 |
 |---|---|
+| Monorepo 根 | `C:\Users\skps9\Documents\Code_Project\jarvis-pc` |
 | Sidecar Python | `C:\Users\skps9\AppData\Local\Python\pythoncore-3.14-64\python.exe`（**必須 `env -u PYTHONPATH` 跑**） |
 | Sidecar src | `C:\Users\skps9\Documents\Code_Project\jarvis-pc\src` |
-| Electron app | `C:\Users\skps9\Documents\Code_Project\jarvis-hud` |
+| Electron app | `C:\Users\skps9\Documents\Code_Project\jarvis-pc\hud`（monorepo 子目錄） |
+| HUD exe | `hud\dist\JARVIS-ONE-0.4.10.exe`（.lnk 指呢個；dist 唔 commit） |
 | Settings 檔 | `%APPDATA%\Jarvis\settings.json` |
 | Host config | `%APPDATA%\Jarvis\host.json`（python/jarvis_pc_dir） |
 | MCP token | `%APPDATA%\Jarvis\alerts\mcp_token.txt` |
 | Alerts queue | `%APPDATA%\Jarvis\alerts\queue.jsonl` |
 | Activity state | `C:\Users\skps9\AppData\Local\hermes\state\sk_activity.json` |
 | Plans | `C:\Users\skps9\Documents\Code_Project\jarvis-pc\.hermes\plans\` |
-| Skill 陷阱 | `hermes-windows-operations`、`jarvis-hud-electron-editing-pitfalls`（§26 dock）、`electron-windows-overlay` |
+| Skill 陷阱 | `hermes-windows-operations`、`jarvis-hud-electron-editing-pitfalls`（§26 dock）、`electron-windows-overlay`、`jarvis-self-evol-ops` |
 
 ## 現行版本（2026-08-29）
 
@@ -58,7 +62,7 @@
 # 語法檢查（sidecar）
 env -u PYTHONPATH python -m py_compile src/jarvis/*.py
 # Electron 語法
-node --check "C:/Users/skps9/Documents/Code_Project/jarvis-hud/main.js"
+node --check "C:/Users/skps9/Documents/Code_Project/jarvis-pc/hud/main.js"
 # ⚠️ 改動後 CI gate（Self-Evol，**必須**）：skill jarvis-self-evol-ops
 env -u PYTHONPATH python -m jarvis.eval_gate --lock   # golden-set.md ↔ mapping 防 drift
 env -u PYTHONPATH python -m jarvis.eval_gate --all    # golden + regression + stress
@@ -82,7 +86,7 @@ env -u PYTHONPATH python -m jarvis.eval_gate --all    # golden + regression + st
 - 音訊：Arctis Nova 7 mic（wake_mic=麥克風 (2- Arctis Nova 7) 44.1k）；TTS 輸出=G27Q 螢幕喇叭；AEC reference=Sonar Media+Sonar Chat（**唔可用 Arctis loopback**）；Arctis 週期性 rms=0.000（headset 休眠，叫唔醒先睇 wake_debug.log）
 - 語音一律英文（AGENTS.md 語音規則）
 - `jarvis serve` 由 Electron spawn（JARVIS_ELECTRON_HOST=1 headless）；唔好手動起第二個
-- asar 驗證：`npx --yes @electron/asar list "dist/win-unpacked/resources/app.asar"`（唔好 extract 入 repo，會 overwrite source——jarvis-hud 唔係 git repo）
+- asar 驗證：`npx --yes @electron/asar list "hud/dist/win-unpacked/resources/app.asar"`（唔好 extract 入 repo，會 overwrite source）
 - Windows MSYS：`taskkill /F` 用單斜線；native tool 用 `C:/...` forward-slash path
 - GUI 操作前先讀 sk_activity.json（playing/using 禁彈窗）；語音/彈窗零容忍
 - Secrets：`dpapi:` 值唔好當明文讀；settings.json 已加密

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S. HUD Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #00aaf8;
+    --blue-dim: #2a7fae;
+    --white: #eaf6ff;
+    --dark: #020509;
+    --amber: #ffb300;
+    --red: #ff4d5e;
+    --glow: rgba(0, 170, 248, 0.55);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: radial-gradient(ellipse at 50% 45%, #0a1a2e 0%, var(--dark) 70%);
+    color: var(--white);
+    font-family: 'Rajdhani', 'Consolas', monospace;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+  .title-font { font-family: 'Orbitron', sans-serif; }
+  /* 全息網格背景 */
+  .grid {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(90,212,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(90,212,255,0.06) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse at 50% 45%, black 30%, transparent 75%);
+    pointer-events: none;
+  }
+  .scanline {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(90,212,255,0.03) 0px, transparent 2px, transparent 4px);
+    pointer-events: none;
+    animation: scan 9s linear infinite;
+  }
+  @keyframes scan { from { background-position-y: 0; } to { background-position-y: 60px; } }
+
+  /* 頂部狀態列 */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 26px;
+    font-size: 12px; letter-spacing: 2px;
+    color: var(--blue);
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(90,212,255,0.15);
+    background: linear-gradient(180deg, rgba(5,11,20,0.85), transparent);
+    z-index: 5;
+  }
+  .topbar .sys { opacity: 0.8; }
+  .topbar .clock { font-size: 15px; color: var(--white); text-shadow: 0 0 12px var(--glow); }
+
+  /* 中央弧形反應爐光環 */
+  .core-wrap {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -52%);
+    width: 340px; height: 340px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 4;
+  }
+  .ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--blue-dim);
+    opacity: 0.5;
+  }
+  .ring.r1 { inset: 10px; border-style: dashed; animation: spin 22s linear infinite; }
+  .ring.r2 { inset: 28px; border-color: rgba(90,212,255,0.25); animation: spin 14s linear infinite reverse; }
+  .ring.r3 { inset: 48px; border: 1px solid rgba(90,212,255,0.35); }
+  .tick { position: absolute; width: 2px; height: 8px; background: var(--blue); left: 50%; top: -4px; transform-origin: 0 174px; opacity: 0.7; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .core {
+    width: 210px; height: 210px;
+    border-radius: 50%;
+    background: rgba(2, 10, 20, 0.55);
+    border: 2px solid rgba(0, 229, 255, 0.7);
+    box-shadow:
+      0 0 24px rgba(0, 229, 255, 0.35),
+      inset 0 0 28px rgba(0, 229, 255, 0.18);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+    cursor: pointer;
+    position: relative;
+  }
+  .core::before {
+    content: '';
+    position: absolute; inset: 6px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0, 229, 255, 0.25);
+    animation: spin 26s linear infinite;
+  }
+  .core .label {
+    font-size: 15px; letter-spacing: 5px; color: rgba(234, 246, 255, 0.95);
+    text-shadow: 0 0 12px var(--glow);
+    z-index: 1;
+  }
+  .core canvas {
+    z-index: 1;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+  }
+  .core.active {
+    transform: scale(1.12);
+    box-shadow:
+      0 0 40px var(--glow),
+      0 0 90px rgba(0, 229, 255, 0.4),
+      inset 0 0 34px rgba(0, 229, 255, 0.28);
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { box-shadow: 0 0 40px var(--glow), 0 0 90px rgba(0, 229, 255, 0.4), inset 0 0 34px rgba(0, 229, 255, 0.28); }
+    50% { box-shadow: 0 0 64px var(--glow), 0 0 130px rgba(0, 229, 255, 0.6), inset 0 0 44px rgba(0, 229, 255, 0.4); }
+  }
+  .core.listening { animation: pulse-fast 0.9s ease-in-out infinite; }
+  .core.listening canvas { opacity: 1; }
+  @keyframes pulse-fast {
+    0%, 100% { transform: scale(1.12); }
+    50% { transform: scale(1.24); }
+  }
+
+  /* 語音波形 */
+  canvas#wave {
+    position: fixed; bottom: 17%; left: 50%; transform: translateX(-50%);
+    width: 640px; height: 120px;
+    z-index: 3;
+    opacity: 0.15;
+    transition: opacity 0.3s ease;
+  }
+  canvas#wave.live { opacity: 1; }
+
+  /* 底部狀態文字 */
+  .status {
+    position: fixed; bottom: 6%; left: 0; right: 0;
+    text-align: center;
+    font-size: 12px; letter-spacing: 3px;
+    color: rgba(90,212,255,0.8);
+    z-index: 4;
+  }
+  .status .prompt { color: var(--white); font-size: 14px; letter-spacing: 1px; margin-top: 6px; text-shadow: 0 0 12px var(--glow); min-height: 20px; }
+
+  /* 回覆面板 */
+  .reply {
+    position: fixed; bottom: 24%; left: 50%; transform: translateX(-50%);
+    max-width: 560px; width: 90%;
+    background: rgba(5,16,28,0.72);
+    border: 1px solid rgba(90,212,255,0.35);
+    border-radius: 8px;
+    padding: 16px 22px;
+    font-size: 14px; line-height: 1.7;
+    color: var(--white);
+    box-shadow: 0 0 30px rgba(90,212,255,0.15), inset 0 0 40px rgba(90,212,255,0.05);
+    backdrop-filter: blur(4px);
+    opacity: 0; transform: translateX(-50%) translateY(12px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    z-index: 5;
+  }
+  .reply.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .reply .tag {
+    display: inline-block; font-size: 10px; letter-spacing: 2px;
+    color: var(--blue); border: 1px solid rgba(90,212,255,0.4);
+    border-radius: 3px; padding: 1px 7px; margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* 角落小光環（桌面常駐形態） */
+  .mini {
+    position: fixed; right: 24px; bottom: 24px;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #9fe4ff, #145c8f 60%, #04182b);
+    box-shadow: 0 0 16px rgba(90,212,255,0.45);
+    opacity: 0.85;
+    z-index: 6;
+    transition: box-shadow 0.3s;
+  }
+  .mini.wake { box-shadow: 0 0 26px rgba(90,212,255,0.9); animation: breathe 1.2s infinite; }
+
+  .hint {
+    position: fixed; bottom: 3%; right: 26px;
+    font-size: 10px; color: rgba(0,170,248,0.4); letter-spacing: 1px; z-index: 6;
+  }
+
+  /* ==== v2: 全息色差 / 六邊形 / 開機動畫 / 多面板 ==== */
+  .holo-text {
+    position: relative;
+    text-shadow: 2px 0 rgba(255,0,80,0.35), -2px 0 rgba(0,170,248,0.35);
+    animation: chroma 3.2s ease-in-out infinite;
+  }
+  @keyframes chroma {
+    0%, 100% { text-shadow: 2px 0 rgba(255,0,80,0.35), -2px 0 rgba(0,170,248,0.35); }
+    50% { text-shadow: 3px 0 rgba(255,0,80,0.55), -3px 0 rgba(0,170,248,0.55); }
+  }
+  .hex {
+    position: fixed; width: 90px; height: 104px; opacity: 0.22;
+    background:
+      linear-gradient(135deg, transparent 43%, var(--blue) 46%, var(--blue) 54%, transparent 57%),
+      linear-gradient(45deg, transparent 43%, var(--blue) 46%, var(--blue) 54%, transparent 57%);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    z-index: 2;
+    animation: hexPulse 5s ease-in-out infinite;
+  }
+  @keyframes hexPulse { 0%,100% { opacity: 0.14; } 50% { opacity: 0.34; } }
+  .hex.h1 { top: 12%; left: 7%; }
+  .hex.h2 { bottom: 10%; right: 7%; transform: scale(0.7); animation-delay: 1.4s; }
+
+  /* 開機動畫 */
+  .boot {
+    position: fixed; inset: 0; z-index: 20;
+    background: var(--dark);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    pointer-events: none;
+  }
+  .boot .b-logo {
+    font-family: 'Orbitron', sans-serif; font-size: 30px; letter-spacing: 8px;
+    color: var(--blue);
+    text-shadow: 0 0 24px var(--glow);
+  }
+  .boot .b-line { font-size: 13px; letter-spacing: 3px; color: rgba(0,170,248,0.7); margin-top: 10px; }
+  .boot .b-sub { font-size: 11px; letter-spacing: 2px; color: rgba(0,170,248,0.4); }
+
+  /* 側邊面板 */
+  .panel {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    width: 200px; padding: 14px 16px;
+    background: rgba(2,8,16,0.6);
+    border: 1px solid rgba(0,170,248,0.18);
+    border-radius: 6px;
+    font-size: 11px; letter-spacing: 1px; color: rgba(234,246,255,0.75);
+    z-index: 4;
+    backdrop-filter: blur(2px);
+  }
+  .panel .p-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px; letter-spacing: 3px; color: var(--blue);
+    border-bottom: 1px solid rgba(0,170,248,0.2);
+    padding-bottom: 6px; margin-bottom: 8px;
+  }
+  .panel .kv { display: flex; justify-content: space-between; padding: 2px 0; }
+  .panel .kv .v { color: var(--white); }
+  .panel.left { left: 4%; }
+  .panel.right { right: 4%; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  .dot.g { background: #19f0d8; box-shadow: 0 0 8px #19f0d8; }
+  .dot.a { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+
+  .activity {
+    font-size: 11px; color: rgba(0,170,248,0.85); letter-spacing: 0.5px;
+    padding: 3px 0;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .activity .tag {
+    display: inline-block; font-size: 9px; border: 1px solid rgba(0,170,248,0.4);
+    border-radius: 3px; padding: 0 5px; margin-right: 6px; color: var(--blue);
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  /* ==== v5: 喚醒掃描線 / 數據流 / 3D 浮動 / 對話感 ==== */
+  .scan-sweep {
+    position: fixed; left: 0; right: 0; top: -2px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
+    box-shadow: 0 0 18px var(--glow), 0 0 40px rgba(0,170,248,0.5);
+    z-index: 8;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .scan-sweep.run {
+    animation: sweep 1.1s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+  @keyframes sweep {
+    0% { top: -4px; opacity: 0; }
+    8% { opacity: 1; }
+    92% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .datastream {
+    position: fixed; right: 4%; bottom: 6%;
+    width: 220px; height: 120px;
+    overflow: hidden;
+    font-size: 9px; line-height: 1.7;
+    color: rgba(0,170,248,0.45);
+    letter-spacing: 1px;
+    z-index: 3;
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, transparent, black 20%, black 80%, transparent);
+  }
+  .datastream .line { white-space: nowrap; animation: streamUp 7s linear infinite; }
+  .datastream .line:nth-child(2) { animation-delay: -2.4s; }
+  .datastream .line:nth-child(3) { animation-delay: -4.8s; }
+  @keyframes streamUp { from { transform: translateY(120px); } to { transform: translateY(-100%); } }
+
+  .core-wrap { perspective: 900px; }
+  .core-wrap .float3d {
+    transform-style: preserve-3d;
+    animation: float3d 6s ease-in-out infinite;
+  }
+  @keyframes float3d {
+    0%, 100% { transform: translate(-50%, -52%) rotateX(4deg) rotateY(-6deg); }
+    25% { transform: translate(-50%, -52%) rotateX(2deg) rotateY(-3deg) translateY(-8px); }
+    50% { transform: translate(-50%, -52%) rotateX(6deg) rotateY(5deg) translateY(2px); }
+    75% { transform: translate(-50%, -52%) rotateX(3deg) rotateY(2deg) translateY(-5px); }
+  }
+
+  .greeting {
+    position: fixed; top: 22%; left: 50%; transform: translateX(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 15px; letter-spacing: 3px; color: var(--white);
+    text-shadow: 0 0 16px var(--glow);
+    opacity: 0; transition: opacity 0.6s ease;
+    z-index: 6;
+    text-align: center;
+  }
+  .greeting.show { opacity: 1; }
+  .greeting .sub {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px; letter-spacing: 2px; color: rgba(0,170,248,0.8);
+    margin-top: 6px;
+  }
+
+  /* ==== v6: 環形頻譜 / 角落刻度 / 面板擴充 ==== */
+  canvas#spectrum {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -52%);
+    width: 500px; height: 500px;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .corner-scale {
+    position: fixed; width: 120px; height: 120px;
+    opacity: 0.35;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .corner-scale.cs-tl { top: 14%; left: 12%; border-top: 1px solid rgba(0,170,248,0.5); border-left: 1px solid rgba(0,170,248,0.5); }
+  .corner-scale.cs-br { bottom: 12%; right: 12%; border-bottom: 1px solid rgba(0,170,248,0.5); border-right: 1px solid rgba(0,170,248,0.5); }
+  .corner-scale .tick {
+    position: absolute; background: rgba(0,170,248,0.6);
+    width: 8px; height: 1px;
+  }
+  .corner-scale.cs-tl .tick:nth-child(1) { top: 20%; left: 0; }
+  .corner-scale.cs-tl .tick:nth-child(2) { top: 40%; left: 0; }
+  .corner-scale.cs-tl .tick:nth-child(3) { top: 60%; left: 0; }
+  .corner-scale.cs-tl .tick:nth-child(4) { top: 80%; left: 0; }
+  .corner-scale.cs-br .tick:nth-child(1) { bottom: 20%; right: 0; }
+  .corner-scale.cs-br .tick:nth-child(2) { bottom: 40%; right: 0; }
+  .corner-scale.cs-br .tick:nth-child(3) { bottom: 60%; right: 0; }
+  .corner-scale.cs-br .tick:nth-child(4) { bottom: 80%; right: 0; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+      
+  <!-- 喚醒掃描線 -->
+  <div class="scan-sweep" id="sweep"></div>
+
+  <!-- 數據流 -->
+    <!-- 互動問候 -->
+  <div class="greeting" id="greeting">
+    <div>GOOD MORNING, SIR</div>
+    <div class="sub">HOW CAN I ASSIST?</div>
+  </div>
+
+  <!-- 開機動畫 -->
+  <div class="boot" id="boot">
+    <div class="b-logo holo-text">J.A.R.V.I.S.</div>
+    <div class="b-line">SYSTEMS ONLINE — GOOD MORNING, SIR</div>
+    <div class="b-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  </div>
+
+  <div class="topbar">
+    <div class="sys title-font">J.A.R.V.I.S.</div>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+
+  <!-- 左側系統面板 -->
+    <!-- 環形頻譜 -->
+  <canvas id="spectrum" width="420" height="420"></canvas>
+
+  <!-- 主光環 -->
+  <div class="core-wrap">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="core" id="core">
+      <span class="label title-font">JARVIS</span>
+      <canvas id="coreWave" width="130" height="34"></canvas>
+    </div>
+  </div>
+
+  <!-- 語音波形 -->
+  <canvas id="wave" width="640" height="120"></canvas>
+
+  <!-- 回覆面板 -->
+  <div class="reply" id="reply">
+    <span class="tag title-font">JARVIS</span>
+    <div id="replyText">系統正常。有什麼吩咐，先生？</div>
+  </div>
+
+  <!-- 狀態列 -->
+  <div class="status">
+    <div class="title-font">ONLINE</div>
+    <div class="prompt" id="prompt">說「Hey Jarvis」喚醒</div>
+  </div>
+
+  <!-- 角落常駐光環 -->
+  <div class="mini" id="mini"></div>
+  <div class="hint">DESKTOP OVERLAY // CLICK-THROUGH</div>
+
+<script>
+  // 開機動畫：3.6 秒後移除 boot 層（JS 直接控制，headless/真機皆可靠）
+  setTimeout(() => {
+    const b = document.getElementById('boot');
+    if (b) b.style.display = 'none';
+  }, 3600);
+
+  // 時鐘
+  setInterval(() => {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toTimeString().slice(0, 8);
+  }, 1000);
+
+  // 語音波形模擬
+  const canvas = document.getElementById('wave');
+  const ctx = canvas.getContext('2d');
+  const coreCanvas = document.getElementById('coreWave');
+  const coreCtx = coreCanvas.getContext('2d');
+  let wavePhase = 0, live = false;
+
+  function drawWave() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const mid = canvas.height / 2;
+    ctx.strokeStyle = '#00aaf8';
+    ctx.shadowColor = 'rgba(0,170,248,0.8)';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const amp = live ? 34 : 6;
+    for (let x = 0; x <= canvas.width; x += 2) {
+      const t = x / canvas.width;
+      const env = Math.sin(Math.PI * t) ** 2;
+      const y = mid + Math.sin(x * 0.05 + wavePhase) * amp * env
+                   + Math.sin(x * 0.11 + wavePhase * 1.7) * amp * 0.4 * env;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    wavePhase += 0.25;
+    requestAnimationFrame(drawWave);
+  }
+  drawWave();
+
+  // 核心迷你波形
+  function drawCoreWave() {
+    coreCtx.clearRect(0, 0, coreCanvas.width, coreCanvas.height);
+    const mid = coreCanvas.height / 2;
+    coreCtx.strokeStyle = '#00aaf8';
+    coreCtx.shadowColor = 'rgba(0,170,248,0.9)';
+    coreCtx.shadowBlur = 6;
+    coreCtx.lineWidth = 1.6;
+    coreCtx.beginPath();
+    const amp = live ? 12 : 3;
+    for (let x = 0; x <= coreCanvas.width; x += 2) {
+      const t = x / coreCanvas.width;
+      const env = Math.sin(Math.PI * t) ** 2;
+      const y = mid + Math.sin(x * 0.09 + wavePhase * 1.3) * amp * env
+                   + Math.sin(x * 0.19 + wavePhase * 2.2) * amp * 0.35 * env;
+      x === 0 ? coreCtx.moveTo(x, y) : coreCtx.lineTo(x, y);
+    }
+    coreCtx.stroke();
+    requestAnimationFrame(drawCoreWave);
+  }
+  drawCoreWave();
+
+  // 環形頻譜（ACAV 圓形視覺化風格）
+  const specCanvas = document.getElementById('spectrum');
+  const specCtx = specCanvas.getContext('2d');
+  const BARS = 48;
+  function drawSpectrum() {
+    specCtx.clearRect(0, 0, specCanvas.width, specCanvas.height);
+    const cx = specCanvas.width / 2, cy = specCanvas.height / 2;
+    const outerR = 190, innerR = 150;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < BARS; i++) {
+      const angle = (i / BARS) * Math.PI * 2 - Math.PI / 2;
+      // 偽頻譜：多正弦組合 + 時間
+      const v = 0.35 + 0.65 * (
+        0.5 + 0.5 * Math.sin(angle * 5 + t * 2.2) *
+        Math.sin(angle * 11 - t * 3.1) * 0.6 +
+        0.4 * Math.sin(angle * 3 + t * 1.4 + Math.sin(t * 0.7) * 2)
+      );
+      const barH = 6 + v * 34 * (live ? 1.6 : 0.5);
+      const r0 = innerR + barH * 0.2;
+      const r1 = innerR + barH;
+      const x0 = cx + Math.cos(angle) * r0, y0 = cy + Math.sin(angle) * r0;
+      const x1 = cx + Math.cos(angle) * r1, y1 = cy + Math.sin(angle) * r1;
+      specCtx.strokeStyle = `rgba(0, 170, 248, ${0.25 + v * 0.6})`;
+      specCtx.lineWidth = 4;
+      specCtx.shadowColor = 'rgba(0,170,248,0.7)';
+      specCtx.shadowBlur = 6;
+      specCtx.beginPath();
+      specCtx.moveTo(x0, y0);
+      specCtx.lineTo(x1, y1);
+      specCtx.stroke();
+    }
+    requestAnimationFrame(drawSpectrum);
+  }
+  drawSpectrum();
+
+  // 模擬狀態機：idle → wake → listening → reply → idle
+  const core = document.getElementById('core');
+  const mini = document.getElementById('mini');
+  const prompt = document.getElementById('prompt');
+  const reply = document.getElementById('reply');
+  const replyText = document.getElementById('replyText');
+  const sweep = document.getElementById('sweep');
+  const greeting = document.getElementById('greeting');
+  const coreWrap = document.querySelector('.core-wrap');
+  coreWrap.classList.add('float3d');
+
+  const PHASES = [
+    { cls: 'active',  prompt: '偵測到喚醒詞…',      wave: false,  delay: 1300, sweep: true, greet: true },
+    { cls: 'listening', prompt: '聆聽中…',          wave: true,   delay: 2600, greet: true },
+    { cls: 'active',  prompt: '處理中…',            wave: true,   delay: 1600 },
+    { cls: '',        prompt: '說「Hey Jarvis」喚醒', wave: false, delay: 400 },
+  ];
+
+  let step = 0;
+  function cycle() {
+    const p = PHASES[step];
+    core.className = 'core ' + p.cls;
+    mini.classList.toggle('wake', p.cls !== '');
+    prompt.textContent = p.prompt;
+    live = p.wave;
+    canvas.classList.toggle('live', p.wave);
+    if (p.sweep) {
+      sweep.classList.remove('run');
+      void sweep.offsetWidth; // restart animation
+      sweep.classList.add('run');
+    }
+    greeting.classList.toggle('show', !!p.greet);
+    if (step === 3) {
+      reply.classList.add('show');
+      replyText.textContent = '收到，先生。語音鏈路正常，已為您連線至主系統。';
+      setTimeout(() => reply.classList.remove('show'), 3000);
+    }
+    step = (step + 1) % PHASES.length;
+    setTimeout(cycle, p.delay);
+  }
+  setTimeout(cycle, 1500);
+</script>
+</body>
+</html>

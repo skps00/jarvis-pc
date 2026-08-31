@@ -48,7 +48,11 @@ _SENSITIVE = re.compile(
     re.I,
 )
 
-_DEFAULT_PATTERNS_PATH = Path(r"C:\Users\skps9\Documents\Code_Project\jarvis-pc\.hermes\plans\prompt-patterns.json")
+# __file__-relative (2026-08-31): repo can move without breaking pattern store.
+_DEFAULT_PATTERNS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / ".hermes" / "plans" / "prompt-patterns.json"
+)
 
 
 @dataclass

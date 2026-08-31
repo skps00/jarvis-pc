@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S. 設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="hud-theme.css">
+<style>
+  .title { font-size: 13px; }
+  .body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 14px;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.span2 { grid-column: 1 / -1; }
+  .field label {
+    color: rgba(234, 246, 255, 0.92);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  select {
+    font-size: 13px;
+    color: var(--white);
+  }
+  .readout {
+    color: rgba(234, 246, 255, 0.88);
+    font-size: 13px;
+  }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-val {
+    min-width: 36px;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    color: var(--blue);
+    text-shadow: 0 0 6px var(--glow);
+  }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+  }
+  .device-row { display: flex; gap: 6px; }
+  .device-row input { flex: 1; min-width: 0; }
+  .device-field { position: relative; }
+  .device-picker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    margin-top: 2px;
+    max-height: calc(8 * 28px);
+    overflow-y: auto;
+    background: rgba(6, 12, 20, 0.98);
+    border: 1px solid rgba(0, 170, 248, 0.45);
+    border-radius: 3px;
+    box-shadow: 0 0 14px rgba(0, 170, 248, 0.25);
+  }
+  .device-picker[hidden] { display: none; }
+  .device-option {
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--white);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: visible;
+    border-bottom: 1px solid rgba(0, 170, 248, 0.12);
+  }
+  .device-option:last-child { border-bottom: none; }
+  .device-option:hover {
+    background: rgba(0, 170, 248, 0.18);
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0, 170, 248, 0.55);
+  }
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(0, 170, 248, 0.2);
+    background: rgba(0, 170, 248, 0.04);
+  }
+  #saveStatus {
+    flex: 1;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: rgba(234, 246, 255, 0.6);
+  }
+  #saveStatus.ok { color: #4dff91; }
+  #saveStatus.err { color: #ff6b6b; }
+  .scan-hint {
+    font-size: 12px;
+    color: rgba(234, 246, 255, 0.7);
+    margin-top: 2px;
+  }
+  details.settings-section {
+    grid-column: 1 / -1;
+    border: 1px solid rgba(0, 170, 248, 0.22);
+    border-radius: 4px;
+    background: rgba(0, 170, 248, 0.03);
+  }
+  details.settings-section summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--blue);
+    text-shadow: 0 0 8px var(--glow);
+    list-style: none;
+  }
+  details.settings-section summary::-webkit-details-marker { display: none; }
+  details.settings-section[open] summary {
+    border-bottom: 1px solid rgba(0, 170, 248, 0.15);
+  }
+  .section-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 14px;
+    padding: 12px;
+  }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .hint-status {
+    font-size: 11px;
+    color: rgba(234, 246, 255, 0.55);
+    letter-spacing: 0.04em;
+  }
+  .hint-status.ok { color: #4dff91; }
+  .hint-status.err { color: #ff6b6b; }
+  textarea.readonly {
+    min-height: 64px;
+    resize: vertical;
+    font-size: 12px;
+    line-height: 1.45;
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="header">
+    <div class="title">J.A.R.V.I.S. 設定</div>
+    <button class="btn-close" id="btnHeaderClose" type="button">✕</button>
+  </div>
+  <form class="body" id="settingsForm">
+    <div class="grid">
+      <div class="field span2">
+        <label for="wake_threshold">喚醒門檻</label>
+        <div class="range-row">
+          <input type="range" id="wake_threshold" min="0.25" max="0.75" step="0.05" value="0.50">
+          <span class="range-val" id="wakeThresholdVal">0.50</span>
+        </div>
+      </div>
+
+      <div class="field span2 device-field">
+        <label for="wake_mic_device">喚醒麥克風</label>
+        <div class="device-row">
+          <input type="text" id="wake_mic_device" placeholder="裝置名，例如 麥克風 (2- Arctis Nova 7)" autocomplete="off">
+          <button type="button" class="btn" id="scanInputs">掃描裝置</button>
+        </div>
+        <div class="device-picker" id="wakeMicPicker" hidden></div>
+        <div class="scan-hint" id="inputScanHint"></div>
+      </div>
+
+      <div class="field span2 device-field">
+        <label for="tts_output_device">喇叭</label>
+        <div class="device-row">
+          <input type="text" id="tts_output_device" placeholder="輸出裝置名" autocomplete="off">
+          <button type="button" class="btn" id="scanOutputs">掃描裝置</button>
+        </div>
+        <div class="device-picker" id="ttsOutputPicker" hidden></div>
+        <div class="scan-hint" id="outputScanHint"></div>
+      </div>
+
+      <div class="field">
+        <label>啟用 AEC</label>
+        <div class="check-row">
+          <input type="checkbox" id="aec_enabled">
+          <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">回音消除</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="speaker_gate">聲紋 Gate</label>
+        <div class="check-row">
+          <input type="checkbox" id="speaker_gate">
+          <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">只認已登記聲紋</span>
+        </div>
+      </div>
+
+      <div class="field span2">
+        <label for="aec_reference_device">AEC Reference</label>
+        <input type="text" id="aec_reference_device" placeholder="SteelSeries Sonar - Media">
+      </div>
+
+      <div class="field">
+        <label for="asr_provider">ASR 供應商</label>
+        <select id="asr_provider">
+          <option value="sensevoice">sensevoice</option>
+          <option value="fun_asr">fun_asr</option>
+          <option value="openai_audio">openai_audio</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="voice_frontend">語音前端</label>
+        <select id="voice_frontend">
+          <option value="jarvis">jarvis</option>
+          <option value="hermes">hermes</option>
+        </select>
+      </div>
+
+      <details class="settings-section">
+        <summary>LLM 設定</summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="llm_preset">LLM Preset</label>
+            <select id="llm_preset">
+              <option value="deepseek">DeepSeek</option>
+              <option value="mimo">小米 MiMo</option>
+              <option value="ollama">Ollama（本機）</option>
+              <option value="custom">自訂 OpenAI 相容</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="llm_model">Model</label>
+            <input type="text" id="llm_model" placeholder="deepseek-chat">
+          </div>
+          <div class="field span2">
+            <label for="llm_api_key">API Key</label>
+            <input type="password" id="llm_api_key" autocomplete="off" placeholder="sk-…">
+          </div>
+          <div class="field span2">
+            <label for="llm_base_url">Base URL</label>
+            <input type="text" id="llm_base_url" placeholder="https://api.deepseek.com">
+          </div>
+          <div class="field span2">
+            <label for="custom_models">Custom Models（唯讀）</label>
+            <textarea id="custom_models" class="readonly" readonly rows="3" placeholder="（無）"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings-section">
+        <summary>Hermes</summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="hermes_enabled">Hermes Bridge</label>
+            <div class="check-row">
+              <input type="checkbox" id="hermes_enabled">
+              <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">啟用 Hermes</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="hermes_trusted">Trusted</label>
+            <div class="check-row">
+              <input type="checkbox" id="hermes_trusted">
+              <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">信任本機 Hermes</span>
+            </div>
+          </div>
+          <div class="field span2">
+            <label for="hermes_base_url">Hermes Base URL</label>
+            <input type="text" id="hermes_base_url" placeholder="http://127.0.0.1:8688">
+          </div>
+          <div class="field span2">
+            <div class="btn-row">
+              <button type="button" class="btn" id="btnOpenHermes">開 Hermes 網頁</button>
+              <button type="button" class="btn" id="btnProbeHermes">檢測 API</button>
+              <span class="hint-status" id="hermesStatus"></span>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings-section">
+        <summary>提醒 (Alerts)</summary>
+        <div class="section-body">
+          <div class="field">
+            <label for="alert_voice">語音提醒</label>
+            <div class="check-row">
+              <input type="checkbox" id="alert_voice">
+              <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">啟用語音提醒</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="alert_cd_seconds">冷卻秒</label>
+            <input type="number" id="alert_cd_seconds" min="0" max="120" step="1" value="0">
+          </div>
+          <div class="field span2">
+            <label for="alert_tts">Alert TTS</label>
+            <select id="alert_tts">
+              <option value="hermes">hermes</option>
+              <option value="piper">piper</option>
+              <option value="off">off</option>
+            </select>
+          </div>
+          <div class="field span2">
+            <label for="alertAppsSummary">監控 App 摘要（唯讀）</label>
+            <textarea id="alertAppsSummary" class="readonly" readonly rows="4"></textarea>
+          </div>
+          <div class="field span2">
+            <div class="btn-row">
+              <button type="button" class="btn" id="btnTestAlert">試語音提醒</button>
+              <span class="hint-status" id="alertTestStatus"></span>
+            </div>
+          </div>
+        </div>
+      </details>
+
+<details class="settings-section">
+  <summary>進階 Advanced</summary>
+  <div class="section-body">
+    <!-- ASR -->
+    <div class="field span2">
+      <label for="asr_api_key">ASR API Key</label>
+      <input type="password" id="asr_api_key" autocomplete="off" placeholder="(sensevoice 本地唔使)">
+    </div>
+    <div class="field span2">
+      <label for="asr_base_url">ASR Base URL</label>
+      <input type="text" id="asr_base_url" placeholder="https://token-plan-sgp.xiaomimimo.com/v1">
+    </div>
+    <div class="field span2">
+      <label for="asr_model">ASR Model</label>
+      <input type="text" id="asr_model" placeholder="mimo-v2.5-asr">
+    </div>
+    <!-- 喚醒進階 -->
+    <div class="field">
+      <label for="wake_cd_seconds">喚醒冷卻（秒）</label>
+      <input type="number" id="wake_cd_seconds" min="0" max="30" step="0.5" value="3">
+    </div>
+    <div class="field">
+      <label for="record_seconds">錄音秒數</label>
+      <input type="number" id="record_seconds" min="1" max="10" step="0.5" value="4">
+    </div>
+    <div class="field">
+      <label for="text_wake">文字喚醒</label>
+      <div class="check-row">
+        <input type="checkbox" id="text_wake">
+        <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">STT-as-wake（遊戲易誤觸，預設關）</span>
+      </div>
+    </div>
+    <!-- 聲紋 -->
+    <div class="field span2">
+      <label for="speaker_threshold">聲紋門檻（speaker gate）</label>
+      <input type="range" id="speaker_threshold" min="0.10" max="0.99" step="0.01" value="0.50">
+      <span class="readout" id="speakerThresholdVal">0.50</span>
+    </div>
+    <!-- 熱鍵 -->
+    <div class="field span2">
+      <label for="hotkey">熱鍵</label>
+      <input type="text" id="hotkey" placeholder="ctrl+alt+d">
+    </div>
+    <!-- TTS 進階 -->
+    <div class="field">
+      <label for="tts_enabled">TTS 啟用</label>
+      <div class="check-row">
+        <input type="checkbox" id="tts_enabled">
+        <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">啟用語音輸出</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="tts_ack">TTS 確認</label>
+      <div class="check-row">
+        <input type="checkbox" id="tts_ack">
+        <span class="readout" style="flex:1;padding:4px 8px;font-size:12px;">收到指令先唸「Yes, Sir.」</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="tts_length_scale">TTS 語速（length scale）</label>
+      <input type="number" id="tts_length_scale" min="0.3" max="2.0" step="0.05" value="0.85">
+    </div>
+    <div class="field">
+      <label for="tts_volume">TTS 音量</label>
+      <input type="number" id="tts_volume" min="0.1" max="3.0" step="0.1" value="1.6">
+    </div>
+    <!-- Alerts 進階 -->
+    <div class="field">
+      <label for="alert_discord">Discord 提醒</label>
+      <div class="check-row"><input type="checkbox" id="alert_discord"></div>
+    </div>
+    <div class="field">
+      <label for="alert_cursor">Cursor 提醒</label>
+      <div class="check-row"><input type="checkbox" id="alert_cursor"></div>
+    </div>
+    <div class="field">
+      <label for="alert_cursor_hooks">Cursor Hooks</label>
+      <div class="check-row"><input type="checkbox" id="alert_cursor_hooks"></div>
+    </div>
+    <div class="field">
+      <label for="alert_cursor_toast">Cursor Toast</label>
+      <div class="check-row"><input type="checkbox" id="alert_cursor_toast"></div>
+    </div>
+    <div class="field">
+      <label for="alert_cursor_uia">Cursor UIA</label>
+      <div class="check-row"><input type="checkbox" id="alert_cursor_uia"></div>
+    </div>
+    <div class="field">
+      <label for="alert_cursor_watch">Cursor Watch</label>
+      <div class="check-row"><input type="checkbox" id="alert_cursor_watch"></div>
+    </div>
+    <div class="field">
+      <label for="alert_whatsapp">WhatsApp 提醒</label>
+      <div class="check-row"><input type="checkbox" id="alert_whatsapp"></div>
+    </div>
+    <div class="field">
+      <label for="alert_always">Always 提醒</label>
+      <div class="check-row"><input type="checkbox" id="alert_always"></div>
+    </div>
+    <div class="field span2">
+      <label for="alert_extra">Extra App 名稱（逗號分隔）</label>
+      <input type="text" id="alert_extra" placeholder="chrome,notepad">
+    </div>
+    <div class="field">
+      <label for="alerts_mcp_port">Alerts MCP Port</label>
+      <input type="number" id="alerts_mcp_port" min="1024" max="65535" step="1" value="8765">
+    </div>
+    <div class="field span2">
+      <label for="alerts_mcp_token">Alerts MCP Token</label>
+      <input type="password" id="alerts_mcp_token" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="alert_gpu_health">GPU 健康提醒</label>
+      <div class="check-row"><input type="checkbox" id="alert_gpu_health"></div>
+    </div>
+    <div class="field">
+      <label for="alert_gpu_poll_s">GPU 輪詢秒</label>
+      <input type="number" id="alert_gpu_poll_s" min="1" max="120" step="1" value="5">
+    </div>
+    <!-- Mage-VL -->
+    <div class="field">
+      <label for="mage_enabled">Mage-VL 眼</label>
+      <div class="check-row"><input type="checkbox" id="mage_enabled"></div>
+    </div>
+    <div class="field span2">
+      <label for="mage_prompt_default">Mage 預設 Prompt</label>
+      <input type="text" id="mage_prompt_default" placeholder="Describe this image in detail.">
+    </div>
+    <!-- F3: voice-call detect failure policy -->
+    <div class="field">
+      <label for="vc_fail_closed">語音偵測失效→保守靜音</label>
+      <div class="check-row"><input type="checkbox" id="vc_fail_closed" title="pycaw 失效時當 voice call（mute 被動出聲）"></div>
+    </div>
+  </div>
+</details>
+    </div>
+  </form>
+  <div class="footer">
+    <button type="button" class="btn btn-primary" id="btnSave">儲存</button>
+    <button type="button" class="btn" id="btnCancel">取消</button>
+    <div id="saveStatus"></div>
+  </div>
+</div>
+<script>
+(function () {
+  const api = window.settingsApi;
+  const wakeSlider = document.getElementById('wake_threshold');
+  const wakeVal = document.getElementById('wakeThresholdVal');
+  const saveStatus = document.getElementById('saveStatus');
+  const hermesStatus = document.getElementById('hermesStatus');
+  const alertTestStatus = document.getElementById('alertTestStatus');
+
+  wakeSlider.addEventListener('input', () => {
+    wakeVal.textContent = Number(wakeSlider.value).toFixed(2);
+  });
+
+  const spkSlider = document.getElementById('speaker_threshold');
+  const spkVal = document.getElementById('speakerThresholdVal');
+  spkSlider.addEventListener('input', () => { spkVal.textContent = Number(spkSlider.value).toFixed(2); });
+
+  function setStatus(msg, kind) {
+    saveStatus.textContent = msg || '';
+    saveStatus.className = kind || '';
+  }
+
+  function setHint(el, msg, kind) {
+    el.textContent = msg || '';
+    el.className = 'hint-status' + (kind ? ' ' + kind : '');
+  }
+
+  // 自訂裝置 dropdown（取代 datalist）：Electron frameless transparent window 嘅 datalist dropdown 唔可靠（揀唔到/顯示唔晒），所以 scan 完 render 成可點擊 list，click option 直接填入完整名
+  function fillPicker(pickerId, inputId, names) {
+    const picker = document.getElementById(pickerId);
+    const input = document.getElementById(inputId);
+    picker.innerHTML = '';
+    names.forEach((n) => {
+      const opt = document.createElement('div');
+      opt.className = 'device-option';
+      opt.textContent = n;
+      opt.title = n;
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        input.value = n;
+        picker.hidden = true;
+      });
+      picker.appendChild(opt);
+    });
+    picker.hidden = names.length === 0;
+  }
+
+  function showPicker(pickerId) {
+    const picker = document.getElementById(pickerId);
+    if (picker && picker.children.length) picker.hidden = false;
+  }
+
+  function hidePickers(exceptId) {
+    ['wakeMicPicker', 'ttsOutputPicker'].forEach((id) => {
+      if (id === exceptId) return;
+      const p = document.getElementById(id);
+      if (p) p.hidden = true;
+    });
+  }
+
+  function onOff(v) { return v ? 'ON' : 'OFF'; }
+
+  function buildAlertAppsSummary(s) {
+    const lines = [
+      'Discord: ' + onOff(s.alert_discord !== false),
+      'Cursor: ' + onOff(s.alert_cursor !== false),
+      'WhatsApp: ' + onOff(s.alert_whatsapp !== false),
+    ];
+    const extra = (s.alert_extra || '').trim();
+    lines.push('Extra: ' + (extra || '（無）'));
+    return lines.join('\n');
+  }
+
+  async function loadSettings() {
+    try {
+      const s = await api.load();
+      wakeSlider.value = s.wake_threshold != null ? s.wake_threshold : 0.50;
+      wakeVal.textContent = Number(wakeSlider.value).toFixed(2);
+      document.getElementById('wake_mic_device').value = s.wake_mic_device || '';
+      document.getElementById('tts_output_device').value = s.tts_output_device || '';
+      document.getElementById('aec_enabled').checked = !!s.aec_enabled;
+      document.getElementById('aec_reference_device').value = s.aec_reference_device || '';
+      document.getElementById('speaker_gate').checked = s.speaker_gate !== false;
+      document.getElementById('asr_provider').value = s.asr_provider || 'sensevoice';
+      document.getElementById('voice_frontend').value = s.voice_frontend || 'hermes';
+
+      document.getElementById('llm_preset').value = s.llm_preset || 'deepseek';
+      document.getElementById('llm_api_key').value = s.llm_api_key || '';
+      document.getElementById('llm_base_url').value = s.llm_base_url || '';
+      document.getElementById('llm_model').value = s.llm_model || '';
+      const models = Array.isArray(s.custom_models) ? s.custom_models : [];
+      document.getElementById('custom_models').value = models.length ? models.join('\n') : '';
+
+      document.getElementById('hermes_enabled').checked = !!s.hermes_enabled;
+      document.getElementById('hermes_trusted').checked = !!s.hermes_trusted;
+      document.getElementById('hermes_base_url').value = s.hermes_base_url || '';
+      setHint(hermesStatus, '', '');
+
+      document.getElementById('alert_voice').checked = s.alert_voice !== false;
+      document.getElementById('alert_cd_seconds').value = s.alert_cd_seconds != null ? s.alert_cd_seconds : 0;
+      document.getElementById('alert_tts').value = s.alert_tts || 'hermes';
+      document.getElementById('asr_api_key').value = s.asr_api_key || '';
+      document.getElementById('asr_base_url').value = s.asr_base_url || '';
+      document.getElementById('asr_model').value = s.asr_model || '';
+      document.getElementById('wake_cd_seconds').value = s.wake_cd_seconds != null ? s.wake_cd_seconds : 3;
+      document.getElementById('record_seconds').value = s.record_seconds != null ? s.record_seconds : 4;
+      document.getElementById('text_wake').checked = !!s.text_wake;
+      document.getElementById('speaker_threshold').value = s.speaker_threshold != null ? s.speaker_threshold : 0.50;
+      document.getElementById('speakerThresholdVal').textContent = Number(document.getElementById('speaker_threshold').value).toFixed(2);
+      document.getElementById('hotkey').value = s.hotkey || '';
+      document.getElementById('tts_enabled').checked = s.tts_enabled !== false;
+      document.getElementById('tts_ack').checked = s.tts_ack !== false;
+      document.getElementById('tts_length_scale').value = s.tts_length_scale != null ? s.tts_length_scale : 0.85;
+      document.getElementById('tts_volume').value = s.tts_volume != null ? s.tts_volume : 1.6;
+      document.getElementById('alert_discord').checked = s.alert_discord !== false;
+      document.getElementById('alert_cursor').checked = s.alert_cursor !== false;
+      document.getElementById('alert_cursor_hooks').checked = s.alert_cursor_hooks !== false;
+      document.getElementById('alert_cursor_toast').checked = s.alert_cursor_toast !== false;
+      document.getElementById('alert_cursor_uia').checked = s.alert_cursor_uia !== false;
+      document.getElementById('alert_cursor_watch').checked = !!s.alert_cursor_watch;
+      document.getElementById('alert_whatsapp').checked = s.alert_whatsapp !== false;
+      document.getElementById('alert_always').checked = s.alert_always !== false;
+      document.getElementById('alert_extra').value = s.alert_extra || '';
+      document.getElementById('alerts_mcp_port').value = s.alerts_mcp_port != null ? s.alerts_mcp_port : 8765;
+      document.getElementById('alerts_mcp_token').value = s.alerts_mcp_token || '';
+      document.getElementById('alert_gpu_health').checked = s.alert_gpu_health !== false;
+      document.getElementById('alert_gpu_poll_s').value = s.alert_gpu_poll_s != null ? s.alert_gpu_poll_s : 5;
+      document.getElementById('mage_enabled').checked = !!s.mage_enabled;
+      document.getElementById('mage_prompt_default').value = s.mage_prompt_default || '';
+      document.getElementById('vc_fail_closed').checked = !!s.vc_fail_closed;
+      document.getElementById('alertAppsSummary').value = buildAlertAppsSummary(s);
+      setHint(alertTestStatus, '', '');
+    } catch (e) {
+      setStatus('載入失敗：' + e.message, 'err');
+    }
+  }
+
+  async function scan(kind) {
+    const btn = kind === 'input' ? document.getElementById('scanInputs') : document.getElementById('scanOutputs');
+    const hint = kind === 'input' ? document.getElementById('inputScanHint') : document.getElementById('outputScanHint');
+    const pickerId = kind === 'input' ? 'wakeMicPicker' : 'ttsOutputPicker';
+    const fieldId = kind === 'input' ? 'wake_mic_device' : 'tts_output_device';
+    btn.disabled = true;
+    hint.textContent = '掃描中…';
+    try {
+      const names = kind === 'input' ? await api.scanInputs() : await api.scanOutputs();
+      fillPicker(pickerId, fieldId, names);
+      hint.textContent = names.length ? `找到 ${names.length} 個裝置` : '未找到裝置';
+      if (names.length === 1) document.getElementById(fieldId).value = names[0];
+      if (names.length) showPicker(pickerId);
+    } catch (e) {
+      hint.textContent = '掃描失敗';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function collect() {
+    return {
+      wake_threshold: parseFloat(wakeSlider.value),
+      wake_mic_device: document.getElementById('wake_mic_device').value.trim(),
+      tts_output_device: document.getElementById('tts_output_device').value.trim(),
+      aec_enabled: document.getElementById('aec_enabled').checked,
+      aec_reference_device: document.getElementById('aec_reference_device').value.trim(),
+      speaker_gate: document.getElementById('speaker_gate').checked,
+      asr_provider: document.getElementById('asr_provider').value,
+      voice_frontend: document.getElementById('voice_frontend').value,
+      llm_preset: document.getElementById('llm_preset').value,
+      llm_api_key: document.getElementById('llm_api_key').value.trim(),
+      llm_base_url: document.getElementById('llm_base_url').value.trim(),
+      llm_model: document.getElementById('llm_model').value.trim(),
+      custom_models: document.getElementById('custom_models').value.split('\n').map(s => s.trim()).filter(Boolean),
+      hermes_enabled: document.getElementById('hermes_enabled').checked,
+      hermes_trusted: document.getElementById('hermes_trusted').checked,
+      hermes_base_url: document.getElementById('hermes_base_url').value.trim(),
+      alert_voice: document.getElementById('alert_voice').checked,
+      alert_cd_seconds: parseFloat(document.getElementById('alert_cd_seconds').value),
+      alert_tts: document.getElementById('alert_tts').value,
+      asr_api_key: document.getElementById('asr_api_key').value.trim(),
+      asr_base_url: document.getElementById('asr_base_url').value.trim(),
+      asr_model: document.getElementById('asr_model').value.trim(),
+      wake_cd_seconds: parseFloat(document.getElementById('wake_cd_seconds').value),
+      record_seconds: parseFloat(document.getElementById('record_seconds').value),
+      text_wake: document.getElementById('text_wake').checked,
+      speaker_threshold: parseFloat(document.getElementById('speaker_threshold').value),
+      hotkey: document.getElementById('hotkey').value.trim(),
+      tts_enabled: document.getElementById('tts_enabled').checked,
+      tts_ack: document.getElementById('tts_ack').checked,
+      tts_length_scale: parseFloat(document.getElementById('tts_length_scale').value),
+      tts_volume: parseFloat(document.getElementById('tts_volume').value),
+      alert_discord: document.getElementById('alert_discord').checked,
+      alert_cursor: document.getElementById('alert_cursor').checked,
+      alert_cursor_hooks: document.getElementById('alert_cursor_hooks').checked,
+      alert_cursor_toast: document.getElementById('alert_cursor_toast').checked,
+      alert_cursor_uia: document.getElementById('alert_cursor_uia').checked,
+      alert_cursor_watch: document.getElementById('alert_cursor_watch').checked,
+      alert_whatsapp: document.getElementById('alert_whatsapp').checked,
+      alert_always: document.getElementById('alert_always').checked,
+      alert_extra: document.getElementById('alert_extra').value.trim(),
+      alerts_mcp_port: parseInt(document.getElementById('alerts_mcp_port').value, 10),
+      alerts_mcp_token: document.getElementById('alerts_mcp_token').value.trim(),
+      alert_gpu_health: document.getElementById('alert_gpu_health').checked,
+      alert_gpu_poll_s: parseFloat(document.getElementById('alert_gpu_poll_s').value),
+      mage_enabled: document.getElementById('mage_enabled').checked,
+      mage_prompt_default: document.getElementById('mage_prompt_default').value.trim(),
+      vc_fail_closed: document.getElementById('vc_fail_closed').checked,
+    };
+  }
+
+  document.getElementById('scanInputs').addEventListener('click', () => scan('input'));
+  document.getElementById('scanOutputs').addEventListener('click', () => scan('output'));
+
+  document.getElementById('wake_mic_device').addEventListener('focus', () => {
+    hidePickers('wakeMicPicker');
+    showPicker('wakeMicPicker');
+  });
+  document.getElementById('wake_mic_device').addEventListener('click', (e) => {
+    e.stopPropagation();
+    hidePickers('wakeMicPicker');
+    showPicker('wakeMicPicker');
+  });
+  document.getElementById('tts_output_device').addEventListener('focus', () => {
+    hidePickers('ttsOutputPicker');
+    showPicker('ttsOutputPicker');
+  });
+  document.getElementById('tts_output_device').addEventListener('click', (e) => {
+    e.stopPropagation();
+    hidePickers('ttsOutputPicker');
+    showPicker('ttsOutputPicker');
+  });
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && (t.closest && (t.closest('#wakeMicPicker') || t.closest('#ttsOutputPicker')
+      || t.id === 'wake_mic_device' || t.id === 'tts_output_device'
+      || t.id === 'scanInputs' || t.id === 'scanOutputs'))) {
+      return;
+    }
+    hidePickers();
+  });
+
+  document.getElementById('btnOpenHermes').addEventListener('click', async () => {
+    setHint(hermesStatus, '開啟中…', '');
+    try {
+      await api.openHermes();
+      setHint(hermesStatus, '已開啟瀏覽器', 'ok');
+    } catch (e) {
+      setHint(hermesStatus, '開啟失敗', 'err');
+    }
+  });
+
+  document.getElementById('btnProbeHermes').addEventListener('click', async () => {
+    setHint(hermesStatus, '檢測中…', '');
+    try {
+      const res = await api.probeHermes();
+      if (res && res.ok) setHint(hermesStatus, 'API 正常 ✓', 'ok');
+      else setHint(hermesStatus, 'API 無回應', 'err');
+    } catch (e) {
+      setHint(hermesStatus, '檢測失敗', 'err');
+    }
+  });
+
+  document.getElementById('btnTestAlert').addEventListener('click', async () => {
+    setHint(alertTestStatus, '播放中…', '');
+    try {
+      const res = await api.testAlert();
+      if (res && res.ok) setHint(alertTestStatus, '已觸發 ✓', 'ok');
+      else setHint(alertTestStatus, '失敗：' + (res && res.error ? res.error : '未知'), 'err');
+    } catch (e) {
+      setHint(alertTestStatus, '錯誤：' + e.message, 'err');
+    }
+  });
+
+  document.getElementById('btnSave').addEventListener('click', async () => {
+    setStatus('儲存中…', '');
+    try {
+      const res = await api.save(collect());
+      if (res && res.ok) {
+        setStatus('已儲存 ✓', 'ok');
+      } else {
+        setStatus('錯誤：' + (res && res.error ? res.error : '未知'), 'err');
+      }
+    } catch (e) {
+      setStatus('錯誤：' + e.message, 'err');
+    }
+  });
+
+  document.getElementById('btnCancel').addEventListener('click', () => api.close());
+  document.getElementById('btnHeaderClose').addEventListener('click', () => api.close());
+
+  loadSettings();
+})();
+</script>
+</body>
+</html>

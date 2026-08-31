@@ -11,7 +11,7 @@
 
 ## 現行狀態（2026-08-31 凌晨 session 尾）
 
-- **JARVIS ONE 0.4.10**：`jarvis-hud\dist\JARVIS-ONE-0.4.10.exe`；3 個 .lnk 全指佢；**2026-08-31 凌晨乾淨重啟**（舊 instance 行咗 >24h，HUD window 冇建立 → taskkill + 重開 exe 修復，HUD `J.A.R.V.I.S. HUD Prototype` (0,0,2560,1440) visible=1）
+- **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**2026-08-31 monorepo**：jarvis-hud 已搬入 `hud/` 子目錄）；3 個 .lnk 全指佢；**2026-08-31 凌晨乾淨重啟**（舊 instance 行咗 >24h，HUD window 冇建立 → taskkill + 重開 exe 修復，HUD `J.A.R.V.I.S. HUD Prototype` (0,0,2560,1440) visible=1）
 - **Sidecar 8765**：**2026-08-31 凌晨手動 respawn**（Electron auto-respawn 失效——serve.log 停 8/29 22:49 之後冇起返；`pythonw -m jarvis serve` + JARVIS_ELECTRON_HOST=1 起返，wake_on=true）；⚠️ 下次再死要查 Electron health-check 點解冇 respawn
 - **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`（`$LOCALAPPDATA\hermes\scripts\qwen_vl_server.py`，**background 進程要開住先用到 video_analyze**；~16GB VRAM，睇片先開、打機前關）；Hermes `auxiliary.video` 已指去 localhost + Discord `video` toolset 已 enable。⚠️ **已關閉**——下次要睇片先手動開返（重啟電腦後亦要手動開）
 - **視覺雙模型分工**：睇片總結 = Qwen2.5-VL（16 幀 + temporal）；單幀/遊戲精讀 = Mage-VL 4B（`src/jarvis/mage_engine.py`）

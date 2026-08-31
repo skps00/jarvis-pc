@@ -32,3 +32,8 @@ speech_corpus/
 # Local MCP helper deps (context7 pinned under tools/mcp-deps)
 tools/mcp-deps/node_modules/
 tools/mcp-deps/package-lock.json
+
+# HUD (Electron) — monorepo subdir: never commit deps or build output
+hud/node_modules/
+hud/dist/
+hud/*.log

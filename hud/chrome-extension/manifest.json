@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Jarvis Media Bridge",
+  "version": "1.2.0",
+  "description": "Lets JARVIS HUD control YouTube playback in the background (no focus needed).",
+  "permissions": ["tabs"],
+  "host_permissions": ["http://127.0.0.1:8771/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -29,9 +29,30 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-_PY = r"C:\Users\skps9\AppData\Local\Python\pythoncore-3.14-64\python.exe"
-_REPO = Path(r"C:\Users\skps9\Documents\Code_Project\jarvis-pc")
-_HUD = Path(r"C:\Users\skps9\Documents\Code_Project\jarvis-hud")
+# Path resolution is __file__-relative (2026-08-31): the repo can be cloned or
+# moved anywhere and eval_gate keeps working. `_PY` prefers host.json (runtime
+# config, single source of truth), then the running interpreter, then a
+# hardcoded fallback.
+def _resolve_python() -> str:
+    try:
+        host = json.loads(
+            (Path(os.environ.get("APPDATA", "")) / "Jarvis" / "host.json")
+            .read_text(encoding="utf-8")
+        )
+        p = str(host.get("python") or "")
+        if p and Path(p).is_file():
+            return p
+    except (OSError, ValueError):
+        pass
+    if "pythoncore-3.14" in sys.executable:
+        return sys.executable
+    return r"C:\Users\skps9\AppData\Local\Python\pythoncore-3.14-64\python.exe"
+
+
+_PY = _resolve_python()
+_REPO = Path(__file__).resolve().parents[2]  # src/jarvis/ -> repo root
+# Monorepo (2026-08-31): jarvis-hud lives in hud/ subdirectory.
+_HUD = _REPO / "hud"
 # Human-readable golden-set doc. `--lock` verifies this doc and GOLDEN_SUITES
 # have not drifted (pass2 fragility #8): every test file the doc lists must
 # exist in the machine mapping and vice versa.

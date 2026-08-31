@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S. Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="hud-theme.css">
+<style>
+  /* inline fallback: 即使 hud-theme.css @import (Google Fonts) 失敗都保持深色底 */
+  body { background: rgba(8, 12, 20, 0.95); }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 6px 14px;
+    border-bottom: 1px solid rgba(0, 170, 248, 0.12);
+    -webkit-app-region: no-drag;
+  }
+  .toolbar .btn { padding: 4px 10px; }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .entry {
+    border-left: 2px solid rgba(0, 170, 248, 0.5);
+    padding: 6px 10px;
+    background: rgba(0, 170, 248, 0.04);
+    animation: fadeIn 0.25s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .status.ready .status-dot { color: #4dff91; text-shadow: 0 0 8px rgba(77, 255, 145, 0.5); }
+  .entry-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--blue-dim);
+    margin-bottom: 4px;
+  }
+  .entry-text {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--white);
+    word-break: break-word;
+  }
+  .footer {
+    padding: 8px 14px;
+    border-top: 1px solid rgba(0, 170, 248, 0.2);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: rgba(234, 246, 255, 0.5);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+  <header class="header">
+    <div class="title">J.A.R.V.I.S.</div>
+    <div class="status ready" id="status"><span class="status-dot">●</span><span id="statusText">就緒</span></div>
+  </header>
+  <div class="toolbar">
+    <button class="btn" id="clearBtn">Clear</button>
+    <button class="btn" id="closeBtn">Close</button>
+  </div>
+  <div id="log"></div>
+  <footer class="footer">Voice input — say &quot;hey jarvis&quot;</footer>
+</div>
+<script>
+(function () {
+  const log = document.getElementById('log');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  let lastLine = '';
+
+  function appendReply(text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    if (t === lastLine) return;
+    lastLine = t;
+    const entry = document.createElement('div');
+    entry.className = 'entry';
+    entry.innerHTML = '<div class="entry-label">JARVIS ▸</div><div class="entry-text"></div>';
+    entry.querySelector('.entry-text').textContent = t;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  window.appendReply = appendReply;
+
+  document.getElementById('clearBtn').addEventListener('click', () => { log.innerHTML = ''; });
+  document.getElementById('closeBtn').addEventListener('click', () => {
+    if (window.companion && window.companion.close) window.companion.close();
+  });
+
+  if (window.companion && window.companion.append) {
+    window.companion.append(appendReply);
+  }
+
+  let lastBusyLog = false;
+  function appendBusyLine() {
+    const entry = document.createElement('div');
+    entry.className = 'entry';
+    entry.innerHTML = '<div class="entry-label">SYSTEM ▸</div><div class="entry-text"></div>';
+    entry.querySelector('.entry-text').textContent = '[處理中…]';
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  if (window.companion && window.companion.onStatus) {
+    window.companion.onStatus((st) => {
+      let mode = 'ready';
+      let label = '就緒';
+      if (st.stale) {
+        mode = 'stale';
+        label = '離線';
+      } else if (st.voice_call_mute) {
+        mode = 'mute';
+        label = st.status || '靜音';
+      } else if (st.busy || st.alert_speaking) {
+        mode = 'processing';
+        label = '處理中';
+      } else if (st.wake_on) {
+        mode = 'listening';
+        label = st.status || '聆聽中';
+      }
+      statusEl.className = 'status' + (mode ? ' ' + mode : '');
+      statusText.textContent = label;
+      if (st.busy && !lastBusyLog) {
+        appendBusyLine();
+        lastBusyLog = true;
+      } else if (!st.busy) {
+        lastBusyLog = false;
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
