@@ -140,6 +140,8 @@ def _jarvis_serve_running() -> bool:
                 ["pgrep", "-af", "jarvis serve"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=3,
             )
             if proc.returncode == 0 and (proc.stdout or "").strip():

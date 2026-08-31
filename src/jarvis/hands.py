@@ -256,6 +256,10 @@ def _kill_images(names: list[str]) -> None:
                 check=False,
                 capture_output=True,
                 text=True,
+                # Chinese-locale taskkill prints GBK ("成功: 已终止…") —
+                # decode errors would kill the reader thread (2026-08-31).
+                encoding="utf-8",
+                errors="replace",
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             killed = True
@@ -424,6 +428,10 @@ def _java_processes() -> list[tuple[int, str]]:
             ],
             text=True,
             stderr=subprocess.DEVNULL,
+            # PowerShell may emit GBK (Chinese paths/command lines) — decode
+            # errors would kill the reader thread (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (OSError, subprocess.CalledProcessError):
@@ -998,6 +1006,10 @@ def _kill_pids(pids: list[int]) -> None:
             check=False,
             capture_output=True,
             text=True,
+            # Chinese-locale taskkill prints GBK — never kill the reader thread
+            # on decode (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
 
@@ -1141,6 +1153,10 @@ def _resolve_lnk_target(lnk: str | Path) -> Path | None:
             ],
             text=True,
             stderr=subprocess.DEVNULL,
+            # PowerShell may emit GBK (Chinese paths) — decode errors would
+            # kill the reader thread (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (OSError, subprocess.CalledProcessError):

@@ -263,6 +263,10 @@ def _speak_subprocess(text: str, *, force: bool) -> bool:
             env=env,
             capture_output=True,
             text=True,
+            # TTS child may emit GBK on Chinese Windows; decode errors would
+            # kill the reader thread (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             timeout=60,
             creationflags=flags,
         )

@@ -176,6 +176,10 @@ class NvidiaSmiBackend:
                 ],
                 capture_output=True,
                 text=True,
+                # nvidia-smi on some locales may emit non-UTF-8 — decode errors
+                # would kill the reader thread (2026-08-31).
+                encoding="utf-8",
+                errors="replace",
                 timeout=self._timeout,
                 check=False,
                 stdin=subprocess.DEVNULL,

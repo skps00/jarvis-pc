@@ -178,6 +178,10 @@ def _load_start_apps() -> list[tuple[str, str]]:
                 "Get-StartApps | Select-Object Name, AppID | ConvertTo-Json -Compress",
             ],
             text=True,
+            # PowerShell may emit GBK (Chinese app names) — never kill the
+            # reader thread on decode (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             timeout=30,

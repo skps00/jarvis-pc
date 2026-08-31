@@ -165,6 +165,16 @@
 - `tests/test_clarify_stats.py`：9 tests 全過（empty/malformed/precision/unrecorded）
 - ⏳ 等真實數據累積（而家 log 得 1 條）——數據夠先接 cron monitor（R2）
 
+### ✅ 資源優化 + 系統審視修復（2026-08-31 下午，SK「fix them all」）
+
+- **記憶體大減（SK 指出 5.5GB 太多）**：SenseVoice CPU 載入實測 **~3.5GB**（torch +0.5GB / funasr +0.8GB / 模型 +3.5GB）——新增 `stt_preload`（default **False** = lazy load，第一次喚醒先載，thread-safe lock）；startup 唔再預載。**實測：Private 5.5GB → 1.9GB（-65%），WorkingSet 1.9GB → 454MB（-75%）**
+- **UnicodeDecodeError 徹底修**（self-evol TREND-err finding）：8 個 subprocess 位加 `encoding="utf-8", errors="replace"`（taskkill ×2 / powershell Get-CimInstance / Get-StartApps / WScript / nvidia-smi / pgrep / TTS child）——中文 Windows GBK 輸出不再 kill reader thread；test_router warning 清零
+- **Mic 健康偵測（#4）**：wake.py heartbeat 連續 3 次 rms≈0 → voice_status.json 寫 `mic_signal_ok=false`（恢復自動 flip 返 True）——HUD/MCP 顯示真實 mic 狀態，唔再「armed=True 但 mic 冇訊號」
+- **Sidecar watchdog（#7/#8）**：Hermes cron `jarvis-sidecar-health`（job `6a98a79be95f`，every 2m，monitor pattern 零成本）——8765 DOWN 先醒 agent 報告
+- **Git commit（#5）**：jarvis-pc 全部工作 commit `290ca61`（110 files，含 self-evol + bug fixes + 之前 session 工作；secrets scan 乾淨）
+- **Hermes memory 清理（#15）**：personal 98%→92%、user 98%→90%（合併重複報告偏好）
+- **#2 SenseVoice remote code warning**：查證為 transformers 載入 warning，fallback 到 pretrained params 照 work（serve.log 有成功 transcribe 證據），無功能影響——記錄唔修
+
 ---
 
 ## 執行次序（一路做到晒）

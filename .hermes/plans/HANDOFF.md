@@ -20,6 +20,15 @@
 
 ## 今日完成（2026-08-30 session）
 
+### 2026-08-31 資源優化 session（SK「5.5GB 太多」+ fix them all）
+1. **SenseVoice lazy load（記憶體 -65%）**：實測 SenseVoice CPU 載入 ~3.5GB → 新 settings `stt_preload`（default False）+ thread-safe lazy load；sidecar Private 5.5GB→1.9GB、WorkingSet 1.9GB→454MB
+2. **UnicodeDecodeError 徹底修**：8 個 subprocess 位加 errors="replace"（taskkill/powershell/nvidia-smi/pgrep/TTS）——中文 Windows GBK 輸出不再 kill reader thread，test warning 清零（self-evol TREND-err finding 已解決）
+3. **Mic 健康偵測**：wake heartbeat 連續 3 次 rms≈0 → voice_status `mic_signal_ok=false`（恢復 flip True）——HUD/MCP 顯示真實 mic 狀態
+4. **Sidecar watchdog cron**：`jarvis-sidecar-health`（job 6a98a79be95f，every 2m，monitor pattern）——8765 DOWN 先醒
+5. **Git commit `290ca61`**：jarvis-pc 110 files 全部工作 commit（secrets scan 乾淨）
+6. **Hermes memory 清理**：personal 92% / user 90%
+7. **SenseVoice remote code warning**：查證無功能影響（fallback 照 work），記錄唔修
+
 ### 2026-08-31 bug review + E4 session（check for all bug / finish the rest）
 1. **獨立 reviewer ×2（fail-closed）**：全部 findings 修好——mcp_alerts_http（7：impact coercion / gain drop / options 拆字 / confidence clamp / fallback merge / log 驗證 / constant-time）、autonomy（6：save 原子+bool / kill_switch fail-open 修 / promote 審計拒絕 / demo 隔離 / load 一致性）、eval_gate（4：全路徑 regex / mapping 空 fail-closed / 檔案存在 check / 重複 basename）
 2. **E4 clarify precision consumer**：`src/jarvis/clarify_stats.py`（precision 統計 + fingerprint）+ 9 tests；已入 golden suite
