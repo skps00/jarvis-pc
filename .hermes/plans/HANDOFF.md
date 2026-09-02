@@ -38,6 +38,31 @@
 5. **新規則**（SK 2026-09-02）：裝/試任何新嘢前必查 online review（stars/ARCHIVED/社群）→ adversarial 判斷需唔需要/有冇更好 → 裝前問 SK——已入主契約 AGENTS.md（`C:\Users\skps9\AGENTS.md` + 源頭 `Code_Project\Hermes\AGENTS.md`）+ memory
 6. **mcp-builder check review → 唔裝**（3 stars + ARCHIVED——抖音介紹誇大；替代：官方 MCP SDK）
 
+## 跨 Project 全面盤點（2026-09-02 session 尾——SK「check all plan and project first」）
+
+### 1. super_minecraft_AI_player（MC——最高優先，Ask engine）
+- main = `0df2d08`（feat(ask): deepseek tool-loop reliability + workbench-first + card placement），**ahead of origin 12 commits 未 push**
+- ⚠️ **實際有未 commit 改動**（同佢 HANDOFF「全 commit」描述唔一致——實際 working tree 有）：`AskEngine.java` + `AskCardFallback.java`（**Forge 1.19.2 + NeoForge 1.21.1 雙樹**）+ `tests/check_ask_card_fallback.py` + `code_change_log.md` modified；`.hermes/` untracked——疑似 09-02 凌晨尾段 purpose-miss fix + how-to-use cards fix（jarvis-pc HANDOFF 2026-09-01 記錄「未 commit」）
+- 佢自己嘅 HANDOFF：`.hermes/plans/HANDOFF-2026-09-02.md`（下次 MC session 讀呢份）
+- 下次重點：SK 煙測最新 jar（`packai-0.1.14+mc1.19.2-forge.jar` 已換入 NFWC instance）→ commit+push 決定 → slim（auto）模式對照
+- 3 個 pre-existing python fail + neoforge compileTestJava pre-existing fail（HEAD 都 fail）
+- 3 個分支 clone dirs 存在（`super_minecraft_AI_player-{ask-native-tools,bugfix-ask-fp,bugfix-summon-miss}`）——歷史用，可清理/參考
+
+### 2. Earth_Online_App（RN 生活 RPG——次優先）
+- 狀態：**MVP 封測進行中**（實機封測 → 修 blocker → 邀測）——唔好做 POI/洋界（決策排封測後）
+- ⚠️ working tree 有 modified（`Earth_Online_v.2.0/`、`TODO.md`、`code_change_log.md`、`docs/beta-guide.md`、`docs/mvp-beta-testing-guide.md`）+ untracked（`docs/mvp-beta-tester-handbook.md/.docx`、`docs/eng-review-test-plan-2026-08-07-life-ledger.md`）——上次 activity ~2026-08-07，暫停一排
+- 手冊：`docs/mvp-beta-tester-handbook.md`（Word/WhatsApp 發放用 .docx）
+- 注意：`Code_Project/Earth Online App/`（有空格）係另一個 dir——得 code_change_log.md，疑似舊/垃圾，main 係 `Earth_Online_App/`
+
+### 3. CS_asstant（CS2 Coach——最低優先，核心未做）
+- **唔係 git repo**；有 `scripts/`（radar_cv/radar_track/overlay 等 CV 原型）+ `data/` plans（`coach_system_v3_plan.md`/`mode_matrix.md`/`final_plan.md` 等）
+- 狀態：暫停（核心功能未做——plan 喺 data/*.md）
+
+### 4. Code_Project\Hermes（規則包源頭）
+- AGENTS.md / README.md / recommended-config.yaml / SOUL.md / templates——今日新規則（裝前查 review）已同步呢度
+
+### 5. jarvis-pc（JARVIS ONE）——見上方今日 section + REMAINING_WORK（A1/A2/A4/B 未做、mic 等新 mic）
+
 ## 下次 session（2026-09-02 handoff 指示）
 
 1. **C2：新工具 check review**（照新規則逐個）：Prime Agent（17.7k stars RLM）/ WeSight / Browser-BC——值唔值入 stack
