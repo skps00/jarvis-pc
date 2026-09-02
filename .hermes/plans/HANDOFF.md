@@ -19,6 +19,34 @@
 - **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**、**jarvis-session-handoff（每日 05:45，deliver local——reset 前自動對比 session → 更新 HANDOFF + commit docs，唔 push）**
 - **Git**：`feature/hermes-alerts-mcp` branch；HEAD `84834f2`（2026-09-01 cron run：HANDOFF 自動更新）；9/1 晚 session 嘅 HANDOFF docs（Review 分類規則 + MC 摘要）由 2026-09-02 handoff commit（HEAD 再推前）
 
+## 今日（2026-09-02 session）——Game Fix + Douyin Import + 規則
+
+**JARVIS：Game Ready 誤報修復（Phase 1 完成）**
+1. **activity_monitor.py**（`%LOCALAPPDATA%\hermes\scripts\`，非 repo）：遊戲偵測由前景視窗改 **process-based**——Steam RunningAppID + tasklist + wmic Java cmdline（client/server 分——`-client.jar`/EntryPoint/knotclient/forgewrapper/newlaunch）；session latch + 180s flap guard（ts 唔 refresh）+ running-set-growth alert signal + lowercase normalize。**六輪 cursor fix + 4 輪獨立 review（11 bugs 全修）→ PASSED**。部署：`.py.bak` backup 咗
+2. **shell_app.py**：game watch 改 track `last_alerted_game` + timestamp freshness gate（120s）——commit **`ea38b22`**
+3. **Sidecar 已重啟**（新 PID，~60s respawn）——重啟後零誤報實測 ✓
+4. 驗證：smoke 全綠（CS2+Minecraft detect）、8 場景模擬、eval_gate regression 16/16 + stress 68/68（golden 1 fail = **baseline test_stt_stats**——環境敏感，與改動無關，記低之後修 test isolation）
+5. 產物：plan `2026-09-02_135000-game-session-detection-phase1.md`（Status ✅ 已更新）
+
+**其他（早前完成）**：JARVIS_HUD.vbs 開機彈錯已清（%TEMP% backup）；LHM config 改 tray 模式（**下次開機驗證**）；voice out 問題 SK 話 ignore first（未處理）
+
+**Douyin 收藏 → Knowledge Import（side quest 完成大半）**
+1. 掃描：199 收藏 unique（browser + cookies 登入 + CAPTCHA SK 手動過一次）→ **101 條 AI/coding（51%）** 分類存 `browser-use workspace douyin_favorites_classified.json`
+2. 分析 notes：`%TEMP%\douyin_import_notes.md`（101 條核心提取 + 噪音 filter）
+3. Improve plan：`2026-09-02_174500-douyin-improve-plan.md`（adversarial review ×2 → 6:4 支持 patch 完）
+4. **A1-A4 已執行**：A1 plan skill 加「任務拆解+上下文隔離」3 步法；A2 cursor audit（8 項無缺口）；B1 memory consolidate（99%→88%）；B2 cursor skill 加 dispatch template（4 段固定格式）
+5. **新規則**（SK 2026-09-02）：裝/試任何新嘢前必查 online review（stars/ARCHIVED/社群）→ adversarial 判斷需唔需要/有冇更好 → 裝前問 SK——已入主契約 AGENTS.md（`C:\Users\skps9\AGENTS.md` + 源頭 `Code_Project\Hermes\AGENTS.md`）+ memory
+6. **mcp-builder check review → 唔裝**（3 stars + ARCHIVED——抖音介紹誇大；替代：官方 MCP SDK）
+
+## 下次 session（2026-09-02 handoff 指示）
+
+1. **C2：新工具 check review**（照新規則逐個）：Prime Agent（17.7k stars RLM）/ WeSight / Browser-BC——值唔值入 stack
+2. **Douyin 通用多平台內容吸收 framework**（SK 之前提「it can for many diff website」——Phase 2 follow-up，另出 plan）
+3. **Voice out 決定**（SK 想處理先；default 保留）
+4. **LHM 開機 tray 驗證**（SK 重啟過 PC 先見到）
+5. **test_stt_stats baseline fail 修**（test isolation——serve.log 環境敏感）
+6. JARVIS master plan 其他項（REMAINING_WORK A1/A2/A4/B——等 SK 指示；mic 相關仍然等新 mic）
+
 ## 今日（2026-09-01 daily reset 後 session）
 
 - **check history 補返 HANDOFF**：上個 session 尾做咗嘅 Discord Voice Out + CPU temp 未入 HANDOFF——已補（commit `4f8d048`）
@@ -169,3 +197,10 @@
 - wake_mic = 「麥克風 (2- Arctis Nova 7)」44.1k；TTS 輸出 = G27Q 螢幕喇叭；AEC reference = Sonar Media + Sonar Chat（唔用 Arctis loopback）
 - ⚠️ Arctis 週期性 rms=0.000（headset 休眠/斷連）——叫唔醒先睇 wake_debug.log
 - mic 細（avg ~0.05）→ AGC 上線；wake_threshold 0.75（self-monitor 自動調出嚟）
+
+### Game Session Detection Phase 1（2026-09-02 session）
+- 修「X is ready, sir.」誤報（前景切換 + Minecraft server 誤判）——process-based detection（Steam RunningAppID + tasklist + wmic java cmdline client/server split）+ session latch + running-set-growth alert
+- activity_monitor.py（hermes scripts）已應用（backup .py.bak）；shell_app.py commit `ea38b22`；sidecar 已重啟生效
+- 4 輪 independent review（11 findings 全修，final pass）；plan: `.hermes/plans/2026-09-02_135000-game-session-detection-phase1.md`
+- 已知：`test_stt_stats::test_missing_logs` golden fail = baseline 環境問題（serve.log 有 repair 記錄）——要修 run_once fallback 或 test isolation
+- 待做：SK 實測場景 A-E（開 game/切 Discord/關 game）；Phase 2 = 通用 app detection framework（SK 願景：唔止 game）
