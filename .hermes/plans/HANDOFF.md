@@ -17,7 +17,7 @@
 - **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
 - **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
 - **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**、**jarvis-session-handoff（每日 05:45，deliver local——reset 前自動對比 session → 更新 HANDOFF + commit docs，唔 push）**
-- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `bbde88b`（HANDOFF 加今日 2026-09-01 session 狀態 + what next 選項）；working tree 乾淨
+- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `84834f2`（2026-09-01 cron run：HANDOFF 自動更新）；9/1 晚 session 嘅 HANDOFF docs（Review 分類規則 + MC 摘要）由 2026-09-02 handoff commit（HEAD 再推前）
 
 ## 今日（2026-09-01 daily reset 後 session）
 
@@ -25,7 +25,41 @@
 - **HANDOFF 加今日 session 狀態 + what next 選項**（commit `bbde88b`）
 - **建立 jarvis-session-handoff cron job**（job `7b4af62c87c3`，每日 05:45，deliver local）：每日 reset（06:00）前自動 session_search → 對比 HANDOFF → 有實際工作就更新 HANDOFF/REMAINING_WORK + commit docs（唔 push）；冇工作回 NO_WORK 唔郁檔；SK 規則「test before run」即刻 run 驗證（就係今次 run）
 - **SK 計劃買新 mic**（上個 session 尾已講：「wait me buy a new mic first」）——mic 相關全部 pause（wake 實測 / 聲紋 enrollment / AEC voice call / Tier 1 / STT 準確度）
-- **what next 選項（SK 未揀，下次 session 問）**：Settings tab 人手實測（唔關 mic，隨時可測）/ Iron Man 視覺完整化（SK 上次 cancel 過）/ 等數據累積（≥7 日先接 cron monitor）
+- **Review 分類規則（SK 2026-09-01 確立）**：code 質素→requesting-code-review；決策/plan→adversarial-decision-review；PR→github-code-review；唔好淨讀文件當 review 完——已入 memory
+- **⚠️ 主 session 轉咗去 MC project（super_minecraft_AI_player）**：詳見下方「MC 專案 session 摘要」——jarvis 線維持等 mic，今日主力喺 MC
+
+## MC 專案 session 摘要（2026-09-01，super_minecraft_AI_player）
+
+**背景**：SK 問「check cursor project」→ 發現 CS2 AI Coach（最低優先）＋ 4 個 project 盤點 → MC（最高優先）全面 review → 重寫決策（adversarial review：8:2 反對 remake 成個 mod）→ 決定「Ask 核心重寫」（Strangler 並排）
+
+**已完成：**
+1. **Merge**：bugfix/ask-dsml-leak + purpose-scrub-hold-y 落 main（`42ef9ef`；ask-tool-fingerprint 已喺 PR #18；ask-summon-pack-miss 已包含）；修咗 2 個 merge conflict（SHIFT_PLUS_CHROME 復活 + method duplicate）
+2. **Ask 核心重寫 Wave Slim-1**（plan：`.hermes/plans/2026-09-01_072000-ask-core-rewrite-slim.md`）：
+   - Task 1-2：capable bridge split（`factsFull` fallback 全量牆 / `List.of()` capable slim + `jeiForLlmSlim`/`purposeForLlmSlim`）Forge+Neo
+   - Task 3：token 量度 test（ratio 0.031 = -97% mirror 估算）
+   - Task 4：質素 A/B test（3 問句）
+   - Task 5+5b+5c：`ask_player` tool + `AskResult.needsPlayer`（v1 sentinel，**已移出 CAPABLE_TOOLS**——loop 冇偵測、needsPlayer 零消費者，reviewer FAIL 後修正）
+   - 驗證：6 Python tests 綠 + Forge compileJava OK + requesting-code-review findings 全修
+   - **未 commit / 未 push**（全部 working tree）
+3. **NFWC 煙測（AI_test_NFWC_DIM，SK 開 game）**：
+   - **發現 regression**：`askNativeTools=auto`（capable slim）→ 問「鐵鎬怎麼合成」答「unindexed」；`off`（舊牆）→ 答到（動力合成器 3 鐵錠 2 木棍 + 配方網格）
+   - **根因**：slim 模式 round 0 冇牆，deepseek-v4-flash 冇正確 call tools（log 零 tool_calls）→ 兩頭唔到岸
+   - **暫時處理**：config 改 `askNativeTools="off"`（備份 `%LOCALAPPDATA%\Temp\packai-client.toml.bak-slim`）——SK 確認 off 正常
+   - **未決**：force（on）模式未試；slim 默認值要修（`PackAiConfig.askNativeToolsMode` 默認 `auto` → 應改 `off`）；「模型唔 call tools」要查（tools schema / prompt 提示）；或 slim 改為保留部分牆
+   - **凋靈題**：entity 問題（非物品），`resolve_entity` tool 未實作（harness Wave 2），預期答唔到
+
+**後續（2026-09-02 凌晨，同一 session 延續）**：
+4. **purpose miss fix**（cursor-agent）：`AskEngine.ask` 加 `loop.intent() != PURPOSE` guard——用途問句唔再強行插入「本包找不到取得方式」；Forge+Neo 雙樹同步；**未 commit**
+5. **how-to-use cards fix**（cursor-agent）：`AskReplyScrub` HOW_GET 偵測加「怎么用/怎麼用/how to use」→ 用途問句卡片跟方法行（唔堆底）；`tests/check_ask_card_fallback.py` mirror 更新；**未 commit**
+6. **驗證 + jar**：checks 83/86 過（3 個已知 pre-existing fail）；`packai-0.1.14.jar` build（02:00 / 04:07 兩版）已換入 AI_test_NFWC_DIM instance；等 SK 開 game 煙測「动物脂肪怎么用」
+7. **JEI 錯誤卡線索**：SK 指出「3 小麦+3 苹果+1 碗」配方唔存在（AI 信咗 JEI 卡答錯，卡 output 空）——`JeiRecipeCards.java` 嘅 collect/過濾邏輯要查（未查完）
+
+**下次 session 重點（MC）**：
+1. 修 slim regression（默認 off / 查 deepseek tools call / 或保留部分牆）——**經 cursor-agent**
+2. 決定 commit + push Wave Slim-1（而家未 commit）
+3. `ask_player` v1.5 接線（loop 偵測 + UI）或暫時唔理
+4. SK 試 force（on）模式對照
+
 
 ## 今日完成（2026-08-31）
 
