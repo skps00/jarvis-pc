@@ -1684,7 +1684,7 @@ class JarvisShell:
         threading.Thread(target=_loop, daemon=True, name="jarvis-vc-gate").start()
 
     def _start_game_alert_watch(self) -> None:
-        """Watch sk_activity.json game_started → enqueue one "Game is ready" alert per game session."""
+        """Watch sk_activity.json game (session game) change → enqueue one "Game is ready" alert per new game session."""
         # Idempotent-start guard (mirror _ensure_alert_poller).
         if getattr(self, "_game_watch_thread", None) is not None:
             return
@@ -1692,23 +1692,31 @@ class JarvisShell:
         def _watch() -> None:
             from jarvis.activity import load_activity
 
-            last_seen = None  # (game, started) tuple we already alerted
+            last_alerted_game = None
             while not self._game_watch_stop.is_set():
                 try:
                     data = load_activity() or {}
                     game = data.get("game")
                     started = bool(data.get("game_started", False))
-                    key = (game, started)
-                    if started and game and key != last_seen:
-                        last_seen = key
+                    ts_raw = data.get("timestamp") or ""
+                    fresh = True
+                    if ts_raw:
+                        try:
+                            import datetime
+                            ts = datetime.datetime.strptime(ts_raw, "%Y-%m-%dT%H:%M:%S")
+                            fresh = (datetime.datetime.now() - ts).total_seconds() < 120
+                        except ValueError:
+                            fresh = False
+                    if started and game and fresh and game != last_alerted_game:
                         self._enqueue_alert(
                             "game",
                             f"{game_ready_phrase(game)} is ready, sir.",
                             app="game",
                             log_prefix="game alert",
                         )
-                    elif not started:
-                        last_seen = None
+                        last_alerted_game = game
+                    elif not started or not fresh:
+                        last_alerted_game = None
                 except Exception:  # noqa: BLE001
                     pass
                 self._game_watch_stop.wait(timeout=5.0)
