@@ -2,12 +2,53 @@
 
 > **呢個係固定 handoff 檔**（2026-08-30 起）：每次 session 結束**更新呢份**，唔好開新日期檔；舊交接版本移入 `plans/archive/`。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊 + Self-Evol Task 0-9 全部完成（Phase A-E 基建落地）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊 + Self-Evol Task 0-9 全部完成（Phase A-E 基建落地）+ Content Absorption Framework 已落地（2026-09-02）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
 
 ---
+
+## 今日（2026-09-03 session）—— Skill 治理（整合 + 揀選驗證）+ C2 開始
+
+**Skill 治理 Phase A（SK「整合現有 skills」→ 128 → 117）**
+1. **A1 short-video 三合一**：刪 `short-video-content` + `short-video-platform-read`（pre-merge diff 確認全部內容已喺 `douyin-tiktok-content`）
+2. **A4 llm-tool-loop 二合一**：`llm-tool-loop-integration` merge 入 `llm-tool-calling-reliability`（補 tool_call.id echo 等 3 點）
+3. **A5 aux-model 二合一**：`hermes-aux-model-setup` merge 入 `hermes-aux-models`（用 setup 版更詳細 deepseek-vision.md reference）
+4. **A2 Windows 群收斂**：刪 5 個（background-automation/headless-ops/focus-safe/activity-aware/headless-capture）——內容 zero-loss 搬入 `windows-desktop-automation` references/merged-*（含 sk-machine-facts/flash_catch.py 等）；`windows-screen-capture` 吸收 headless-capture（HTML→PNG）
+5. **A3 MC 群四合一**：刪 3 個（minecraft-llm-assistant/pack-ai-mod/pack-ai-deepseek）——原稿 zero-loss 保留喺 `minecraft-modpack-ai-development/references/merged-*`
+6. Review（requesting-code-review 流程 + 獨立 reviewer pass）：修 7 個 skill 引用已刪名（改指 umbrella）+ plugin docstring + CJK bigram 跨 gap bug
+
+**Skill 揀選驗證 Layer 1（SK「跟條片方案再進一步」→ A+B+C 全做）**
+1. 研究結論：Hermes skill 揀選無驗證（source 查證）；`learn_prompt` 禁 router **skill** → 用 **plugin** 路線；`pre_tool_call`/`post_tool_call`/`pre_llm_call` hooks 可行；plugin 注入唔破壞 prompt caching
+2. **`skill-router-verify` plugin**（`~/.hermes/plugins/skill-router-verify/`）：Layer 1 observer（post_tool_call 記每次 skill_view → task + would-block 模擬）→ `logs/skill_selection.log.jsonl`；**唔 block**（Layer 2 延後，要數據證明先開）
+3. Classifier：零 LLM keyword scoring（117 skills index + 中英 alias + CJK run bigram + 同 category 豁免）；實測 17/18 場景、latency 0.1ms
+4. Plan：`plans/2026-09-03_skill-router-verify-plan.md`（過 adversarial review——裁決先治本後治標：整合先行 + Layer 1 數據先，Layer 2 延後）
+5. **已 enable + gateway restart 生效**（verify：log 有真實 entry）；**觀察進行中**——cron `8294250748fa`（9/10 09:00 一週報告，script `analyze_skill_selection.py`）→ would-block <5% 唔開 Layer 2；>15% 先考慮
+6. Skills 整合 plan：`plans/2026-09-02_203000-skills-consolidation-plan.md`（A1-A5 已執行，Plan 檔可標完成/存檔）
+
+**C2 新工具 check review（開始——優先序 C2 > Content > Jarvis > MC，SK 2026-09-03）**
+1. **WeSight**：❌ 排除——**SK 已試過覺得太差**（2026-09-03）
+2. **Browser-BC**（Einsia，436-548★）：❌ 排除——**冇 license** + 7 週無 push + 單一 contributor + 用途係 browser behavior cloning（同 SK stack 唔夾）
+3. **Prime Agent**（PrimeIntellect-ai，19.7k★ MIT 活躍 pushed 2026-09-02，有 Windows docs）——**未判**：RLM coding harness 同 Hermes 重疊度高；待 adversarial 判斷 + SK 拍板（下次 session 繼續）
+
+**下次 session 優先序（SK 2026-09-03 明確）**：C2（完成 Prime Agent 判斷）→ Content（bilibili adapter/douyin A5+）→ Jarvis（REMAINING_WORK sync + test_stt_stats + LHM + Phase 2）→ MC（slim regression + commit/push）最後
+
+**規則（2026-09-03）**：每次開新 session 前必先 hand off（更新本檔）——已入 memory
+
+## 今日（2026-09-02 晚 session）—— /compress 診斷 + Content Absorption Framework
+
+**Hermes /compress timeout 診斷（純檢查 + config tune，SK 已批）**
+1. 根因：compression 一次要 8-10 分鐘（508k tokens session → 594s），Discord interaction 15-min deadline + 壓縮期間 input 全 queue → 睇落 timeout；09-01 有多宗真失敗（deepseek streaming 600s 零 output → continuing without compression）
+2. Upstream 已知：GitHub #88988（Desktop /compress 報 120s timeout 但壓縮實際成功）+ #89095/#83087/#73468（PR 全部 open 未 merge）+ #15935（summary model timeout 唔 fallback）
+3. **已改 config**（備份 `config.yaml.bak-20260902_191303`）：`compression.threshold` 0.5 → **0.35**（早啲壓、細 session、stall 機會大減）；`hermes config set` 官方 CLI 改
+4. 未做：auxiliary.compression.model 換快 model（要 context ≥1M 嘅 flash 先得——冇啱就唔郁）；等 upstream fix merge
+
+**Content Absorption Framework（Douyin → 多平台，Phase 2 落地）**
+1. 新 skill `content-absorption`（media/）：7 步 SOP（adapter→scan→classify→summarize→improve plan→adversarial review→**SK 批准先落地**）+ 反噪音 filter + bias 修正 + 同 douyin-tiktok-content/youtube-content 嘅界線
+2. references：`SCHEMA.md`（統一 schema + 欄位覆蓋矩陣——**douyin 實測冇 url/id 係 known gap**；youtube 已 full coverage）+ `adapters/douyin.md`（實測遷移）+ `adapters/youtube.md`（**2026-09-02 實測 verified**——cookies 已 export 追加）+ `adapters/bilibili.md`（planned）
+3. Plan：`plans/2026-09-02_192000-content-absorption-framework.md`（過 adversarial review，8:2 支持）
+4. **YouTube PoC 已完成（2026-09-02 晚）**：SK export 咗 YouTube cookies（23 entries 追加 cookies.txt，先 backup）；yt-dlp 實測 Liked (LL) 167 條 + Watch Later (WL) 67 條全攞到（unified schema，url+id 全 capture）。**⚠️ SK 澄清：YouTube 唔係 absorption 來源——「yt is for other project, we just need u can watch or read it」**——YouTube 用途 = watch/read 能力（transcript + Qwen-VL/Mage-VL），adapter 保留做 on-demand fetch；吸收 pipeline 嘅好來源 = 特登收藏（douyin）。framework 跨平台架構仍由 douyin + youtube scan 證明，但吸收 pipeline 主力係 douyin 類「特登收藏」平台
 
 ## 現行狀態（2026-08-31 晚 session 尾）
 
