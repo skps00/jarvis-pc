@@ -20,7 +20,7 @@
 
 ## A. Phase 8 JARVIS ONE 剩餘（Electron 一個 app）
 
-### A1. 8.2 完整 — Settings 搬遷 tkinter → Electron Iron Man HTML 🔴
+### A1. 8.2 完整 — Settings 搬遷 tkinter → Electron Iron Man HTML ✅（2026-08-31 完成：settings.html + tkinter 凍結）
 - **現狀**：Companion window 已做（Iron Man HTML + reply 串流）。Settings 仲係 tkinter（settings_ui.py 1182 行）。
 - **做法**：
   1. 新 `settings.html`（Iron Man 風格，沿用 companion.html 語言）——常用設定優先：wake threshold / mic device / TTS device / AEC 開關+reference / speaker gate / ASR provider / 熱鍵
@@ -30,7 +30,7 @@
 - **驗證**：開設定改 threshold → serve 即時生效（wake_debug thr 變）；無 tkinter 視窗
 - **⚠️ 上網查**：Electron frameless 窗 drag 區域、IPC contextBridge 模式
 
-### A2. 8.3 語音 sidecar IPC 🔴
+### A2. 8.3 語音 sidecar IPC ✅（2026-08-31 完成：voice_status.json 由 sidecar 寫 + HUD/Companion 讀）
 - **做法**：Electron ↔ sidecar 狀態通道——sidecar 寫 `%APPDATA%\Jarvis\voice_status.json`（wake on/off、STT 中、TTS 中）或者 sidecar HTTP /status 端點；Electron 每 1-2s 讀 → HUD/Companion 顯示狀態
 - **驗證**：喊「hey jarvis」→ Companion 狀態變「● 聽候中 → ● 處理中」
 
@@ -39,7 +39,7 @@
 - **完成**：companion.html / home.html / settings.html 已 link `hud-theme.css`（196 行共用 theme）✅；**dock 已整個移除（0.4.9）**；HUD 主窗遊戲隱藏保留（checkActivity）✅；renderer/index.html 視覺已統一（同一 `--blue #00aaf8` / Orbitron+Rajdhani / rgba(0,170,248) 透明度系）——唔 link hud-theme.css 係避免全屏 overlay CSS 衝突，屬刻意設計
 - **驗證**：視覺統一 + 遊戲中全部隱藏
 
-### A4. 8.5 MCP 整合（Hermes ⇄ JARVIS 雙向）🔴
+### A4. 8.5 MCP 整合（Hermes ⇄ JARVIS 雙向）✅（2026-08-31：4 個 MCP tools live——speak/wake_status/sensors/alert；sidecar 已 restart）
 - **做法**：`mcp_alerts_http.py` 加 tools：
   - `mcp_jarvis_speak(text)`——叫 Jarvis 唸（限頻 ≤1 req/2s、playing 拒絕、只限 SK DM source）
   - `mcp_jarvis_wake_status()`——wake 狀態/裝置
@@ -51,7 +51,7 @@
 
 ---
 
-## B. Mage-VL「眼」整合 🔴
+## B. Mage-VL「眼」整合 ✅（2026-08-31：MageVLEngine 單幀 + video sampled + shell_app/engine wiring 完成）
 
 - **現狀**：spike 完成（✅ 本地跑通：load 10.4s / VRAM +9.5GB / inference 0.86-3.9s；圖理解正確）。⚠️ 需要 `check_imports` monkeypatch（streammind_gate mamba_ssm 問題）。
 - **做法**：
@@ -74,7 +74,7 @@
 
 - **D1. Hermes push/notify** ✅（2026-08-29 確認已由 sidecar 完成）：sidecar `_ensure_alert_poller` 起 `scripts/hermes_alert_poll_loop.py`（pythonw，~1s interval，peek→Hermes TTS→ack），比 Hermes cron（gateway tick ~60s、min 1m）快好多。serve.log 確認 `alert poller ~2s` spawn；實測 enqueue→4s 內 lease。**注意：唔好再加 Hermes cron poll**（會同 poller race / double speak）；用 MCP tools（peek/ack/speak）係俾 Hermes agent 主動查，唔係取代 poller。
 - **D2. Minecraft ready alert** ✅（2026-08-31 確認已實現）：`shell_app._start_game_alert_watch`（run() 1781 已接）watch `sk_activity.json` 嘅 `game_started`（activity_monitor 每次 game 轉變寫 `game_start_event.json` + flag）→ enqueue `"<Game> is ready, sir."`（今日補 phrase capitalize：「minecraft」→「Minecraft」）。generic 任何 game 都 alert（唔限 MC）。無重複：`(game, started)` last_seen + started=False 時 reset。
-- D3. HWiNFO SHM / GPU-Z failover：💤 重，deferred
+- D3. GPU failover ✅（2026-08-31：gpu_metrics_with_fallback nvidia-smi → HWiNFO）；HWiNFO SHM / GPU-Z（冇 public API）仍 deferred
 
 ---
 
@@ -212,3 +212,15 @@
 
 ### 唔吸收（標記剔除）
 - 桌面整理工具（7680477991545195810）——同 stack 無關；面試協修（7680845731493835491）——無關；workbuddy 挖漏洞（7680868500717505830）——**噪音**（賣課/傭金引流）
+
+---
+
+## 現況 sync（2026-09-04）
+
+- **A1/A2/A4/B/D1/D2/E/F 全部 ✅**（上表 markers 已對齊「執行結果 2026-08-31 全部完成」）；剩 D3 HWiNFO SHM deferred + G 人手實測 + 等數據接 cron monitor。
+- **下次（Jarvis 線）待辦**：
+  1. `test_stt_stats::test_missing_logs` baseline fail（golden 環境敏感——serve.log 有 repair 記錄 → 修 test isolation／run_once fallback）
+  2. **LHM 開機 tray 驗證**（SK 重啟過 PC 先見到；驗 LHM tray + 8085 sensor server + HUD CPU temp 有數）
+  3. **Phase 2 通用 app detection framework**（SK 願景：唔止 game——activity_monitor 抽象成 general app detection；出 plan 先）
+  4. G 人手實測（等新 mic；Settings tab 唔關 mic 事可隨時）
+  5. stt_stats／clarify_stats 等數據 ≥7 日先接 cron monitor
