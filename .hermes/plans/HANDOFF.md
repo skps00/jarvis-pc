@@ -18,10 +18,10 @@
 
 **SK 批咗 3 項落地（「go, and our mod is a minecraft side's harness, so we can use so AI suggestion」）**
 4. ✅ `llm-tool-calling-reliability` skill 補 §7 工具調用驗證層（參數驗證/response parse 唔吞錯/失敗唔繼續推理/loop guard/tool 選擇驗證）——源自 7680499853431950655 Agent 事故片
-5. ✅ 主契約 `C:\Users\skps9\AGENTS.md` 加「Agent 接力／Escalation 規則」（2026-09-04）——交接格式 + 連續失敗 3 次停止 + 失敗唔好當成功；**⚠️ 源頭 `Code_Project\Hermes\AGENTS.md` 同步 BLOCKED（protected file approval timeout）——下次 SK「try again」批**
+5. ✅ 主契約 `C:\Users\skps9\AGENTS.md` 加「Agent 接力／Escalation 規則」（2026-09-04）——交接格式 + 連續失敗 3 次停止 + 失敗唔好當成功；✅ 源頭 `Code_Project\Hermes\AGENTS.md` 已同步（SK「try again」批咗，diff IDENTICAL 驗證；該目錄非 git repo，純檔案同步）
 6. ✅ Numen（MC-side AI harness）深睇 → 對照已寫入 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-02.md`「外部參考：Numen」section——Teaching feedback loop / prompt-lean skills / tool 排序穩定 3 個可考慮位（下次 MC session 經 cursor-agent）
 
-**下次 session 優先序**：等 SK 批源頭 AGENTS.md 同步 → Jarvis（REMAINING_WORK sync + test_stt_stats baseline fail + LHM 開機 tray 驗證 + Phase 2）→ MC（Numen 對照位 + slim regression + commit/push）最後
+**下次 session 優先序**：Jarvis（REMAINING_WORK sync + test_stt_stats baseline fail + LHM 開機 tray 驗證 + Phase 2）→ MC（Numen 對照位 + slim regression + commit/push）最後
 
 ---
 
