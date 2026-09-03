@@ -27,12 +27,12 @@
 5. **已 enable + gateway restart 生效**（verify：log 有真實 entry）；**觀察進行中**——cron `8294250748fa`（9/10 09:00 一週報告，script `analyze_skill_selection.py`）→ would-block <5% 唔開 Layer 2；>15% 先考慮
 6. Skills 整合 plan：`plans/2026-09-02_203000-skills-consolidation-plan.md`（A1-A5 已執行，Plan 檔可標完成/存檔）
 
-**C2 新工具 check review（開始——優先序 C2 > Content > Jarvis > MC，SK 2026-09-03）**
+**C2 新工具 check review ✅（完成 2026-09-03——三個都唔裝）**
 1. **WeSight**：❌ 排除——**SK 已試過覺得太差**（2026-09-03）
 2. **Browser-BC**（Einsia，436-548★）：❌ 排除——**冇 license** + 7 週無 push + 單一 contributor + 用途係 browser behavior cloning（同 SK stack 唔夾）
-3. **Prime Agent**（PrimeIntellect-ai，19.7k★ MIT 活躍 pushed 2026-09-02，有 Windows docs）——**未判**：RLM coding harness 同 Hermes 重疊度高；待 adversarial 判斷 + SK 拍板（下次 session 繼續）
+3. **Prime Agent**（PrimeIntellect-ai，19.7k★ MIT 活躍 pushed 2026-09-02）——❌ **排除（adversarial 反方 8:2 勝）**：RLM coding harness 同 Hermes 重疊度高（self-improving/skills/subagents 賣點 Hermes 大部分有）；Windows 支援存疑（stable README 宣傳 macOS/Linux first）；「not a security sandbox——以 user permissions 執行 model code」（SK 對安全嚴格）；安裝係 `curl|sh`（契約禁）；又多一個 harness 要 maintain。💡 唯一偷嘅 idea：「agents should compute over data, not read data」——Hermes `execute_code` persistent kernel 已係咁用緊
 
-**下次 session 優先序（SK 2026-09-03 明確）**：C2（完成 Prime Agent 判斷）→ Content（bilibili adapter/douyin A5+）→ Jarvis（REMAINING_WORK sync + test_stt_stats + LHM + Phase 2）→ MC（slim regression + commit/push）最後
+**下次 session 優先序（SK 2026-09-03 明確；C2 已於 2026-09-03 完成）**：Content（bilibili adapter/douyin A5+）→ Jarvis（REMAINING_WORK sync + test_stt_stats + LHM + Phase 2）→ MC（slim regression + commit/push）最後
 
 **規則（2026-09-03）**：每次開新 session 前必先 hand off（更新本檔）——已入 memory
 
