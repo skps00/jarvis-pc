@@ -9,6 +9,28 @@
 
 ---
 
+## 今日（2026-09-03 午後 session）—— Session Hand Off 規則入契約 + Content 吸收（Bilibili adapter + Douyin v2）
+
+**規則制度化（SK「make sure we hand off before start a new session」）**
+1. **Session Hand Off 規則已寫入主契約** `C:\Users\skps9\AGENTS.md`（§Session Hand Off 規則）+ 源頭 `Code_Project\Hermes\AGENTS.md` 同步（diff IDENTICAL 驗證）——上次 approval timeout 失敗，今次 SK「try again」批咗
+2. **C2 補標完成**：Prime Agent ❌ 排除（adversarial 8:2）已入 HANDOFF（commit `d2ed92e`）——C2 全完（3 個都唔裝）
+
+**Content 工作（優先序下一站）**
+3. **Bilibili adapter 完成**（`content-absorption/references/adapters/bilibili.md` stub → API-first）：fav folder/resource list endpoint 已 research + **公開夾實測通過**（code 0、無需 WBI）；SESSDATA prereq、WBI `v_voucher` fallback、browser fallback、yt-dlp `bv*+ba/b` 坑齊；SCHEMA 覆蓋矩陣 bilibili = full coverage（SK 帳戶 scan pending）；SKILL.md reference 描述同步
+4. **Douyin v2 scan 完成**（SK「go」+ activity gate 許可）：205 條（190 desc）、**url/id capture gap 已閉**（card-boundary walk 配對 `a[href*="/video/"]`，SCHEMA+douyin adapter 已更新）；14 條新（7 AI）、22 條舊冇咗；產物喺 browser-use workspace `20260903_142520_35664e25\douyin_favorites_v2(_classified).json`
+5. **7 條新 AI 全 ASR 深讀**（yt-dlp/curl+CDN→ffmpeg→faster-whisper base）：notes `%TEMP%\douyin_v2_import_notes.md`；1 噪音（workbuddy 賣課）；真候選 = Sepia
+
+**吸收落地（P4-P7 全行，SK 逐項批）**
+6. Plan：`.hermes/plans/2026-09-03_douyin-v2-absorption-plan.md`（過 adversarial：A1 做研究版、A2 降級記錄）
+7. **Sepia 深睇 → 3 ideas 入 humanizer**（SK 批「做，入 humanizer」）：`humanizer/references/venues.md`（never-invent/calibrate/deletion/whitelist 4 principles + release notes/PR replies/postmortems/tickets/tech docs 5 venue 組）+ SKILL.md「Professional documents & hard guardrails」section；**唔裝 Sepia**（唔同 skill 生態、fiction 無關）
+8. **DSH insight + 相關收藏標記入 REMAINING_WORK**（SK：「some of those video is related to our project's idea…mark it down」）——C1 DSH harness+memory 參考 + C2 Sepia/Easy Vibe/影視颶風 urls + 剔除 list
+
+**下次 session 優先序**：Jarvis（REMAINING_WORK sync + test_stt_stats baseline fail + LHM 開機 tray 驗證 + Phase 2）→ MC（slim regression + commit/push）最後；Content 暫告一段落（下輪 douyin scan 等有新收藏 + SK idle；Bilibili 首次真掃等 SK 帳戶 + SESSDATA）
+
+**坑新增（實測）**：browser-exec cp950 crash 源頭 = 函數參數層 decode `\uXXXX`——code/comment 全 ASCII，JS 用 `String.fromCharCode(0x…)`；douyin yt-dlp 部分 video 403「Fresh cookies」→ detail API（`www.douyin.com/aweme/v1/web/aweme/detail/?aweme_id=`）攞 play_addr CDN url → curl 直下 → ffmpeg 抽音訊（workaround 已實測）
+
+---
+
 ## 今日（2026-09-03 session）—— Skill 治理（整合 + 揀選驗證）+ C2 開始
 
 **Skill 治理 Phase A（SK「整合現有 skills」→ 128 → 117）**

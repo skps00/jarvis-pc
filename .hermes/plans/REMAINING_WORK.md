@@ -193,3 +193,22 @@
 4. **F1/F2 修復** ✅ → **A3 HUD 融合** ✅
 5. **C 擴展連接** ❌ 取消（SK：「用 Discord 就夠」）
 6. 剩低：**G 全部 SK 人手實測清單** + 排期項（自訓 wake / Discord voice out / Iron Man 視覺 / 刪舊目錄）+ 等數據（≥7 日接 cron monitor）
+
+---
+
+## Content 吸收——Douyin v2 相關收藏（2026-09-03，SK 批記低）
+
+> Plan：`.hermes/plans/2026-09-03_douyin-v2-absorption-plan.md`。SK 2026-09-03：「some of those video is related to our project's idea or similar, so we can mark it down」——同 JARVIS/Hermes/agent 路線相關嘅收藏標記，之後可深睇。
+
+### C1. DSH（DeepSeek-Harness）insight → self-evol 參考
+- 片：https://www.douyin.com/video/7675337117291023652
+- 核心：值得學係 **Harness + Memory**，唔係隨時變嘅某個 Agent 產品；「Agent 由產品變成可組裝運行底座」方向唔會消失；DSH 而家係 developer preview（破壞性更新）——概念火 ≠ 成熟。
+- 同我哋：Hermes + JARVIS self-evol（autonomy/prompt pipeline/memory 治理）方向一致；Prime Agent RLM review 已偷「compute over data」。**無新工作**——純 alignment 參考。
+
+### C2. 其他相關收藏（有 url，可之後深睇）
+- **Sepia**（https://www.douyin.com/video/7680768247804775707）→ repo `Nanako0129/sepia` ★1687 MIT（2026-09-03 push）：De-AI 寫作審校 skill（Codex/Claude Code，Agent-Skills 生態）——A1 深睇結果見 plan 執行記錄
+- **Easy Vibe**（https://www.douyin.com/video/7680862878856908095）→ repo `datawhalechina/easy-vibe` ★19.2k：vibe coding 101 中文課程（實戰項目驅動）——SK 已重度 vibe coding，記錄備用
+- **影視颶風 SKILL**（https://www.douyin.com/video/7670844233401552162）：豆包生態 skill store 示範（高流存開場技能）——平台 skill 生態參考
+
+### 唔吸收（標記剔除）
+- 桌面整理工具（7680477991545195810）——同 stack 無關；面試協修（7680845731493835491）——無關；workbuddy 挖漏洞（7680868500717505830）——**噪音**（賣課/傭金引流）
