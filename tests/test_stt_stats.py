@@ -131,7 +131,9 @@ class TestRunOnce:
             "[engine] asr_repair=ASR 修正：'cura' → 'Cursor'\n", encoding="utf-8"
         )
         wake.write_text("14:00:01 oww_fire best=0.5 thr=0.5\n", encoding="utf-8")
-        stats, summary = ss.run_once(serve, wake, write_log=False)
+        stats, summary = ss.run_once(
+            serve, wake, write_log=False, repair_log=tmp_path / "nope_repair.jsonl"
+        )
         assert stats["fires"] == 1
         assert stats["repair_hits"] == 1
         assert stats["repair_ratio"] == 1.0
@@ -167,7 +169,10 @@ class TestRunOnce:
 
     def test_missing_logs(self, tmp_path) -> None:
         stats, _ = ss.run_once(
-            tmp_path / "nope.log", tmp_path / "nope2.log", write_log=False
+            tmp_path / "nope.log",
+            tmp_path / "nope2.log",
+            repair_log=tmp_path / "nope_repair.jsonl",
+            write_log=False,
         )
         assert stats["fires"] == 0
         assert stats["repair_hits"] == 0
