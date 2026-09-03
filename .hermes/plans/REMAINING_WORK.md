@@ -215,12 +215,12 @@
 
 ---
 
-## 現況 sync（2026-09-04）
+## 現況 sync（2026-09-03 晚）
 
 - **A1/A2/A4/B/D1/D2/E/F 全部 ✅**（上表 markers 已對齊「執行結果 2026-08-31 全部完成」）；剩 D3 HWiNFO SHM deferred + G 人手實測 + 等數據接 cron monitor。
 - **下次（Jarvis 線）待辦**：
-  1. `test_stt_stats::test_missing_logs` baseline fail（golden 環境敏感——serve.log 有 repair 記錄 → 修 test isolation／run_once fallback）
-  2. **LHM 開機 tray 驗證**（SK 重啟過 PC 先見到；驗 LHM tray + 8085 sensor server + HUD CPU temp 有數）
-  3. **Phase 2 通用 app detection framework**（SK 願景：唔止 game——activity_monitor 抽象成 general app detection；出 plan 先）
+  1. `test_stt_stats` baseline fail ✅（2026-09-03：test isolation 修——兩個 test 補 repair_log，CI 全綠 hash 0b88e6f6）
+  2. **LHM 開機 tray 驗證** 🟡（2026-09-03：手動 `schtasks /run` 開返 CPU temp 73.9°C；**autostart 等 SK 真 reboot 先驗**——Event log 證實 9/2 11:34 後未 boot 過）
+  3. **Phase 2 通用 app detection framework** ✅（2026-09-03：APP_DEFS registry + detect_running_apps + sk_activity `apps` 欄位，parity 16/16 + 獨立 review PASS；sidecar watch 泛化被 review 砍走——等 consumer 先做）
   4. G 人手實測（等新 mic；Settings tab 唔關 mic 事可隨時）
   5. stt_stats／clarify_stats 等數據 ≥7 日先接 cron monitor

@@ -9,6 +9,28 @@
 
 ---
 
+## 今日（2026-09-03 晚 session）—— Memory 加大 + Jarvis 線收尾（3/3）+ Phase 2 落地
+
+**Hermes 基建（SK 問 memory full → 加大）**
+1. Config：`memory.memory_char_limit` 2200 → **4000**、`user_char_limit` 1375 → **2000**（`hermes config set`，backup `config.yaml.bak-*`）——**gateway 已 restart（PID 8960 → 3216）生效**
+2. Memory cleanup：筆記 98% → 87%、profile 98% → 88%（刪同主契約重複條目）
+
+**Jarvis 線（HANDOFF 下次優先序 1-3 全清）**
+3. ✅ **REMAINING_WORK sync**：A1/A2/A4/B/D3 markers 對齊執行結果 + 底部「現況 sync」待辦
+4. ✅ **test_stt_stats baseline fail 修**（commit `6eb5f39`）：根因 = `test_missing_logs`/`test_with_tmp_logs` 漏傳 `repair_log` → run_once 讀真實 `%APPDATA%\Jarvis\repair_log.jsonl`（環境依賴）——cursor 兩輪 + 自己驗證 24 passed + **eval_gate 全綠 hash `0b88e6f6`**
+5. ✅ **LHM**（commit `ca9cc37` 內 docs）：task「JARVIS LHM Sensor」存在但 LHM 冇行——Event log 證實 **PC 自 9/2 11:34 未真正 boot**（SK 以為 reboot 過，實際 fast startup/sleep 唔算）；手動 `schtasks /run` 開返（CPU Tctl/Tdie 73.9°C live）。**⏳ autostart 驗證仍然等 SK 真 reboot**
+6. ✅ **Phase 2 通用 app detection**：plan（`2026-09-03_phase2-general-app-detection.md`）→ adversarial review 8:2 縮 scope（砍走 watch 泛化——sidecar restart 必 false-ready；dev/media entries——零消費者；game_start_event 鏡像——冇 consumer）→ cursor 兩輪實作 + apply → **獨立 code review PASSED**（security 0/logic 0）+ suggestions 收尾（drift asserts/_TITLE_KW 簡化/lag 註釋）→ parity 16/16 ×2 + py_compile + live smoke 全綠
+   - 產物：activity_monitor.py `APP_DEFS`（21 proc + 17 title-kw，語義保留唔合併）+ `detect_running_apps()` + sk_activity.json `apps` 欄位（game only）；backups `.bak-20260903_163254`（原）/`.bak-20260903_165840`（v2）；**shell_app.py 零改動**（review 決定）
+   - 文件同步：主契約 AGENTS.md×2、desktop-activity-awareness SKILL.md、windows-desktop-automation references + scripts 舊副本 deprecation header；歷史 snapshot（diagnostics/merged-*）刻意保留
+
+**下次 session 優先序**：
+1. **LHM 開機 autostart 驗證**（SK 真正 reboot 後：task onlogon 觸發 → LHM tray + 8085 + HUD CPU temp 有數）——如 reboot 後都唔起先係 bug
+2. **MC 線**（Numen 對照位 + slim regression + commit/push——上次 HANDOFF 排最後）
+3. **Phase 2 觀察**：SK 實測場景 A-H 自然觀察（`apps` 欄位 + ready alert 零 regression）；Open Q1 flip condition（SK 要非-game alert/HUD 顯示先開 watch 泛化 + dev entries）
+4. G 人手實測（等新 mic）+ stt_stats/clarify_stats 等數據 ≥7 日接 cron monitor
+
+---
+
 ## 今日（2026-09-04 session）—— Douyin 全量深讀 review（99 條 AI）+ 3 項落地
 
 **Douyin 收藏全量 review（SK「check all + review every single one that about code/AI/skill」）**
