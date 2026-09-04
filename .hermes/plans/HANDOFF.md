@@ -349,3 +349,14 @@
 - 4 輪 independent review（11 findings 全修，final pass）；plan: `.hermes/plans/2026-09-02_135000-game-session-detection-phase1.md`
 - 已知：`test_stt_stats::test_missing_logs` golden fail = baseline 環境問題（serve.log 有 repair 記錄）——要修 run_once fallback 或 test isolation
 - 待做：SK 實測場景 A-E（開 game/切 Discord/關 game）；Phase 2 = 通用 app detection framework（SK 願景：唔止 game）
+
+## 2026-09-04 夜 session 2 — Pack AI release 0.1.16 完成
+- MC repo：round-5 smoke PASSED（Fix E trust gate 實錘 before==after ensureCards）→ push 10 commits（main=d5bdad1）；Fix 1-3 d57d39d / Fix E 4bf351d / batch dc9b163 / mirror 07a7522 / release d5bdad1
+- CurseForge：0.1.16 兩 line auto-upload（file 8807474/8807475）+ About description 更新（CDP cookie PUT 200）——流程已入 MC skill `release-curseforge-publish-2026-09-04.md`
+- 坑：CF description 要 login cookie（profile ~2 週過期）；chrome_profile single-instance trap（taskkill 用單 slash）；MSYS Big5 tasklist 會假報 0 → 用 powershell ps1 check
+- 待辦：GitHub Release tag（SK 未要求）
+
+## 2026-09-05 00:5x — Pack AI：Public AskTool API plan ADOPTED
+- 4 輪 adversarial review 收斂：r4 **8:2 execute**（Scope Y：registerExternal + RegistrationStatus；register() keep-gate；ask_player 死碼移除 0.2.0 wave）
+- 執行未開始（P1 未郁）；plan 檔喺 MC repo `.hermes/plans/2026-09-04_public-asktool-plugin-api.md`
+- 同日已完成：0.1.16 release（push/CF files 8807474/8807475/description 更新 ×3 rounds）+ round-5 smoke PASSED（Fix E）
