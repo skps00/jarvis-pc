@@ -9,6 +9,17 @@
 
 ---
 
+## 今日（2026-09-04 凌晨 session）—— MC 線：卡片位置真正 root cause 修復（主 session 轉咗 MC project）
+
+> Discord session 9/3 17:51–9/4 03:52：讀 jarvis-pc HANDOFF 後 SK 揀 MC 線（「since I can't reboot now, and I didn't buy my mic, so 2」）。**JARVIS ONE 本身冇 code 改動**——以下係跨 project 狀態同步（先例：9/1「主 session 轉 MC」、9/2「跨 Project 盤點」）。
+
+1. **MC packai 卡片位置 root cause 已修**（super_minecraft_AI_player repo，commit `e7c58ee`）：真正原因 = `resolveAttach`（RecipeCardsMode）reorder 卡 list，但 `ensureCards` 寫嘅 marker index 係 collected index → renderer `cards.get(N)` 錯位（**index-space mismatch**，唔係之前一路修嘅 method-line 重排）。修法 = resolveAttach 唔再 reorder（return raw 原序），`pickIndices` 只做 empty-guard。驗證：雙樹 compileJava 綠、checks 85 pass + 3 pre-existing fail（無新增）、harness `tools/card_placement_test.py` 收斂、independent reviewer PASSED + 自己 Pass1/Pass2。
+2. **MC main 而家 5 commits ahead origin**（`3ba403c` Numen teaching → `c75077a` 全形冒號 → `dbc73e6`/`52a6687` section-aware → `e7c58ee` index mismatch），**全部未 push**——等 SK 真機煙測（jar `1e09446a`：問「铁镐怎么合成」「硫磺花蜜」確認卡片真機跟返 method line）PASSED 先 push（SK 規則）。
+3. **詳細交接**：MC 專案自己嘅 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-04.md`（root cause 機制鏈/驗證/待辦/坑）。jarvis-pc 唔重複。
+4. **下次 jarvis session 優先序更新**：MC 線唔再係「Numen 對照位 + slim regression」（已完成）；而家 MC 線 = **等 SK 真機煙測 → PASSED 先 push 5 commits**（可選：多餘卡 filter 後保持原序）。Jarvis 線本身待辦不變：LHM autostart 驗證（等真 reboot）、Phase 2 自然觀察、G 人手實測（等新 mic）。
+
+---
+
 ## 今日（2026-09-03 晚 session）—— Memory 加大 + Jarvis 線收尾（3/3）+ Phase 2 落地
 
 **Hermes 基建（SK 問 memory full → 加大）**
