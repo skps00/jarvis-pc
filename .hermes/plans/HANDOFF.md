@@ -9,6 +9,16 @@
 
 ---
 
+## 今日（2026-09-04 夜 session）—— MC 線：round-3 真機煙測解碼（跨 project 同步，JARVIS ONE 無 code 改動）
+
+> Discord session 17:4x：SK 先叫我「check history and hand off first」。呢段 = MC round-3 煙測（jar `462ffbdf0d` / packai 0.1.15）結果補檔，詳細喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-04.md`「夜晚更新」section。
+
+1. **位置層 smoke PASSED**：14:51 真機 ask「铁镐…用途/属性/获取方式」→ debug.log 實錘 `ensureCards` after：output 卡 0/1 正確跟「1. 工作台」「2. 原版通用获取」method line；input 卡 2/3/4 全部聚喺「任务方面」後、「【来源】」前（Fix D 生效，冇再散落 USE 行）。兩張截圖 = 同一答案卡上下部分。
+2. **剩低 = 文字 vs 卡內容一致性**（唔係位置）：model tool round `jei_lookup(INFO)`/`acquire`/`quest_fetch` 全 TOOL_MISS → model 以為包內冇配方，答 vanilla 通用知識並寫「本包未见铁镐参与特定配方」，但系統照樣 attach 咗 5 張卡 → 畫面文字話冇配方、下面又出 3 張用作材料卡，矛盾。已開 anomaly 1/2/3 等 SK 揀方向（1 = jei_lookup 空 vs collector 有料 分歧；2 = 方法 2 語義唔夾；3 = input 卡位置要唔要黐實材料行）。
+3. **下次優先序更新**：MC 線 = SK 揀 anomaly 方向 → confirm 位置 PASSED → push 5 commits（`3ba403c`..`e7c58ee`，已過 independent reviewer）+ uncommitted 8-file 雙樹改動（怎樣 variant + Fix D + AskService debug log）commit。Jarvis 線待辦不變（LHM autostart 等 reboot、Phase 2 觀察、G 人手實測等 mic）。
+
+---
+
 ## 今日（2026-09-04 凌晨 session）—— MC 線：卡片位置真正 root cause 修復（主 session 轉咗 MC project）
 
 > Discord session 9/3 17:51–9/4 03:52：讀 jarvis-pc HANDOFF 後 SK 揀 MC 線（「since I can't reboot now, and I didn't buy my mic, so 2」）。**JARVIS ONE 本身冇 code 改動**——以下係跨 project 狀態同步（先例：9/1「主 session 轉 MC」、9/2「跨 Project 盤點」）。
