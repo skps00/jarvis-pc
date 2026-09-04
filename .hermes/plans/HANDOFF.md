@@ -9,6 +9,25 @@
 
 ---
 
+## 今日（2026-09-05 session）—— MC 線：P1+P2 Public AskTool Plugin API 完成 + 煙測 card-marker 三層 bug 修復（JARVIS ONE 無 code 改動）
+
+> Discord session：MC project（super_minecraft_AI_player）。詳細交接喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-05.md`；以下係跨 project 同步摘要。
+
+1. **Public AskTool Plugin API（Scope Y）commit `92f830c`**（61 files +1009/-268）：`api/` package（5 檔 byte-identical 雙樹）＋ `AskToolLoop.registerExternal()`（4 值 RegistrationStatus）＋ bus transport adapter（forge JavaExec runtime 實證 stored/REJECT_DUP/REJECT_RESERVED）＋ `registerExternal()` try/catch → REJECT_BAD_SCHEMA。P2 independent reviewer PASSED。**修埋 pre-existing assert bug**（AskToolLoopCheck :467 latent fail 自 2026-09-02，`additionalProperties` 應為 false）。
+2. **煙測發現 card-marker 三層 bug（AskCardFallback trust/fallback gate，非 P1/P2 引入）→ 4 commits**：
+   - `1fdc089`（fix 6）：bullet 材料行 separator 唔 match `N.` regex → trust gate 唔 trust。修：`separatorHasContent` 放寬任何內容行。
+   - `060982d`（fix 7）：model 寫漏 USE markers → gate 見 ≥2 interleaved 就 trust → fallback 冇行。修：coverage gate（raw count ≥ needed）。
+   - `047ae6c`（fix 8）：raw count 俾 duplicate markers 呃（reviewer S1）。修：distinct marked-index set `containsAll(needed)`；**off-by-one parse bug**（`[[recipe_card:0]]` double-closer `]]`，`rindex(']')` 切到 `0]` → catch 靜靜空集——Java+Python 都有，修 `rindex(']')-1`）。
+   - `5aa65b2`（fix 9）：smoke 05:21——model 寫啱 0/1/2/4 markers 但漏 card 3 → 舊邏輯全部 strip+re-cluster → 連啱嘅 markers 搬走、卡 cluster 去 prose 尾。修：**partial-trust**（clean markers + coverage 唔夠 → 保留 reply 只補 missing）+ **findBlockEnd 遇 blank line 停**（唔吞 section footer prose）+ block_start 推去 method line `\n` 後。
+   - `31e4baa`（more tests，SK 要求）：full-fallback+prose footer、missing-OUTPUT partial、GET prose footer。
+   - 驗證：`check_ask_card_fallback OK` + 85 python checks（3 pre-existing）+ 雙樹 compileJava（--rerun-tasks）；fix 6+7 過 independent reviewer（deleg_cfeb913f）；**fix 8/9 + tests 未獨立 review**（P3 前建議補）。
+3. **⚠️ 重大教訓（已入 skill `cursor-cli-integration`）**：fix 7 嘅 cursor process（3 PID）report 出咗但**一直冇退出**，background 讀返 fix 7 指示繼續改 file，喺 commit fix 8 後將 forge source 覆蓋返 fix 7 版 → 第一次 deploy 咗污染 build（jar 內冇 fix 8 method）。處理：kill 殘留 process → `git checkout HEAD --` restore → rebuild。以後：dispatch 後確認 process 真死、build 後驗證 jar class 內容、gradle 要 `--rerun-tasks`（configuration cache 假象）。
+4. **Git：6 commits ahead origin 未 push**（92f830c → 1fdc089 → 060982d → 047ae6c → 5aa65b2 → 31e4baa）。**CF 仍係 0.1.16 舊 code**（未上傳任何 P1/P2/fix）。
+5. **部署狀態**：AI_test_NFWC_DIM instance mods/ = `packai-0.1.16+mc1.19.2-forge.jar` sha `4f5b8171`（fix 9）——等 SK restart game 煙測「铁镐怎么用」。
+6. **下次優先序**：SK 煙測 → PASSED → 補 independent review（fix 8/9/tests）→ P3 全套驗證 → P4（0.2.0 lockstep bump + push + CF release）→ **Hold project**（SK 明示做完所有 todo 先 hold）。JARVIS ONE 線待辦不變（LHM autostart 等真 reboot、Phase 2 觀察、G 人手實測等 mic）。
+
+---
+
 ## 今日（2026-09-04 夜 session）—— MC 線：round-3 真機煙測解碼（跨 project 同步，JARVIS ONE 無 code 改動）
 
 > Discord session 17:4x：SK 先叫我「check history and hand off first」。呢段 = MC round-3 煙測（jar `462ffbdf0d` / packai 0.1.15）結果補檔，詳細喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-04.md`「夜晚更新」section。
