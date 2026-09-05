@@ -9,7 +9,7 @@
 
 ---
 
-## 今日（2026-09-06 session）—— MC 線：附魔答題 Wave 7→22 + agentic `enchant_lookup` pivot（JARVIS ONE 無 code 改動）
+## 今日（2026-09-06 session）—— MC 線：附魔 Wave 7→22 agentic `enchant_lookup` pivot + `repair_lookup` plan（cursor dispatch 已完成）（JARVIS ONE 無 code 改動）
 
 > Discord session：MC project（super_minecraft_AI_player）。詳細交接喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-06.md`；以下係跨 project 同步摘要。
 
@@ -18,6 +18,15 @@
 3. **Wave 22 = on-demand `enchant_lookup` native tool**（雙樹 EnchantLookupAskTool：schema 淨 item optional；registry canEnchant 掃描 18 cap；EMPTY/error 人話 message；LlmClient [TOOL_MISS] fallback）；移除 [ENCHANT_TABLE] 預注入（AskService ×2 + AskEngine slim）；TOOLTIP_HINT 保留。現役 jar sha `a324ce14`，~26 commits ahead origin（未 push）。
 4. **實測教訓（入咗 skill）**：EMI vs JEI viewer divergence（PackAI 讀 JEI、SK 睇 EMI——anvil/enchant 行唔會喺 JEI manager；用 registry canEnchant 計）；debug.log Big5 encoding；SLIM path 丟 hints。
 5. **Open**：SK 煙測 wave22（model 會唔會自 call enchant_lookup）；cursor review（proc 4d3b12f2ef9f）結果要收；quest relabel 冇 fire（cat title=「武刃」非「任務書」，要 uid 判斷）；claim/禮包句 data gap（held NBT capture）park；T8 review 幾輪 + T10（0.2.0 push + CF release）未做。
+
+**（續 03:32–05:43，同 session 流延續——repair_lookup 新線）**
+
+6. **T8a cursor review 收咗（proc 4d3b12f2ef9f）= PASS + 4 findings**；P1 決策 = **A tool-only**（SK 拍板）。**wave22c P2 fixes ×3**（empty return `""`、bad item resolve 唔 fallback focus、刪 dead enchantHintText）→ commit **`ecbd75f`**（03:37）→ jar **`32c97a8b`** 03:39 deploy（backup `.bak-033954`）。
+7. **03:43 smoke（武刃維修題 maint=1）**：model 冇 call enchant_lookup（正確——維修題行 quest/JEI card，答「奥术砧 保養」）；但暴露 **repair 資料面缺口**：答唔到「鐵砧 + 鐵錠」材料修復，SK 遊戲實錘武刃+鐵錠放鐵砧修到。
+8. **`repair_lookup` plan（MC `.hermes/plans/2026-09-06_repair-lookup-agentic-tool.md`）**：根因 = JEI `AnvilRecipeMaker` repair recipes **硬編碼 vanilla**（mod 物品永遠唔出現，唔係 PackAI collect 問題）→ 新 agentic tool（仿 enchant_lookup）；adversarial r1（7:3）→ independent r2 FIX-FIRST：**B1 blocker**（LLM 見到嘅 schema 源 = `LlmClient` per-name table（toolSchemaDescription/Required/toolMissNote），**唔係 tool 自己 description()**——要 patch 三處）、**B2 major**（fake AnvilMenu 唔使——javap 證 `Item.isValidRepairItem()` public predicate worker-safe，主線改 predicate）、M1（`AskJeiClient.summarize` 有 client-dispatch precedent）→ SK「go」（05:42）→ cursor dispatch `proc_09f525cf6c9a`（instruction `%TEMP%\repair_lookup_instr.md`）。
+9. **Cron 核實（05:47）：cursor 已完成，working tree 有** `AnvilRepairHint.java` + `RepairLookupAskTool.java`（雙樹）+ `tests/check_repair_lookup.py`；`LlmClient.java` 雙樹各 4 處 repair_lookup ref、`AskToolLoop` CAPABLE+QUERY 註冊齊（search_files 實錘）——**未驗證/未 commit**（python checks + 雙樹 compile --rerun-tasks + jar class bytes 未跑）。
+10. **⚠️ 跨 reset 交接**：session 尾 cursor 完成通知未收（proc 已 exit，output 喺 cron 唔到）；MC repo HEAD = `ecbd75f`，**32 commits ahead origin（未 push）**；MC repo 自己 HANDOFF-2026-09-06.md **未同步** repair_lookup tail（以本節為準）。
+11. **Open（更新）**：驗證 repair_lookup（grep LlmClient ×3 + checks + 雙樹 compile）→ commit → deploy → SK 煙測（武刃怎么修 → repair_lookup + 鐵砧鐵錠，與奥术砧途徑並存）；SK 煙測 wave22 agentic enchant（「武刃能附什么魔」——03:43 實測係維修題，唔算）；quest relabel（uid 判斷）；claim/禮包句 data gap（park）；T10b probe 清理；T8 正式 review（Pass1/independent 幾輪）；T10（0.2.0 push + CF release）。JARVIS 線待辦不變。
 
 ---
 
@@ -353,6 +362,8 @@
 - 🟡 **G 人手實測（等新 mic——SK 2026-09-01 決定買新 mic，mic 相關全部 pause）**：headset wake / Tier 1（BGM 誤觸、喊完→有聲 ≤3s）/ 聲紋 enrollment（要新 mic）/ AEC voice call / Settings tab（HTML 已齊——呢項唔關 mic 事，可以隨時測）
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
+
+- 🟡 **alerts.py ctypes 64-bit hwnd bug**（2026-09-05 daily self-review cron 發現；已入 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-05，該檔未 commit）：user32 函數冇宣告 argtypes → EnumWindows callback 遇 64-bit hwnd（>2^31）`ctypes.ArgumentError: int too long to convert` → `_tick_discord`/`_tick_cursor` 視窗掃描斷 → **Discord unread / Cursor approval 自動提醒可能漏**（~54/min err、serve.log 脹 9.4MB；wake/STT/TTS 正常、queue 0 backlog）——細 fix 低風險（argtypes 宣告，須經 cursor-agent），**等 SK 決定幾時修**
 
 ## 陷阱（重溫）
 
