@@ -9,6 +9,18 @@
 
 ---
 
+## 今日（2026-09-06 session）—— MC 線：附魔答題 Wave 7→22 + agentic `enchant_lookup` pivot（JARVIS ONE 無 code 改動）
+
+> Discord session：MC project（super_minecraft_AI_player）。詳細交接喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-06.md`；以下係跨 project 同步摘要。
+
+1. **Keyword 拆字 bug 修復**：「能附**什**么**魔**」= 附/魔唔連續 → `contains("附魔")` FALSE → enchant hook 靜默失效 10+ waves（W8-W17）。W18 用 附…魔 distance≤4 修好（cursor second opinion 睇穿）。
+2. **[ENCHANT_TABLE] 唔到 model 實錘**：AskEngine `jeiForLlmSlim()`（native-tools path）淨重建 card catalog、丟 merged jei → W21 slim prepend 修；W22 再 pivot：**SK 指明 agentic harness（Hermes/DeepSeek 式）——唔預注入，model 自 call tool**。
+3. **Wave 22 = on-demand `enchant_lookup` native tool**（雙樹 EnchantLookupAskTool：schema 淨 item optional；registry canEnchant 掃描 18 cap；EMPTY/error 人話 message；LlmClient [TOOL_MISS] fallback）；移除 [ENCHANT_TABLE] 預注入（AskService ×2 + AskEngine slim）；TOOLTIP_HINT 保留。現役 jar sha `a324ce14`，~26 commits ahead origin（未 push）。
+4. **實測教訓（入咗 skill）**：EMI vs JEI viewer divergence（PackAI 讀 JEI、SK 睇 EMI——anvil/enchant 行唔會喺 JEI manager；用 registry canEnchant 計）；debug.log Big5 encoding；SLIM path 丟 hints。
+5. **Open**：SK 煙測 wave22（model 會唔會自 call enchant_lookup）；cursor review（proc 4d3b12f2ef9f）結果要收；quest relabel 冇 fire（cat title=「武刃」非「任務書」，要 uid 判斷）；claim/禮包句 data gap（held NBT capture）park；T8 review 幾輪 + T10（0.2.0 push + CF release）未做。
+
+---
+
 ## 今日（2026-09-05 session）—— MC 線：P1+P2 Public AskTool Plugin API 完成 + 煙測 card-marker 三層 bug 修復（JARVIS ONE 無 code 改動）
 
 > Discord session：MC project（super_minecraft_AI_player）。詳細交接喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-05.md`；以下係跨 project 同步摘要。
