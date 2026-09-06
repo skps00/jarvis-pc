@@ -9,6 +9,35 @@
 
 ---
 
+## 今日（2026-09-07 session）—— MC 線：R5.3 真機煙測 + 3 bug 實錘 + R6 cursor fix in-flight（JARVIS ONE 無 code 改動）
+
+> Discord session 03:0x：SK「read hand off」→ 發現 **jarvis-pc HANDOFF 過時**——實際 MC main 已到 `21e119f`（09-07 01:00，全部 push origin），repair_lookup（Wave23 `4f860fa`）+ R3-R6A + R4/R5/R5.x 卡顯示架構終局早已完成 deploy（現役 jar R5.3 sha `30aaa548`）。**真實權威 = MC repo 自己嘅 `.hermes/plans/HANDOFF.md`（09-07 02:13 更新）**，唔係呢份。
+
+1. SK 煙測 R5.3（AI_test_NFWC_DIM 真機）發現 **3 bugs**（debug.log 03:07-03:10 實錘）：
+   - **Bug 1 DSML fullwidth leak**：武刃題 reply 洩漏 `<｜DSML｜tool_calls>` block——model 用 fullwidth vertical line U+FF5C 做分隔符，AskToolLoop/AskReplyScrub 全部 regex 淨識 ASCII `|` → detect/parse/scrub 全 miss → 原樣出 UI（ASCII 版會被攔截，所以「randomly」）
+   - **Bug 2 autoEmission 鏡像冇合併**：鐵劍題 model 0 call tool → autoEmission fallback 出 2 張鏡像卡（工作台+動力合成器）——`coalesceMirrorEmission` 只喺 RenderRecipeCardsAskTool（tool path）行，`AskService.autoEmitCatalogCards` 冇行
+   - **Bug 3 autoEmission 冇 INPUT/uses 卡**：同一題文字有「怎么用…火舌剑」section（24 條 as-material recipes 掃到）但 autoEmission（role=output count=2）淨出 OUTPUT 卡、0 張 uses 卡——catalog 似淨 OUTPUT + NONE branch output 揀到就 skip uses
+2. 診斷齊 → instruction `%TEMP%\cursor_r6_smoke_fixes.md`（Fix 1: pipe char class `[|｜¦│]` unicode escape；Fix 2: autoEmission return 前 coalesceMirrorEmission；Fix 3: trace forItemParts 後補 INPUT 卡 + reply 有用途 section 就 output+uses 出卡，cap≤4）→ **cursor dispatch 03:3x**（2026.09.02-c22c1a3 hidden background，report `%TEMP%\cursor_r6_report.md`）
+3. **MC repo 唔好掂**（cursor 工作中）；收 report 後自己 grep 驗證 + checks + 雙樹 compile + build jar class bytes → deploy → SK 再煙測
+4. 教訓：jarvis-pc HANDOFF 唔係 MC 線權威——跨 project sync 有 lag，MC 工作 session 睇 MC repo 自己份 HANDOFF + plans 最新 mtime
+
+**（續 03:35–04:30，同 session 流延續——R6 收斂 + R7 in-flight；05:47 cron 核實補檔）**
+
+5. **R6 收斂**：cursor report 收咗 → grep 驗證 → **commit `7fb771a`**（MC repo 03:45「fix(ask): R6 — fullwidth DSML tool-xml scrub + autoEmission mirror coalesce & uses cards」）+ deploy
+6. **SK 二輪煙測（04:16，R6 jar）→ 2 條新 root cause**（debug.log 實錘）：
+   - **卡黐埋（stuck together）**：model 答 full 題寫 numbered steps 但唔寫 `[card:N]`（淨寫 prose「（见下方卡）」）→ 全部 emission 卡行 fallback——`findEmissionInsertIndex`（RecipeEmbed L900-946）每張都回同一 section 尾 index → `skipCardsAfter` 令後續黐實；needles（L980-1015）得 category/catalyst/craft aliases，**冇 output 產物名**（uses 卡 category 係「自動合成」，model step 寫「水果刀」→ needle miss）
+   - **Missing 卡（火舌劍）**：`RenderRecipeCardsAskTool` L99-101 uses 24 張 matched 直接 `subList(0, PER_CALL_CAP=6)` 截頭——冇代表性/diversity 排序，排第 7+ 永遠唔出；auto path（total 4、uses≤2）更緊
+7. **cursor 3-POV design discussion**（`%TEMP%\cursor_discussion_report.md`，04:29，16.8KB）判決：**renderer disperse ≫ prompt**（weak model 靠唔住）；黐埋 = fallback insert index 問題、missing = emit pick/cap 問題——**兩個獨立問題，分散 fix 修唔到 missing**；ship 順序 = ① disperse + output needles → ② lang 措辭 → ③ uses pick/mention
+8. **R7 dispatch 04:30**（instruction `%TEMP%\cursor_r7_fix.md`，Part A/B/C 兩樹 lockstep）：
+   - Part A RecipeEmbed：A1 `emissionMatchNeedles` 加 output hover/token needles（L1168-1186 `card.outputs()`→`getHoverName()`）；A2 `disperseUnplacedEmissionCards`（`cardsOnStep[]`：score>0 → 最高分 + 最少負載 step；score=0 → round-robin 最少負載；`findEmissionInsertIndex` 保留做 helper）
+   - Part B RenderRecipeCardsAskTool：uses role 改用 private `pickUsesWithCategoryDiversity`（per-category ≤2、原序；output/upgrade 照舊截頭）——唔共用 JeiRecipeCards helper（coupling）
+   - Part C lang ×6（zh_cn/zh_tw/en_us × 雙樹）：4 keys 改「獨立 numbered step + 行尾 [card:N]、禁 prose-only「见下方卡」、唔寫 N 都得（系統分散）」；刪「下方兜底」教法
+   - cap 數值全部唔郁（SCAN_CAP=24/PER_CALL_CAP=6/MAX_CARD_EMISSIONS=8/auto 4）
+9. **⚠️ Cron 核實（05:47）**：R7 cursor **04:39 已出 report**（`%TEMP%\cursor_r7_report.md`，Part A/B/C 兩樹實作齊，有 file:line；**NO commit、python checks 未跑**——agent shell blocked，report 要求 Hermes 跑 `tests/check_card_tool_emission.py` + `check_recipe_embed.py` + `check_ask_tool_loop.py`，如 assert 舊「下方兜底」措辭就要更新 assert）；**session 04:30 idle，report 未收**。MC working tree modified：`RecipeEmbed.java` + `RenderRecipeCardsAskTool.java` + lang ×3（兩樹）+ `code_change_log.md`；MC HEAD = `7fb771a`
+10. **下次 session 開頭（照 09-07 03:35 HANDOFF 嘅下一步）**：收 R7 report → 跑 3 個 python checks（repo root）+ 雙樹 compile `--rerun-tasks` → commit R7 → deploy jar → SK 煙測（文字↔卡分散 + 火舌劍有冇出）；MC repo 自己 HANDOFF 未同步 R6/R7 tail（以本節為準，同 repair_lookup 尾先例一致）
+
+---
+
 ## 今日（2026-09-06 session）—— MC 線：附魔 Wave 7→22 agentic `enchant_lookup` pivot + `repair_lookup` plan（cursor dispatch 已完成）（JARVIS ONE 無 code 改動）
 
 > Discord session：MC project（super_minecraft_AI_player）。詳細交接喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-06.md`；以下係跨 project 同步摘要。
