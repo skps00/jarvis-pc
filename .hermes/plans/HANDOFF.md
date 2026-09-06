@@ -36,6 +36,16 @@
 9. **⚠️ Cron 核實（05:47）**：R7 cursor **04:39 已出 report**（`%TEMP%\cursor_r7_report.md`，Part A/B/C 兩樹實作齊，有 file:line；**NO commit、python checks 未跑**——agent shell blocked，report 要求 Hermes 跑 `tests/check_card_tool_emission.py` + `check_recipe_embed.py` + `check_ask_tool_loop.py`，如 assert 舊「下方兜底」措辭就要更新 assert）；**session 04:30 idle，report 未收**。MC working tree modified：`RecipeEmbed.java` + `RenderRecipeCardsAskTool.java` + lang ×3（兩樹）+ `code_change_log.md`；MC HEAD = `7fb771a`
 10. **下次 session 開頭（照 09-07 03:35 HANDOFF 嘅下一步）**：收 R7 report → 跑 3 個 python checks（repo root）+ 雙樹 compile `--rerun-tasks` → commit R7 → deploy jar → SK 煙測（文字↔卡分散 + 火舌劍有冇出）；MC repo 自己 HANDOFF 未同步 R6/R7 tail（以本節為準，同 repair_lookup 尾先例一致）
 
+**（續 07:2x–07:4x，同 session 流延續——R7 收斂 deploy + 煙測 bug + MC 線暫停）**
+
+11. **R7 收斂**：3 python checks 跑（`check_card_tool_emission` 原 fail = check 過時 assert 舊 `placed[i]` loop → 更新為 `disperseUnplacedEmissionCards` → PASS）→ 雙樹 `jar --rerun-tasks` BUILD SUCCESSFUL → class bytes 驗證（4 新 symbols 兩樹 jar 齊）→ **commit `0fd90cd`**（12 files +551/-59）→ deploy AI_test_NFWC_DIM（backup `.bak-r7-*`；jar sha `7b577e`）
+12. **SK 三題煙測（07:28-07:29，debug.log 實錘）→ 用途卡 missing bug**：
+    - 鐵鎬/鐵劍題：model 淨 call `render_recipe_cards(role=output)`（攞工作台+動力合成器 2 張 mirror 卡）**冇 call role=uses** → 用途 prose（火舌劍/水果刀/堂吉訶德等「作为材料」step）有文字冇卡 → **R7 Part B diversity pick 冇機會行**
+    - 武刃題：model 有 call uses（攞到「武刃→金?」卡）但將 `[card:1]` marker 錯配喺「武器使用」step 尾 + final prose 濃縮到一句（獲取 section 消失）
+    - **Root cause**：tool path（model 有 call 但淨 output）冇 deterministic 補 uses 卡機制——R6 autoEmission 補卡只 cover model 0-call path；用途卡出唔出仍依賴 weak model 自覺（SK 09-05 唔接受嘅 not-every-times 行為）
+13. **⚠️ MC 線暫停（SK 07:4x 指示「delete mc line for now」）**：R8 **未 dispatch**、未設計——下次 session 開頭 = **cursor 3-POV design discussion**（定 tool path deterministic 補 uses 卡架構；照 SK 2026-09-06 重複問題規則——卡顯示已 R5→R7 連環，先傾根因唔好自己 patch）。MC repo HEAD = `0fd90cd`（ahead origin 未 push，照舊）。煙測記錄喺本節——MC repo 自己 HANDOFF 仍停喺 02:13。
+14. **抖音線（同 session side quest）**：douyin-absorption-biweekly force run（SK 批 bypass gate）完成——**315 條 baseline**（首次真 baseline；舊 scan 漏 note/冇 hashtag 卡，+117 多數係 coverage gap）；improve plan R1/R2/R6 **三項 SK 全批**（Hermes 執行緊，見 media_import）
+
 ---
 
 ## 今日（2026-09-06 session）—— MC 線：附魔 Wave 7→22 agentic `enchant_lookup` pivot + `repair_lookup` plan（cursor dispatch 已完成）（JARVIS ONE 無 code 改動）
