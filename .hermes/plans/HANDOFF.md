@@ -45,6 +45,7 @@
     - **Root cause**：tool path（model 有 call 但淨 output）冇 deterministic 補 uses 卡機制——R6 autoEmission 補卡只 cover model 0-call path；用途卡出唔出仍依賴 weak model 自覺（SK 09-05 唔接受嘅 not-every-times 行為）
 13. **⚠️ MC 線暫停（SK 07:4x 指示「delete mc line for now」）**：R8 **未 dispatch**、未設計——下次 session 開頭 = **cursor 3-POV design discussion**（定 tool path deterministic 補 uses 卡架構；照 SK 2026-09-06 重複問題規則——卡顯示已 R5→R7 連環，先傾根因唔好自己 patch）。MC repo HEAD = `0fd90cd`（ahead origin 未 push，照舊）。煙測記錄喺本節——MC repo 自己 HANDOFF 仍停喺 02:13。
 14. **抖音線（同 session side quest）**：douyin-absorption-biweekly force run（SK 批 bypass gate）完成——**315 條 baseline**（首次真 baseline；舊 scan 漏 note/冇 hashtag 卡，+117 多數係 coverage gap）；improve plan R1/R2/R6 **三項 SK 全批**（Hermes 執行緊，見 media_import）
+15. **Hermes Vault MVP 建成（SK 全流程：deep-read 4 片 → design → review 2 輪 + online research + cursor review → full plan → 再 review → go）**：`Documents\Hermes_Vault\`（00_收件箱 + 03_收藏吸收 6 條 notes + MOC + README）；content-absorption skill P4/P5/Outputs/Refs/Noise patch（per-item vault notes）；douyin cron prompt update（notes→vault，raw/plan 留 media_import，backup 喺 media_import\cron_prompt_backup_20260907.txt）；AGENTS.md 加 Vault 投餵規則（SK「記低/存起」→ inbox）。**成功標準 2-3 週**：Agent ≥2 次 grep vault 避免重複提案 或 SK ≥1 次問「收藏過 X」有答案——否則 flip 砍 vault。Design/plan/review records：`media_import\2026-09-07-hermes-vault-{design,implementation-plan}.md`
 
 ---
 
