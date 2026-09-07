@@ -57,6 +57,12 @@
     - **LOW 14（AI 內冇 note）id 全記錄**入 douyin_import_notes.md
 18. **分類修正**：douyin_classified_20260907.json + douyin_ai_batch.json 5 條 other→ai（ai 94/other 20/noise 3；backup .bak-*）；improve plan 加 caption-bleed 實錘教訓（下次 cron 增量逐條 API verify + batch scan 存疑抽樣）；Vault 03 = **78 notes**（absorbed 29/deep 49）+ MOC 79
 
+**（續 15:3x–15:5x，SK「hand off, then mc line」——今日 tail 收口）**
+
+19. **SK 問「agents.md 要唔要加？」→ 結論唔使**（caption-bleed 係 pipeline 操作知識，已落 skill/plan）；但 **content-absorption skill 加 Exclusion ledger 規則**（triage 排除 item 一定要記 id + 一句原因——09-04 + 09-07 兩次「N 條冇 id」重複坑；分類/吸收前 detail-API 驗證真 desc 回寫 classified）
+20. **SK 問「有冇 logic 可以用？」→ 對照 9179 Agent Loop 5 問 vs 我哋 config**：發現 `tool_loop_guardrails.hard_stop_enabled: false`（默認淨 warn 唔停）→ **SK「open it」→ 已開 true**（hermes config set，backup config.yaml.bak-20260907_153839；規則：exact_failure 5 / no_progress 5 / same_tool_failure 8 硬停，warn 2/2/3 照舊）——Agent Loop 坑1 工具層保險落地
+21. **SK 拍板：「hand off, then mc line」——MC 線重開**：下一步 = R8 cursor 3-POV design discussion（tool path deterministic 補 uses 卡；根因見上 §12——model 有 call tool 但淨 output、用途卡出唔出靠 weak model 自覺；SK 2026-09-06 規則：卡顯示已 R5→R7 連環，先傾根因唔好自己 patch）
+
 ---
 
 ## 今日（2026-09-06 session）—— MC 線：附魔 Wave 7→22 agentic `enchant_lookup` pivot + `repair_lookup` plan（cursor dispatch 已完成）（JARVIS ONE 無 code 改動）
