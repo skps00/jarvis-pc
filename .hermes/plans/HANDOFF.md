@@ -48,6 +48,15 @@
 15. **Hermes Vault MVP 建成（SK 全流程：deep-read 4 片 → design → review 2 輪 + online research + cursor review → full plan → 再 review → go）**：`Documents\Hermes_Vault\`（00_收件箱 + 03_收藏吸收 6 條 notes + MOC + README）；content-absorption skill P4/P5/Outputs/Refs/Noise patch（per-item vault notes）；douyin cron prompt update（notes→vault，raw/plan 留 media_import，backup 喺 media_import\cron_prompt_backup_20260907.txt）；AGENTS.md 加 Vault 投餵規則（SK「記低/存起」→ inbox）。**成功標準 2-3 週**：Agent ≥2 次 grep vault 避免重複提案 或 SK ≥1 次問「收藏過 X」有答案——否則 flip 砍 vault。Design/plan/review records：`media_import\2026-09-07-hermes-vault-{design,implementation-plan}.md`
 16. **抖音批量 deep-read 第一批完成（SK「start read」）**：AI 89 條 triage → **70 條入 vault/03**（31 caption + 39 ASR——26 video 全 ASR 處理）+ 5 vault 重複 + 14 低價值唔入。**Vault 03 共 76 條 notes**（absorbed 27/deep-read 49）。確認大量 practice 已 cover（skill mgmt/code review 兩次/驗收/adoption gate/llm-wiki/vault 概念）；新參考 5 項（影響分析、RAG anchor、跨 model agent、Codex vs CC 分工、反迎合 prompt）記錄喺 douyin_import_notes.md。**未做**：other 25 條 triage、LOW 14 條記錄、improve plan 更新、新 gap 嘅 skill patch（如有）——下次 session 續
 
+**（續 14:5x–15:0x，同 session 流延續——other-25 triage 補完，SK「go」）**
+
+17. **other-25 triage 完成（15:0x）**：逐條 detail-API verify → **發現 5 條係 caption cross-card bleed 漏網 AI**（classified 卡面 caption 配錯，keyword 分類誤判 other）：
+    - 2 條高價值已補入 vault/03（**Agent Loop 4 坑保險** 7682456452490189179 note 6 圖全 deep-read——坑1 冇停止條件/坑2 自治冇驗收/坑3 目標不可檢查/坑4 超單 loop 邊界，總結運行前 5 問——同 weii.dev 一致確認性吸收；**AI 編程三行 config 慳六成** 7682265273868487653 video ASR 65s——model 檔位分檔 + 思考額度 30000→10000 + gate 文化，SK 資源敏感直接相關）
+    - 3 條 LOW 記錄唔入庫（Linux CLI 5 tips、AIPM 新聞、馬斯克 AI 睇市場疑似 hype）
+    - 其餘 17 條真生活/廣告/娛樂全部唔入庫；7480123072914246946 API 全 fail（疑似刪）
+    - **LOW 14（AI 內冇 note）id 全記錄**入 douyin_import_notes.md
+18. **分類修正**：douyin_classified_20260907.json + douyin_ai_batch.json 5 條 other→ai（ai 94/other 20/noise 3；backup .bak-*）；improve plan 加 caption-bleed 實錘教訓（下次 cron 增量逐條 API verify + batch scan 存疑抽樣）；Vault 03 = **78 notes**（absorbed 29/deep 49）+ MOC 79
+
 ---
 
 ## 今日（2026-09-06 session）—— MC 線：附魔 Wave 7→22 agentic `enchant_lookup` pivot + `repair_lookup` plan（cursor dispatch 已完成）（JARVIS ONE 無 code 改動）
