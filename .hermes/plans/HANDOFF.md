@@ -9,6 +9,22 @@
 
 ---
 
+## 今日（2026-09-08 session 尾）—— MC 線 planning：friend wishlist 三層分類 + tools 拆法決策（維持現狀 8:2）（JARVIS ONE 無 code 改動）
+
+> Discord session：承接 09-08 06:49「查看武刃武器详细属性」thread（friend wishlist 8 項討論，auto-reset 後 SK 問「which better?」）→ 重讀 history → 決策 → 歸檔。**真實權威 = MC repo 自己 plans + 本節**（jarvis-pc HANDOFF 對 MC 線一向 lag，先例一致）。
+
+1. **SK「which better?」= 問 tools 拆法 A/B/C/D 揀邊個**（上 session 尾我列出四種拆法問 SK 揀）→ 逐項 adversarial 分析 + 實錘現況（`AskEngine.java` L30-46 硬註冊 14 個內建 tools，同一個 jar、玩家冇得揀；Scope Y `registerExternal` 已上 0.2.0 stored-only）：
+   - **A. 分 jars（可選 mod 模組）✗**：dual-tree × 每 jar = 版本矩陣爆炸、玩家安裝複雜；MC 慣例係一個 mod 內 extensible API（JEI/EMI plugin），唔係拆 mod
+   - **B. config 開關**：只係「閂現有」——friend 想要嘅係「加新」，B 俾唔到；只可做 registry side option
+   - **C. data/logic 分離 ✗**：friend wishlist 大部份係 runtime state（飾品/器官/機台速度）+ logic（Psi）——唔係 data 餵得到；為一個 friend 做 data framework = over-engineering
+   - **D. 開放 tools API ⚠️ 方向啱、時機錯**：D 受眾 = 第三方 mod dev；friend 係玩家唔寫 tool。packai 自己 player_state 都未有
+   - **Verdict 8:2 = 維持現狀：唔拆 jar、唔開放**；要做只係 **D 第一步「內部 registry 化」**（14 隻 hard-code tools → registry，令 packai 自己加 player_state built-in tool 唔使改 `AskEngine`）。反轉條件：出現第二個真係想自己寫 tool 嘅人先升 public API
+2. **Friend wishlist 8 項三層分類**（逐項 code 實錘）：已實現 ✅ #3 冇 item JEI 查（ItemSearchAskTool）/ #7 季節（SeasonContext）/ #8 部分 hover；要 **player-state tool** 🟡 #2 期望 DPS（SK 糾正：要連飾品/器官/藥水 buff 先係 friend 想要——raw attribute 已有但玩家 state 冇管道）/ #5 機台速度傾向（mirror coalesce 令 model 睇唔到邊部快）；要 mod 整合 ❌ #1 Psi 術式 / #4 深鏈（淺鏈 skill 可但撞 MAX_LLM_ROUNDS=3）/ #6 Regenerate UI。**教訓：skill = 最後一里——data 唔齊入 model 眼，skill 點教都冇用**（同武刃 root cause = data/capture 層一致）
+3. **歸檔**：`super_minecraft_AI_player/docs/plans/friend-wishlist-2026-09-08.md` 已寫（SK「ok」批）→ **commit 待做**。MC repo HEAD = `fd7d314`（skill-system-dropin v1 docs commit，09-08 10:12；內文已引 friend-wishlist 教訓）
+4. **下次 session 開頭**：commit friend-wishlist 歸檔（MC repo）→ 等 SK 煙測 R8 Fix E jar（restart MC 問「铁镐有什么用途、配方和取得方式？」→ 期望 5 卡：2 合成 + 3 用途全對應 prose、無孤兒）→ PASSED 先 push MC repo 6 commits（ahead origin）→ Arch-3 round。Friend-wishlist roadmap 下一步 = **`player_state` tool 設計**（registry 化 prerequisite）
+
+---
+
 ## 今日（2026-09-07 session）—— MC 線：R5.3 真機煙測 + 3 bug 實錘 + R6 cursor fix in-flight（JARVIS ONE 無 code 改動）
 
 > Discord session 03:0x：SK「read hand off」→ 發現 **jarvis-pc HANDOFF 過時**——實際 MC main 已到 `21e119f`（09-07 01:00，全部 push origin），repair_lookup（Wave23 `4f860fa`）+ R3-R6A + R4/R5/R5.x 卡顯示架構終局早已完成 deploy（現役 jar R5.3 sha `30aaa548`）。**真實權威 = MC repo 自己嘅 `.hermes/plans/HANDOFF.md`（09-07 02:13 更新）**，唔係呢份。
