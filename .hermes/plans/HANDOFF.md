@@ -23,6 +23,13 @@
 3. **歸檔**：`super_minecraft_AI_player/docs/plans/friend-wishlist-2026-09-08.md` 已寫（SK「ok」批）→ **commit 待做**。MC repo HEAD = `fd7d314`（skill-system-dropin v1 docs commit，09-08 10:12；內文已引 friend-wishlist 教訓）
 4. **下次 session 開頭**：commit friend-wishlist 歸檔（MC repo）→ 等 SK 煙測 R8 Fix E jar（restart MC 問「铁镐有什么用途、配方和取得方式？」→ 期望 5 卡：2 合成 + 3 用途全對應 prose、無孤兒）→ PASSED 先 push MC repo 6 commits（ahead origin）→ Arch-3 round。Friend-wishlist roadmap 下一步 = **`player_state` tool 設計**（registry 化 prerequisite）
 
+**（續 16:22–18:39，同 session 流延續——狀態修正 tail；cron 09-09 核實補檔）**
+
+5. **16:22 同步 commit ×2（同一秒）**：MC repo `dec1471`（docs(plan): friend wishlist 三層分類 + tools 拆法決策 2026-09-08——`docs/plans/friend-wishlist-2026-09-08.md` 16:21 寫）＋ jarvis-pc `8b80e81`（本 HANDOFF section）。MC HEAD = `dec1471`（當時以為「commit 待做」嘅記錄即刻已做咗）。
+6. **⚠️ 18:38 狀態修正（上面 item 3/4 已過時，唔好照跟）**：session 尾 SK 指出 Fix E 朝早 06:45 已煙測完——debug.log 實錘 `renderCards item=minecraft:iron_pickaxe role=output scannedCats=2 foundOutput=2` → `toolCards emission=2 cardsOut=2`（2 張合成卡）→ `usesSupplement count=3`（補 3 張用途卡、全有文字錨）＝**5 卡期望 PASSED**。item 27/28 嘅「未 smoke」係 05:19 舊資料誤導（06:45 煙測喺前一個 session 尾段已發生）。
+7. **真正狀態（git 實錘 09-09）**：0.2.0 release `5192862`（09:16 bump + README + CurseForge description）→ CF desc top-mod style remake `6f8e5b2`（09:46）→ skill-system drop-in v1 plan `fd7d314`（10:13）**已 commit 已 push**；MC HEAD = `dec1471`，**ahead origin 淨低 1（dec1471 未 push）**，working tree clean。skill-system plan（內文已引 friend-wishlist 教訓：武刃 = data-layer 唔係 skill 層）**未 review**。
+8. **等 SK 揀（18:39 列出 4 選項，未拍板）**：① push `dec1471`（docs 一句嘢）② review skill-system plan ③ Arch-3 round（askNoTools catalog merge——設計已收斂，等 go）④ JARVIS alerts.py ctypes fix（等批）。**09-09 00:15 SK 問「what is 3?」** → 解釋 Arch-3（3a askNoTools 食 `recipeCardLines` ⊕ merge full dump 唔 replace，保 machine/REQUIREMENTS/獲取；3b shot0 毒化 fix 方案 A；3c purpose 加厚 YAGNI 暫緩）——**淨問答、冇新工作**。JARVIS ONE 自身無 code 改動（全部 MC repo）。
+
 ---
 
 ## 今日（2026-09-07 session）—— MC 線：R5.3 真機煙測 + 3 bug 實錘 + R6 cursor fix in-flight（JARVIS ONE 無 code 改動）
