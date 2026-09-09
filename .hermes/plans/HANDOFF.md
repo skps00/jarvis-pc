@@ -487,7 +487,7 @@
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
 
-- 🟡 **alerts.py ctypes 64-bit hwnd bug**（2026-09-05 daily self-review cron 發現；已入 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-05，該檔未 commit）：user32 函數冇宣告 argtypes → EnumWindows callback 遇 64-bit hwnd（>2^31）`ctypes.ArgumentError: int too long to convert` → `_tick_discord`/`_tick_cursor` 視窗掃描斷 → **Discord unread / Cursor approval 自動提醒可能漏**（~54/min err、serve.log 脹 9.4MB；wake/STT/TTS 正常、queue 0 backlog）——細 fix 低風險（argtypes 宣告，須經 cursor-agent），**等 SK 決定幾時修**
+- ✅ **alerts.py ctypes 64-bit hwnd bug：已修（2026-09-10，commit `1bdac68` 未 push）**——cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠；詳見頂部「今日（2026-09-10 session）」；**等 SK 話事 push**／sidecar restart 生效
 
 ## 陷阱（重溫）
 
