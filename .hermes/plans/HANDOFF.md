@@ -9,6 +9,20 @@
 
 ---
 
+## 今日（2026-09-10 session）—— alerts.py ctypes 64-bit fix（commit 1bdac68，未 push）
+
+> Discord session（承接 09-09 backlog #2）。Sidecar 已恢復 healthy（jarvis_sidecar_health.py DOWN path 已修）。
+
+- **#2 alerts.py 64-bit fix 完成**：cursor-agent 改 `src/jarvis/alerts.py`——新增 `_declare_winapi()` helper + 4 call sites（L283 `_list_windows_for_pids`、L312 `_exe_for_hwnd`、L421 `_cursor_hwnds_for_pids`、L892 `_hook_loop`）declare user32/kernel32 argtypes，stop 64-bit HWND overflow（`ctypes.ArgumentError: int too long to convert`）。eval_gate 全綠（golden 348/regression 16/stress 68，HASH 0b88e6f6bab43269）；runtime check `IsWindowVisible(0xffffffff)->0` PASSED。
+- **commit `1bdac68`（本地，未 push）**——等 SK 話事 push／sidecar 下次 restart 生效
+- **#3 sidecar DOWN monitor 修復**（Hermes scripts，唔喺 repo）：`$LOCALAPPDATA\hermes\scripts\jarvis_sidecar_health.py`——DOWN 期間 exit 1 → cron 當「monitor source failed」每 tick ERROR → fingerprint 冇行；已改 DOWN 都 exit 0 + 穩定 fingerprint（`DOWN unhealthy`／`DOWN {type}`）。已驗證 EXIT=0。
+- ⚠️ working tree 淨低 pre-existing `self-evol-SUGGESTIONS.md` 修改（非本次範圍，冇郁）
+
+## Next（下次 session）
+- **push `1bdac68`**（等 SK 話事）＋ sidecar restart 後確認 alerts 正常
+- backlog 其餘（skill-system 暫緩 / Arch-3 聽日開工 / ComfyUI 等拍板）——見 MC repo HANDOFF
+
+---
 ## 今日（2026-09-09 session）—— ⚠️ Sidecar 8765 朝早 DOWN（~06:15 後–10:37 前）→ 已自行恢復；cron pause/resume（SK 指示）；無 code 改動
 
 > Discord session 08:25（承接 cron 05:45 已補嘅 00:15「what is 3?」問答後）。**真實權威 = 本節 + cron output 檔**（`cron/output/6a98a79be95f/`）。
