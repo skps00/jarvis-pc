@@ -59,6 +59,54 @@ WM_DESTROY = 0x0002
 WM_QUIT = 0x0012
 
 
+def _declare_winapi() -> None:
+    """Declare user32/kernel32 argtypes so 64-bit HWNDs never truncate.
+
+    ctypes defaults to c_int (32-bit) for undeclared params — EnumWindows
+    feeds back real 64-bit HWNDs (> 2^31) which then raise
+    ``ctypes.ArgumentError: int too long to convert`` inside the callback,
+    aborting the whole enumeration. Fix = declare argtypes/restype once.
+    """
+    if sys.platform != "win32":
+        return
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    WNDENUMPROC = ctypes.WINFUNCTYPE(
+        wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+    )
+    # EnumWindows-family (callback receives real HWND values)
+    user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    user32.IsWindowVisible.restype = wintypes.BOOL
+    user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
+    user32.GetWindowTextLengthW.restype = ctypes.c_int
+    user32.GetWindowTextW.argtypes = [
+        wintypes.HWND, wintypes.LPWSTR, ctypes.c_int
+    ]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetWindowThreadProcessId.argtypes = [
+        wintypes.HWND, ctypes.POINTER(wintypes.DWORD)
+    ]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.EnumWindows.argtypes = [WNDENUMPROC, wintypes.LPARAM]
+    user32.EnumWindows.restype = wintypes.BOOL
+    # Process query (exe path for a hwnd)
+    kernel32.OpenProcess.argtypes = [
+        wintypes.DWORD, wintypes.BOOL, wintypes.DWORD
+    ]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.QueryFullProcessImageNameW.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    user32.PostMessageW.argtypes = [
+        wintypes.HWND, wintypes.UINT, ctypes.c_size_t, ctypes.c_size_t
+    ]
+    user32.PostMessageW.restype = wintypes.BOOL
+
+
 @dataclass
 class AlertEvent:
     """One spoken alert."""
@@ -284,6 +332,7 @@ def _list_windows_for_pids(pids: set[int]) -> list[str]:
     """Visible window titles owned by *pids* (Windows)."""
     if sys.platform != "win32" or not pids:
         return []
+    _declare_winapi()
     user32 = ctypes.windll.user32
     titles: list[str] = []
 
@@ -313,6 +362,7 @@ def _exe_for_hwnd(hwnd: int) -> str:
     """Best-effort full path of process owning *hwnd*."""
     if not hwnd:
         return ""
+    _declare_winapi()
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
     pid = wintypes.DWORD()
@@ -422,6 +472,7 @@ def _cursor_hwnds_for_pids(pids: set[int]) -> list[int]:
     """Visible top-level HWND owned by *pids*."""
     if sys.platform != "win32" or not pids:
         return []
+    _declare_winapi()
     user32 = ctypes.windll.user32
     out: list[int] = []
 
@@ -891,6 +942,7 @@ class AlertWatcher:
 
     def _hook_loop(self) -> None:
         """Hidden message window + RegisterShellHookWindow for HSHELL_FLASH."""
+        _declare_winapi()
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
         LRESULT = ctypes.c_ssize_t
