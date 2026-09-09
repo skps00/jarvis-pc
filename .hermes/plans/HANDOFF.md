@@ -9,6 +9,18 @@
 
 ---
 
+## 今日（2026-09-09 session）—— ⚠️ Sidecar 8765 朝早 DOWN（~06:15 後–10:37 前）→ 已自行恢復；cron pause/resume（SK 指示）；無 code 改動
+
+> Discord session 08:25（承接 cron 05:45 已補嘅 00:15「what is 3?」問答後）。**真實權威 = 本節 + cron output 檔**（`cron/output/6a98a79be95f/`）。
+
+1. **08:25 SK「what happen?」→ 診斷發現 sidecar 8765 DOWN**（connection refused）：`jarvis-sidecar-health` cron（6a98a79be95f）08:07–08:51 每 run 報 `DOWN URLError: [WinError 10061]`；`jarvis-alerts` MCP（指 8765/mcp）reconnect 5 次失敗後 parking、每 300s self-probe；系統冇 sidecar process（淨 Hermes gateway ×2 + `hermes_alert_poll_loop.py` pythonw）；gateway 06:39 曾 restart（06:38 `gateway-exit-diag.log`），Discord/API connected 正常。
+2. **SK「stop that for now」→ 澄清係「stop that job」→ 08:53 pause `jarvis-sidecar-health`（6a98a79be95f）**；**10:38 SK「resume it」→ resume**（job enabled、照跑）。
+3. **⚠️ Sidecar 已自行恢復**：10:37 resume 後首 run `no_change`（fingerprint 回 08-31 OK hash）＋ 10:39 curl `/health` 實錘 `{"ok":true,"wake_on":true}`（PID 24992 listening 8765）——實際恢復時間喺 08:53–10:37 之間（估計 Electron respawn 或 SK 開返 JARVIS，未確認）。
+4. **脆弱位（記低，SK 叫唔好而家郁）**：health script DOWN 時 `exit 1` → cron 當「monitor source failed」ERROR spam（唔當 fingerprint change）→ **DOWN 唔會 wake agent、SK 收唔到 alert**——monitor pattern 對 DOWN 狀態失效（只喺恢復後 no_change）。下次想整先整：DOWN 應 `exit 0` + 印固定 DOWN fingerprint（照 docstring 原意）。
+5. **下次優先序**（承 cron 05:45 已記嘅 4 選項 backlog 不變：① push MC `dec1471` ② review skill-system plan ③ Arch-3 round ④ alerts.py ctypes fix）＋ 新加：sidecar DOWN 冇 alert 嘅 monitor 修復（可選，等 SK go）。
+
+---
+
 ## 今日（2026-09-08 session 尾）—— MC 線 planning：friend wishlist 三層分類 + tools 拆法決策（維持現狀 8:2）（JARVIS ONE 無 code 改動）
 
 > Discord session：承接 09-08 06:49「查看武刃武器详细属性」thread（friend wishlist 8 項討論，auto-reset 後 SK 問「which better?」）→ 重讀 history → 決策 → 歸檔。**真實權威 = MC repo 自己 plans + 本節**（jarvis-pc HANDOFF 對 MC 線一向 lag，先例一致）。
