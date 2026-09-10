@@ -224,3 +224,14 @@
   3. **Phase 2 通用 app detection framework** ✅（2026-09-03：APP_DEFS registry + detect_running_apps + sk_activity `apps` 欄位，parity 16/16 + 獨立 review PASS；sidecar watch 泛化被 review 砍走——等 consumer 先做）
   4. G 人手實測（等新 mic；Settings tab 唔關 mic 事可隨時）
   5. stt_stats／clarify_stats 等數據 ≥7 日先接 cron monitor
+
+---
+
+## 現況 sync（2026-09-10）
+
+- **alerts.py ctypes 64-bit fix**：code 已修 + 已 push（`1bdac68`，09-09 22:42）；**但 sidecar 未重啟 → 未生效**（serve.log 09-10 23:25 = 136MB／370,905 次 `int too long to convert`）→ 等 SK 開聲 kill 8765 python（Electron ~90s respawn）+ truncate log
+- **Skills（09-10）**：`brainstorming` 移植入 Hermes（唔裝 superpowers plugin——14 skills 中 ≥5 個同現有重疊）；`ponytail` 裝 Cursor rules（`~/.cursor/rules/ponytail.mdc`）；新增／更新 `ai-content-monetization`／`chart-report-pdf`／`pdf-report-pipeline`／`comfyui-desktop-headless`（video pipeline ref）／`windows-hardware-monitoring`（rtx-5090-power-safety）
+- **skill-router**：Layer 1 observer only、would-block 83.9% → Layer 2 唔開（見 `plans/2026-09-03_skill-router-verify-plan.md`）
+- **AI_Studio 線（新，非 JARVIS）**：市場調查 + 9 頁 PDF 報告已交付（`Documents\AI_Studio\docs\report_20260910\`）；設計書 `docs\plans\2026-09-10-ai-video-production-design.md`；等 SK 拍板路線
+- **MC 線**：Arch-3/3a 已落地未 commit（`askNoTools` 食 `[RECIPE_CARDS]` catalog）；`compileTestJava` HEAD 已壞（pre-existing）→ 想恢復 Java harness 要另開一輪
+- **仍然等 SK**：新 mic（G 人手實測 pause；Settings tab 可隨時測）／LHM 開機 autostart（等真 reboot）／stt_stats・clarify_stats 數據 ≥7 日

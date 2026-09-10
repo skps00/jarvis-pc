@@ -2,27 +2,51 @@
 
 > **呢個係固定 handoff 檔**（2026-08-30 起）：每次 session 結束**更新呢份**，唔好開新日期檔；舊交接版本移入 `plans/archive/`。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊 + Self-Evol Task 0-9 全部完成（Phase A-E 基建落地）+ Content Absorption Framework 已落地（2026-09-02）**。讀呢份之前先讀：
+> **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
+>
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 但 sidecar 未重啟＝未生效（serve.log 136MB flood）；MC 線 Arch-3/3a 已落地未 commit**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
 
 ---
 
-## 今日（2026-09-10 session）—— alerts.py ctypes 64-bit fix（commit 1bdac68，未 push）
+## 今日（2026-09-10 session）—— 全日三 session：alerts fix push + MC Arch-3/3a 落地（未 commit）+ AI_Studio 市場調查報告
 
-> Discord session（承接 09-09 backlog #2）。Sidecar 已恢復 healthy（jarvis_sidecar_health.py DOWN path 已修）。
+> 09-10 全日 = ① 00:15–02:30 跨午夜 MC 線 ② 07:35–09:35 Discord session（`20260910_073539_3e2db227`）③ 20:05–20:56 JARVIS voice + api_server session（`jarvis-07b64fe6`）。
 
-- **#2 alerts.py 64-bit fix 完成**：cursor-agent 改 `src/jarvis/alerts.py`——新增 `_declare_winapi()` helper + 4 call sites（L283 `_list_windows_for_pids`、L312 `_exe_for_hwnd`、L421 `_cursor_hwnds_for_pids`、L892 `_hook_loop`）declare user32/kernel32 argtypes，stop 64-bit HWND overflow（`ctypes.ArgumentError: int too long to convert`）。eval_gate 全綠（golden 348/regression 16/stress 68，HASH 0b88e6f6bab43269）；runtime check `IsWindowVisible(0xffffffff)->0` PASSED。
-- **commit `1bdac68`（本地，未 push）**——等 SK 話事 push／sidecar 下次 restart 生效
-- **#3 sidecar DOWN monitor 修復**（Hermes scripts，唔喺 repo）：`$LOCALAPPDATA\hermes\scripts\jarvis_sidecar_health.py`——DOWN 期間 exit 1 → cron 當「monitor source failed」每 tick ERROR → fingerprint 冇行；已改 DOWN 都 exit 0 + 穩定 fingerprint（`DOWN unhealthy`／`DOWN {type}`）。已驗證 EXIT=0。
-- ⚠️ working tree 淨低 pre-existing `self-evol-SUGGESTIONS.md` 修改（非本次範圍，冇郁）
+**深夜 00:15–02:30（MC 線，跨午夜；詳見 MC repo HANDOFF）**
+- **武刃 tooltip root cause 實錘**（推翻 09-08 cursor report 嘅「NBT-gated lore」inference）：真兇 = `AskService.trimPurposeTooltip` L495 `if (kept>=8 && !claim) break;`——武刃頭 8 行係 stats、第 11 位先係綠色 claim 行，break 就剪走 → fix `900a7e4`（forge，`break`→`continue`）+ `96ad78a`（neoforge sync + bump 0.2.1），**已 push**；CF 8845552/8845554 upload + verify；instance 已 deploy `packai-0.2.1`。smoke 實錘 `claimHints src=232/out=0` → `src=278/out=1`
+
+**07:35–09:35（Discord session「Read hand off #4」）**
+1. **Backlog 三 repo 全面核對**（SK 連問「only those task left?／check more, is it all? and is it some of them are done?」）——jarvis-pc / MC / Earth_Online 逐項對 git + cron 實錘，剔走已完成項
+2. **ComfyUI 線定方向 = 變現**（SK「make some money」）→ 確認環境（ComfyUI API server 8000 healthy v0.34.0；MiniMax H3 模型已齊）→ 設計書 `AI_Studio\docs\plans\2026-09-10-ai-video-production-design.md`
+3. **Skills 決策（SK 問「install super power and ponytail skill first」）**：兩者 review 全綠（superpowers 284K★／ponytail 133K★，MIT、09-07/08 仍有 push）→ **唔裝成個 superpowers plugin**（14 skills 中 ≥5 個同現有重疊——systematic-debugging／TDD／requesting-code-review／writing-plans／writing-skills；會令 09-03 嘅 128→117 整合成果 + 揀選噪音回歸）；**只移植 `brainstorming`** 入 Hermes（08:09）；**ponytail 裝 Cursor rules** `~/.cursor/rules/ponytail.mdc`（08:08，headless cursor-agent 自動食，零依賴）
+4. **skill-router 現狀查證**（SK 問「router 可以 cover 咩？」）：實錘 `skill-router-verify` 係 **Layer 1 observer only**（唔 block）；366 entries 中 **would-block 83.9%** → **Layer 2 唔開**（會誤殺大量正常揀選）；結論 = 唔好再加重疊 skills
+5. **AI 影片市場調查 + PDF 報告**（SK「順便同我做一個詳細嘅市場調查」→「整理成報告 send 畀 friend」）：research note `AI_Studio\docs\research\2026-09-10-market-research.md`（09:22）→ 5 圖表 + 9 頁 PDF `AI_Studio\docs\report_20260910\AI影片市場調查報告-20260910.pdf`（09:31；SK 反饋標題孤兒頁 → 加 CSS 分頁控制，10→9 頁）。重點：**AI 工具教學 RPM $8-20、+340% YoY 且唔需要 5090**；Shorts RPM ~$0.13；一般 ASMR 最飽和
+6. **5090 power limit 安全查證**（SK 問）：power limit 唔係免死金牌（根因 = 接頭接觸電阻）→ skill `windows-hardware-monitoring/references/rtx-5090-power-safety.md`（09:29）
+7. **Skills 更新一批（09-10 全日）**：`brainstorming`（新移植）／`ai-content-monetization`（09:13）／`chart-report-pdf`（09:29）／`pdf-report-pipeline`（09:33）／`comfyui-desktop-headless` video-production-pipeline ref（09:12）／`windows-hardware-monitoring` rtx-5090-power-safety（09:29）／`sk-reporting-style`（07:49）／MC skill refs（wuren trim rootcause ×2、packai-ask-prompt-assembly、packai-java-check-harness）
+
+**同期：09:00 cron self-review 發現 TREND-err-2026-09-10**
+- serve.log 當時 87.8MB、ctypes `int too long to convert` 累計 232,011 次 → **`1bdac68` 未生效**（sidecar 由 09-09 10:36 起冇重啟，早過 commit ~12 小時）；建議 kill 8765 python + push + truncate log；狀態 🟡 待 SK（`.hermes/plans/self-evol-SUGGESTIONS.md`）
+
+**晚 20:05–20:56（JARVIS voice + api_server session）**
+8. **語音 session ×2**（20:05 `jarvis-14655cc5`／20:18 `jarvis-8feaa634`）：ASR 誤聽成「都买啦，你再是」→ 查實 settings 仍係 Arctis Nova 7、裝置清單未見新 mic → **新 mic 仍未到位，mic 相關實測繼續 pause**
+9. **SK「你任意一個你点出都行」→ agent 自行拍板揀 MC 線 Arch-3/3a 並落地（code 未 commit）**：`askNoTools()` 由 `jeiForLlm()`（raw JEI、冇 `[RECIPE_CARDS]`）改 `jeiForLlmFull()` = `recipeCatalogForLlm()` ⊕ `mergeJeiCatalogFull()`（**merge 唔 replace**，剝走重複 catalog block）+ 抽 `capableForTools()`；雙樹 sync。驗收（agent 自己跑，唔信 cursor 自報）：雙樹 compileJava BUILD SUCCESSFUL；**真 AskEngine bytecode scratch harness `-ea` 8 case PASS**；python checks 93 PASS / 3 FAIL（`git stash` 對 baseline 證實 pre-existing）；cursor review 兩輪（首輪 2 MED 已修）
+10. **`1bdac68` 已 push**（20:37 實錘 `origin/feature/hermes-alerts-mcp` 已含，ahead/behind 0/0）——但 **sidecar 未 restart → fix 未生效**（09-10 23:25 實測 serve.log 136MB／370,905 次 flood）
+11. **23:24 本 session（Discord「read hand off, and history, find diff, then update it base on time」）**：逐項核對 git（jarvis-pc ahead 1 = `f07073d`；`1bdac68` 確認喺 origin）+ 檔案 mtime（AI_Studio 報告 09:31、skills 09-10 全日）+ cron/API session 記錄 → 補齊 09-10 全日三 session 內容、**全文改成時間倒序**（新 section 一律加最頂，規則寫入檔頭）、更新「剩低」alerts 條目 → docs commit
+12. **兩邊 HANDOFF 已更新 + commit**：jarvis-pc `f07073d`（**未 push**）、MC repo docs commit（已同步）
+13. ⚠️ 順手發現：MC repo **`compileTestJava` HEAD 已經壞**（2 個 error 指向 Arch-1 移除嘅 `LlmClient.toolSchemaDescription(String)`）→ repo Java harness 跑唔到，今次用 scratch harness 頂住
 
 ## Next（下次 session）
-- ✅ **`1bdac68` 已經 push**（2026-09-10 20:37 實錘：`origin/feature/hermes-alerts-mcp` 已含，ahead/behind = 0/0）——但 **sidecar 未 restart → fix 未生效**：`%APPDATA%\Jarvis\serve.log`（已脹到 127MB）20:37 仍見 `ctypes.ArgumentError: int too long to convert` flood。**待 SK 開聲**：kill 8765 嘅 python（Electron 90s 內自動 respawn）→ 之後 grep serve.log 確認 flood 停。⚠️ 期間 JARVIS 語音（wake/STT/TTS）會停 ~90s，所以唔喺 SK 打機時做。
-- backlog 其餘（skill-system 暫緩 / **Arch-3 3a 已落地、未 commit（見 MC repo HANDOFF）** / ComfyUI 等拍板）——見 MC repo HANDOFF
+1. **等 SK 一句話（3 件一次做完）**：① kill 8765 嘅 python（Electron ~90s 自動 respawn）令 `1bdac68` 生效 → grep serve.log 確認 flood 停（**唔喺 SK 打機時做**，語音會停 ~90s）② push jarvis-pc `f07073d`（docs）③ truncate serve.log（已 136MB／370,905 次）
+2. **MC Arch-3/3a commit**（建議 `fix(ask): keep [RECIPE_CARDS] catalog on no-tools fallback path`）→ SK restart game 真機煙測；之後 3b shot0（方案 A）；3c YAGNI 暫緩
+3. **MC `compileTestJava` pre-existing 損壞**：要唔要另開一輪修返（恢復 repo Java harness）
+4. **AI_Studio 線（等 SK 拍板）**：報告已交付；下一步 = Obsidian prompt DB／MiniMax H3 I2V 實測／路線揀邊條（報告建議雙線：AI 工具情報頻道 + 長線 AI 短劇）
+5. backlog 不變：skill-system 暫緩；G 人手實測（等新 mic；**Settings tab 唔關 mic 事可隨時測**）；LHM 開機 autostart（等真 reboot）；stt_stats／clarify_stats 等數據 ≥7 日接 cron monitor
 
 ---
+
 ## 今日（2026-09-09 session）—— ⚠️ Sidecar 8765 朝早 DOWN（~06:15 後–10:37 前）→ 已自行恢復；cron pause/resume（SK 指示）；無 code 改動
 
 > Discord session 08:25（承接 cron 05:45 已補嘅 00:15「what is 3?」問答後）。**真實權威 = 本節 + cron output 檔**（`cron/output/6a98a79be95f/`）。
@@ -173,6 +197,17 @@
 
 ---
 
+## 2026-09-05 00:5x — Pack AI：Public AskTool API plan ADOPTED
+- 4 輪 adversarial review 收斂：r4 **8:2 execute**（Scope Y：registerExternal + RegistrationStatus；register() keep-gate；ask_player 死碼移除 0.2.0 wave）
+- 執行未開始（P1 未郁）；plan 檔喺 MC repo `.hermes/plans/2026-09-04_public-asktool-plugin-api.md`
+- 同日已完成：0.1.16 release（push/CF files 8807474/8807475/description 更新 ×3 rounds）+ round-5 smoke PASSED（Fix E）
+
+## 2026-09-04 夜 session 2 — Pack AI release 0.1.16 完成
+- MC repo：round-5 smoke PASSED（Fix E trust gate 實錘 before==after ensureCards）→ push 10 commits（main=d5bdad1）；Fix 1-3 d57d39d / Fix E 4bf351d / batch dc9b163 / mirror 07a7522 / release d5bdad1
+- CurseForge：0.1.16 兩 line auto-upload（file 8807474/8807475）+ About description 更新（CDP cookie PUT 200）——流程已入 MC skill `release-curseforge-publish-2026-09-04.md`
+- 坑：CF description 要 login cookie（profile ~2 週過期）；chrome_profile single-instance trap（taskkill 用單 slash）；MSYS Big5 tasklist 會假報 0 → 用 powershell ps1 check
+- 待辦：GitHub Release tag（SK 未要求）
+
 ## 今日（2026-09-04 夜 session）—— MC 線：round-3 真機煙測解碼（跨 project 同步，JARVIS ONE 無 code 改動）
 
 > Discord session 17:4x：SK 先叫我「check history and hand off first」。呢段 = MC round-3 煙測（jar `462ffbdf0d` / packai 0.1.15）結果補檔，詳細喺 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-04.md`「夜晚更新」section。
@@ -191,28 +226,6 @@
 2. **MC main 而家 5 commits ahead origin**（`3ba403c` Numen teaching → `c75077a` 全形冒號 → `dbc73e6`/`52a6687` section-aware → `e7c58ee` index mismatch），**全部未 push**——等 SK 真機煙測（jar `1e09446a`：問「铁镐怎么合成」「硫磺花蜜」確認卡片真機跟返 method line）PASSED 先 push（SK 規則）。
 3. **詳細交接**：MC 專案自己嘅 `super_minecraft_AI_player\.hermes\plans\HANDOFF-2026-09-04.md`（root cause 機制鏈/驗證/待辦/坑）。jarvis-pc 唔重複。
 4. **下次 jarvis session 優先序更新**：MC 線唔再係「Numen 對照位 + slim regression」（已完成）；而家 MC 線 = **等 SK 真機煙測 → PASSED 先 push 5 commits**（可選：多餘卡 filter 後保持原序）。Jarvis 線本身待辦不變：LHM autostart 驗證（等真 reboot）、Phase 2 自然觀察、G 人手實測（等新 mic）。
-
----
-
-## 今日（2026-09-03 晚 session）—— Memory 加大 + Jarvis 線收尾（3/3）+ Phase 2 落地
-
-**Hermes 基建（SK 問 memory full → 加大）**
-1. Config：`memory.memory_char_limit` 2200 → **4000**、`user_char_limit` 1375 → **2000**（`hermes config set`，backup `config.yaml.bak-*`）——**gateway 已 restart（PID 8960 → 3216）生效**
-2. Memory cleanup：筆記 98% → 87%、profile 98% → 88%（刪同主契約重複條目）
-
-**Jarvis 線（HANDOFF 下次優先序 1-3 全清）**
-3. ✅ **REMAINING_WORK sync**：A1/A2/A4/B/D3 markers 對齊執行結果 + 底部「現況 sync」待辦
-4. ✅ **test_stt_stats baseline fail 修**（commit `6eb5f39`）：根因 = `test_missing_logs`/`test_with_tmp_logs` 漏傳 `repair_log` → run_once 讀真實 `%APPDATA%\Jarvis\repair_log.jsonl`（環境依賴）——cursor 兩輪 + 自己驗證 24 passed + **eval_gate 全綠 hash `0b88e6f6`**
-5. ✅ **LHM**（commit `ca9cc37` 內 docs）：task「JARVIS LHM Sensor」存在但 LHM 冇行——Event log 證實 **PC 自 9/2 11:34 未真正 boot**（SK 以為 reboot 過，實際 fast startup/sleep 唔算）；手動 `schtasks /run` 開返（CPU Tctl/Tdie 73.9°C live）。**⏳ autostart 驗證仍然等 SK 真 reboot**
-6. ✅ **Phase 2 通用 app detection**：plan（`2026-09-03_phase2-general-app-detection.md`）→ adversarial review 8:2 縮 scope（砍走 watch 泛化——sidecar restart 必 false-ready；dev/media entries——零消費者；game_start_event 鏡像——冇 consumer）→ cursor 兩輪實作 + apply → **獨立 code review PASSED**（security 0/logic 0）+ suggestions 收尾（drift asserts/_TITLE_KW 簡化/lag 註釋）→ parity 16/16 ×2 + py_compile + live smoke 全綠
-   - 產物：activity_monitor.py `APP_DEFS`（21 proc + 17 title-kw，語義保留唔合併）+ `detect_running_apps()` + sk_activity.json `apps` 欄位（game only）；backups `.bak-20260903_163254`（原）/`.bak-20260903_165840`（v2）；**shell_app.py 零改動**（review 決定）
-   - 文件同步：主契約 AGENTS.md×2、desktop-activity-awareness SKILL.md、windows-desktop-automation references + scripts 舊副本 deprecation header；歷史 snapshot（diagnostics/merged-*）刻意保留
-
-**下次 session 優先序**：
-1. **LHM 開機 autostart 驗證**（SK 真正 reboot 後：task onlogon 觸發 → LHM tray + 8085 + HUD CPU temp 有數）——如 reboot 後都唔起先係 bug
-2. **MC 線**（Numen 對照位 + slim regression + commit/push——上次 HANDOFF 排最後）
-3. **Phase 2 觀察**：SK 實測場景 A-H 自然觀察（`apps` 欄位 + ready alert 零 regression）；Open Q1 flip condition（SK 要非-game alert/HUD 顯示先開 watch 泛化 + dev entries）
-4. G 人手實測（等新 mic）+ stt_stats/clarify_stats 等數據 ≥7 日接 cron monitor
 
 ---
 
@@ -249,6 +262,28 @@
 **下次 session 優先序**：Jarvis（REMAINING_WORK sync + test_stt_stats baseline fail + LHM 開機 tray 驗證 + Phase 2）→ MC（slim regression + commit/push）最後；Content 暫告一段落（下輪 douyin scan 等有新收藏 + SK idle；Bilibili 首次真掃等 SK 帳戶 + SESSDATA）
 
 **坑新增（實測）**：browser-exec cp950 crash 源頭 = 函數參數層 decode `\uXXXX`——code/comment 全 ASCII，JS 用 `String.fromCharCode(0x…)`；douyin yt-dlp 部分 video 403「Fresh cookies」→ detail API（`www.douyin.com/aweme/v1/web/aweme/detail/?aweme_id=`）攞 play_addr CDN url → curl 直下 → ffmpeg 抽音訊（workaround 已實測）
+
+---
+
+## 今日（2026-09-03 晚 session）—— Memory 加大 + Jarvis 線收尾（3/3）+ Phase 2 落地
+
+**Hermes 基建（SK 問 memory full → 加大）**
+1. Config：`memory.memory_char_limit` 2200 → **4000**、`user_char_limit` 1375 → **2000**（`hermes config set`，backup `config.yaml.bak-*`）——**gateway 已 restart（PID 8960 → 3216）生效**
+2. Memory cleanup：筆記 98% → 87%、profile 98% → 88%（刪同主契約重複條目）
+
+**Jarvis 線（HANDOFF 下次優先序 1-3 全清）**
+3. ✅ **REMAINING_WORK sync**：A1/A2/A4/B/D3 markers 對齊執行結果 + 底部「現況 sync」待辦
+4. ✅ **test_stt_stats baseline fail 修**（commit `6eb5f39`）：根因 = `test_missing_logs`/`test_with_tmp_logs` 漏傳 `repair_log` → run_once 讀真實 `%APPDATA%\Jarvis\repair_log.jsonl`（環境依賴）——cursor 兩輪 + 自己驗證 24 passed + **eval_gate 全綠 hash `0b88e6f6`**
+5. ✅ **LHM**（commit `ca9cc37` 內 docs）：task「JARVIS LHM Sensor」存在但 LHM 冇行——Event log 證實 **PC 自 9/2 11:34 未真正 boot**（SK 以為 reboot 過，實際 fast startup/sleep 唔算）；手動 `schtasks /run` 開返（CPU Tctl/Tdie 73.9°C live）。**⏳ autostart 驗證仍然等 SK 真 reboot**
+6. ✅ **Phase 2 通用 app detection**：plan（`2026-09-03_phase2-general-app-detection.md`）→ adversarial review 8:2 縮 scope（砍走 watch 泛化——sidecar restart 必 false-ready；dev/media entries——零消費者；game_start_event 鏡像——冇 consumer）→ cursor 兩輪實作 + apply → **獨立 code review PASSED**（security 0/logic 0）+ suggestions 收尾（drift asserts/_TITLE_KW 簡化/lag 註釋）→ parity 16/16 ×2 + py_compile + live smoke 全綠
+   - 產物：activity_monitor.py `APP_DEFS`（21 proc + 17 title-kw，語義保留唔合併）+ `detect_running_apps()` + sk_activity.json `apps` 欄位（game only）；backups `.bak-20260903_163254`（原）/`.bak-20260903_165840`（v2）；**shell_app.py 零改動**（review 決定）
+   - 文件同步：主契約 AGENTS.md×2、desktop-activity-awareness SKILL.md、windows-desktop-automation references + scripts 舊副本 deprecation header；歷史 snapshot（diagnostics/merged-*）刻意保留
+
+**下次 session 優先序**：
+1. **LHM 開機 autostart 驗證**（SK 真正 reboot 後：task onlogon 觸發 → LHM tray + 8085 + HUD CPU temp 有數）——如 reboot 後都唔起先係 bug
+2. **MC 線**（Numen 對照位 + slim regression + commit/push——上次 HANDOFF 排最後）
+3. **Phase 2 觀察**：SK 實測場景 A-H 自然觀察（`apps` 欄位 + ready alert 零 regression）；Open Q1 flip condition（SK 要非-game alert/HUD 顯示先開 watch 泛化 + dev entries）
+4. G 人手實測（等新 mic）+ stt_stats/clarify_stats 等數據 ≥7 日接 cron monitor
 
 ---
 
@@ -292,16 +327,6 @@
 2. references：`SCHEMA.md`（統一 schema + 欄位覆蓋矩陣——**douyin 實測冇 url/id 係 known gap**；youtube 已 full coverage）+ `adapters/douyin.md`（實測遷移）+ `adapters/youtube.md`（**2026-09-02 實測 verified**——cookies 已 export 追加）+ `adapters/bilibili.md`（planned）
 3. Plan：`plans/2026-09-02_192000-content-absorption-framework.md`（過 adversarial review，8:2 支持）
 4. **YouTube PoC 已完成（2026-09-02 晚）**：SK export 咗 YouTube cookies（23 entries 追加 cookies.txt，先 backup）；yt-dlp 實測 Liked (LL) 167 條 + Watch Later (WL) 67 條全攞到（unified schema，url+id 全 capture）。**⚠️ SK 澄清：YouTube 唔係 absorption 來源——「yt is for other project, we just need u can watch or read it」**——YouTube 用途 = watch/read 能力（transcript + Qwen-VL/Mage-VL），adapter 保留做 on-demand fetch；吸收 pipeline 嘅好來源 = 特登收藏（douyin）。framework 跨平台架構仍由 douyin + youtube scan 證明，但吸收 pipeline 主力係 douyin 類「特登收藏」平台
-
-## 現行狀態（2026-08-31 晚 session 尾）
-
-- **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**monorepo**：jarvis-hud 已搬入 `hud/` 子目錄，git 歷史保留）；3 個 .lnk 全指新位置；**2026-09-01 已重啟切換到新位置 + 舊 jarvis-hud 目錄已刪（釋放 765MB）**
-- **Sidecar 8765**：PID 37496（restart 多次）；health OK wake_on=true；**onnxruntime 已 downgrade 1.27.0**（1.28 bug 令 openwakeword 輸出全 0——已 pin `<1.28`）
-- **Voice 診斷結論（2026-08-31 晚）**：① onnxruntime 1.28 = OWW 全 0（已修）② **Arctis headset 休眠 = mic rms=0.000（而家就係呢個狀態）——戴返/喚醒 headset 先叫到** ③ wake_threshold 0.75 可能偏高（self-monitor 調出嚟）——戴 headset 試完再決定
-- **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
-- **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
-- **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**、**jarvis-session-handoff（每日 05:45，deliver local——reset 前自動對比 session → 更新 HANDOFF + commit docs，唔 push）**
-- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `84834f2`（2026-09-01 cron run：HANDOFF 自動更新）；9/1 晚 session 嘅 HANDOFF docs（Review 分類規則 + MC 摘要）由 2026-09-02 handoff commit（HEAD 再推前）
 
 ## 今日（2026-09-02 session）——Game Fix + Douyin Import + 規則
 
@@ -397,7 +422,6 @@
 3. `ask_player` v1.5 接線（loop 偵測 + UI）或暫時唔理
 4. SK 試 force（on）模式對照
 
-
 ## 今日完成（2026-08-31）
 
 ### Voice 診斷 session（SK 報「只能喚醒一次」）
@@ -469,6 +493,16 @@
 7. **CI**：全套 **368 passed** + eval_gate --all 全綠（golden 30 files 337 / regression 16 / stress 68）+ `--lock` 一致（32 files）；hash `2a29a8ef41eb43c4`
 8. **規則更新（SK）**：any code 改動一律經 cursor-agent（cursor 改+review；自己唔好直接 patch jarvis code）
 
+## 現行狀態（2026-08-31 晚 session 尾）
+
+- **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**monorepo**：jarvis-hud 已搬入 `hud/` 子目錄，git 歷史保留）；3 個 .lnk 全指新位置；**2026-09-01 已重啟切換到新位置 + 舊 jarvis-hud 目錄已刪（釋放 765MB）**
+- **Sidecar 8765**：PID 37496（restart 多次）；health OK wake_on=true；**onnxruntime 已 downgrade 1.27.0**（1.28 bug 令 openwakeword 輸出全 0——已 pin `<1.28`）
+- **Voice 診斷結論（2026-08-31 晚）**：① onnxruntime 1.28 = OWW 全 0（已修）② **Arctis headset 休眠 = mic rms=0.000（而家就係呢個狀態）——戴返/喚醒 headset 先叫到** ③ wake_threshold 0.75 可能偏高（self-monitor 調出嚟）——戴 headset 試完再決定
+- **Qwen2.5-VL-7B video server**：`127.0.0.1:8643`——**關閉**（要睇片先手動開）
+- **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
+- **cron**：sk-activity-monitor（1m）、Gateway watchdog（2m）、jarvis-daily-self-review（09:00，monitor）、**jarvis-sidecar-health（2m，monitor——8765 DOWN 先醒）**、**jarvis-session-handoff（每日 05:45，deliver local——reset 前自動對比 session → 更新 HANDOFF + commit docs，唔 push）**
+- **Git**：`feature/hermes-alerts-mcp` branch；HEAD `84834f2`（2026-09-01 cron run：HANDOFF 自動更新）；9/1 晚 session 嘅 HANDOFF docs（Review 分類規則 + MC 摘要）由 2026-09-02 handoff commit（HEAD 再推前）
+
 ## 剩低（詳見 REMAINING_WORK.md）
 
 - ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修 + stt_preload 已開（2026-09-01）+ sidecar 已重啟；**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
@@ -487,7 +521,7 @@
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
 
-- ✅ **alerts.py ctypes 64-bit hwnd bug：已修（2026-09-10，commit `1bdac68` 未 push）**——cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠；詳見頂部「今日（2026-09-10 session）」；**等 SK 話事 push**／sidecar restart 生效
+- 🟡 **alerts.py ctypes 64-bit hwnd bug：code 已修 + 已 push（`1bdac68`，2026-09-09 22:42；09-10 20:37 確認 origin 已含），但 sidecar 未重啟 → 未生效**（serve.log 09-10 23:25 = 136MB／370,905 次 `int too long to convert`）——cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠；**等 SK 開聲** kill 8765 python（Electron ~90s respawn）→ 之後 grep serve.log 確認 flood 停 + truncate log；詳見頂部「今日（2026-09-10 session）」+ `self-evol-SUGGESTIONS.md` TREND-err-2026-09-10
 
 ## 陷阱（重溫）
 
@@ -515,14 +549,3 @@
 - 4 輪 independent review（11 findings 全修，final pass）；plan: `.hermes/plans/2026-09-02_135000-game-session-detection-phase1.md`
 - 已知：`test_stt_stats::test_missing_logs` golden fail = baseline 環境問題（serve.log 有 repair 記錄）——要修 run_once fallback 或 test isolation
 - 待做：SK 實測場景 A-E（開 game/切 Discord/關 game）；Phase 2 = 通用 app detection framework（SK 願景：唔止 game）
-
-## 2026-09-04 夜 session 2 — Pack AI release 0.1.16 完成
-- MC repo：round-5 smoke PASSED（Fix E trust gate 實錘 before==after ensureCards）→ push 10 commits（main=d5bdad1）；Fix 1-3 d57d39d / Fix E 4bf351d / batch dc9b163 / mirror 07a7522 / release d5bdad1
-- CurseForge：0.1.16 兩 line auto-upload（file 8807474/8807475）+ About description 更新（CDP cookie PUT 200）——流程已入 MC skill `release-curseforge-publish-2026-09-04.md`
-- 坑：CF description 要 login cookie（profile ~2 週過期）；chrome_profile single-instance trap（taskkill 用單 slash）；MSYS Big5 tasklist 會假報 0 → 用 powershell ps1 check
-- 待辦：GitHub Release tag（SK 未要求）
-
-## 2026-09-05 00:5x — Pack AI：Public AskTool API plan ADOPTED
-- 4 輪 adversarial review 收斂：r4 **8:2 execute**（Scope Y：registerExternal + RegistrationStatus；register() keep-gate；ask_player 死碼移除 0.2.0 wave）
-- 執行未開始（P1 未郁）；plan 檔喺 MC repo `.hermes/plans/2026-09-04_public-asktool-plugin-api.md`
-- 同日已完成：0.1.16 release（push/CF files 8807474/8807475/description 更新 ×3 rounds）+ round-5 smoke PASSED（Fix E）
