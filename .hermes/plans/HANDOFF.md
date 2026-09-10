@@ -4,12 +4,44 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 但 sidecar 未重啟＝未生效（serve.log 136MB flood）；MC 線 Arch-3/3a 已落地未 commit**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（含 `61c15c6` 本次）未 push；MC line Arch-3/3a 已 commit `1ba048f` 未 push（等煙測）；2026-09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
 
 ---
+
+## 今日（2026-09-11 凌晨 session）—— GPU TDR「黑屏一閃」診斷（SK 決定唔做嘢）＋ handoff 補漏 ＋ skill script 修 bug
+
+> Discord session `20260911_032609_bdd50fcc`（03:26–04:2x）。觸發：SK「check the window, it just black screen for a sec」。
+
+**1. 診斷：唔係 window/app bug，係 NVIDIA 顯示驅動 TDR（reset）**
+
+| 時間（09-11） | 事件 | 意義 |
+|---|---|---|
+| 03:23:44 | `NVIDIA OpenGL Driver` Event 1「A TDR has been detected」（pid=42008 `javaw.exe`） | 邊個 app 觸發 |
+| 03:23:45 + 03:24:03 | `Display` **Event 4101**「nvlddmkm 停止回應，並已順利恢復」×2 | **= 你見到嘅黑畫面本體** |
+| 03:23:47 | App Error 1000：`javaw.exe` 死於 **`nvoglv64.dll`** exc `0xc0000409` | app 被 driver fail-fast 殺 |
+| 03:23:44–03:24:32 | `nvlddmkm` Event 153 ×24（48 秒 burst） | 前兆風暴 |
+| 03:24:29 | JARVIS HUD（Electron）`--type=gpu-process` 重開 | 舊 GPU process 被 TDR 連帶殺死 → **HUD 都黑一黑** |
+| 03:26:32 | SK 自己重開 MC | 原 instance log 停 03:23:41（native GL crash 唔會寫 crash-reports） |
+
+**2. ⚠️ 自我更正（重要，入咗 skill）**：第一次只查 30 日 → 報「30 日內首次」，SK「but only happen this time」一句推翻 → 拉長到**事件保留期（2026-03-09 起）**實錘 **13 次同一簽名**：`javaw.exe` + `nvoglv64.dll` + `0xc0000409` + **同一偏移 `0x108eb9d`**（4-29×3、4-30×1、5-02×3、5-03×5、9-11×1）。4–5 月跑嘅係 NovaEngineering cleanroom（Java 21.0.7）、今晚跑 AI_test_NFWC_DIM 1.19.2（Java 17.0.15）——**唔同 pack、唔同 Java、同一個 driver code path**（driver 581.42 自 2025-12-12 未換）＝ 驅動 bug，唔係 pack、唔係硬件。對應 4101 分佈：3-18×1、4-29×3、4-30×1、5-02×4、5-03×7、9-11×2；最猛 5-03 15:56–15:59 連環 2 次 javaw 崩 + explorer.exe 崩 + dwm.exe 崩 + 當日 83×ev153。
+**排除硬件**：WHEA 7 日 0、無 bugcheck（無 0x116）、無 reboot、無 OC 工具、power limit 600W = 原廠 default、43°C/P0 正常。
+
+**3. SK 決定 = 唔做嘢（「maybe 4, since I am almost finish the mod pack；later we will switch to another modpack」）**——唔升 driver、唔關 threaded optimization、唔開 LocalDumps。反轉條件：變成連環／explorer·dwm 都崩／換 pack 後照出 → 先做「關 javaw Threaded Optimization（可逆）」＋「WER LocalDumps 收 minidump」。
+
+**4. Incident 記錄**：`%LOCALAPPDATA%\hermes\state\gpu_tdr_incidents.jsonl`（2 條：09-11 事故 + 歷史更正，含 crash 日期／偏移／modpack／排除項）。
+
+**5. Skill 更新**：`windows-hardware-monitoring` 加 TDR 段（event signature／30 秒 triage／**「講首次之前唔准只查 30 日」規則**）＋ `references/gpu-tdr-black-screen-diagnosis.md` ＋ `scripts/gpu_tdr_check.ps1`；**修咗 script 一個真 parse bug**（`foreach` statement 唔可以當 parenthesised argument 傳畀 function → 先砌 array 再傳），修完實跑 2m42s 出 17KB 報告 = 驗證 PASS。
+**Sources**：NVIDIA Developer Forum `deterministic-nvoglv64-dll-crash-c0000409-fastfail…/381020`（Java/LWJGL、13 次同 offset）＋ `multiple-driver-versions-crash-and-terminate-our-app…/381146`（醫療設備廠商 400+ runs，崩潰喺 driver-owned worker thread，stack 冇 app code）。
+
+**6. 🔍 handoff 補漏（SK 指示「also check history, some of them are not written in hand off」）**——對 sessions DB（267 sessions）逐個核 09-08～09-11：
+- ✅ **sidecar DOWN monitor 修復其實 09-09 22:40 已經做咗**：`hermes/scripts/jarvis_sidecar_health.py` 而家 DOWN 時 `exit 0` + 印固定 fingerprint（照 docstring 原意），09-10 docs commit `a68cbb9` 有記；monitor_state 自 2026-08-31 未變（即一直 OK）。**但 09-09 節 §4 仍寫「下次想整先整（等 SK go）」= stale，以本條為準。**
+- 🆕 **`skill-router-verify 一週觀察報告` cron（`8294250748fa`）自身有 bug**：`script` 欄填 `analyze_skill_selection.py --days 7` → runner 當成完整路徑 → **「Script not found」**，09-10 09:00 該 run 冇跑到 script（agent 手動跑分析才出到報告）；job 已 completed/disabled。**教訓：Hermes cron `script` 欄唔支援參數** → 要包一層 wrapper script 或用 `no_agent`。報告結論：would-block 84% 係假象（classifier top1 69% 都答 obsidian）→ **Layer 2 維持唔開**。
+- ✅ **jarvis-pc 現時 ahead 2**（`d8bfe3d`、`bee2e6d` docs，未 push）——舊 Next 講嘅 `f07073d` 已 push。
+- ✅ **MC repo**：`1ba048f`（Arch-3/3a）已 commit、未 push（ahead 1）；MC repo 自己份 HANDOFF 仍寫「code 未 commit」= 略 stale（已在 MC HANDOFF 補狀態修正行）。
+- ✅ 其餘 09-08～09-10 sessions（武刃屬性 06:49／tools 拆法 16:16／sidecar DOWN+Douyin+ComfyUI 08:25／由易到難排序 14:55／MC 跨午夜 22:36–03:31／handoff #4 07:35／JARVIS voice 20:0x–20:5x＋Arch-3 落地／AI_Studio Phase 0 23:24）全部已有對應節，冇其他大漏。
 
 ## 今日（2026-09-10/11 深夜 session 2）—— 1+2+3 清單 + AGENTS.md 修 bug + AI_Studio Phase 0 開工
 
@@ -37,9 +69,12 @@
 **JARVIS + MC 已 hold**（SK 指示）——3b shot0／`compileTestJava` 修復／LHM reboot 驗證／G 人手實測全部唔郁
 
 ## Next（下次 session）
-1. **AI_Studio**：等 SK 答 power 策略 + spike 時段 → 砌原生 H3 workflow JSON（T2V/I2V）→ Phase 1 spike（3 類樣片，idle 時段跑）
-2. **MC**：SK restart game → Arch-3/3a 真機煙測 PASSED 先 push `1ba048f`（3b 之後再講）
-3. **JARVIS**：已清；等 SK 真 reboot 驗 LHM（hold 中）
+1. **push 兩隻 repo（等 SK 一句）**：jarvis-pc **ahead 2**（`d8bfe3d`、`bee2e6d` docs）；MC repo 等 Arch-3/3a 真機煙測 PASSED 先 push `1ba048f`（ahead 1）
+2. **AI_Studio**：等 SK 答 power 策略 + spike 時段 → Phase 1 spike（3 類樣片、idle 時段跑；H3 T2V/I2V workflow JSON 已砌好）
+3. **MC**：SK restart game → Arch-3/3a 真機煙測（問題「铁镐有什麼用途、配方和取得方式」期望 5 卡）→ PASSED 先 push → 之後 3b（shot0 毒化）
+4. **GPU TDR（2026-09-11 決定：唔做嘢）**：如再出黑屏 → 讀 `%LOCALAPPDATA%\hermes\state\gpu_tdr_incidents.jsonl`、跑 skill `windows-hardware-monitoring` 嘅 `scripts/gpu_tdr_check.ps1`（唯讀，先查滿保留期再講「首次」），再向 SK 提緩解選項（關 Threaded Optimization／WER LocalDumps／升 driver）
+5. **JARVIS**：已清；等 SK 真 reboot 驗 LHM（hold 中）
+6. backlog 不變：skill-system 暫緩；G 人手實測（等新 mic；Settings tab 可隨時測）；stt_stats／clarify_stats ≥7 日接 cron monitor
 
 ---
 ## 今日（2026-09-10 session）—— 全日三 session：alerts fix push + MC Arch-3/3a 落地（未 commit）+ AI_Studio 市場調查報告
@@ -86,6 +121,7 @@
 2. **SK「stop that for now」→ 澄清係「stop that job」→ 08:53 pause `jarvis-sidecar-health`（6a98a79be95f）**；**10:38 SK「resume it」→ resume**（job enabled、照跑）。
 3. **⚠️ Sidecar 已自行恢復**：10:37 resume 後首 run `no_change`（fingerprint 回 08-31 OK hash）＋ 10:39 curl `/health` 實錘 `{"ok":true,"wake_on":true}`（PID 24992 listening 8765）——實際恢復時間喺 08:53–10:37 之間（估計 Electron respawn 或 SK 開返 JARVIS，未確認）。
 4. **脆弱位（記低，SK 叫唔好而家郁）**：health script DOWN 時 `exit 1` → cron 當「monitor source failed」ERROR spam（唔當 fingerprint change）→ **DOWN 唔會 wake agent、SK 收唔到 alert**——monitor pattern 對 DOWN 狀態失效（只喺恢復後 no_change）。下次想整先整：DOWN 應 `exit 0` + 印固定 DOWN fingerprint（照 docstring 原意）。
+   → ✅ **2026-09-09 22:40 已修**（`%LOCALAPPDATA%\hermes\scripts\jarvis_sidecar_health.py` 而家 DOWN = `exit 0` + 固定 `DOWN <reason>` fingerprint；09-10 docs commit `a68cbb9` 有記）。**呢條唔再係 open item。**
 5. **下次優先序**（承 cron 05:45 已記嘅 4 選項 backlog 不變：① push MC `dec1471` ② review skill-system plan ③ Arch-3 round ④ alerts.py ctypes fix）＋ 新加：sidecar DOWN 冇 alert 嘅 monitor 修復（可選，等 SK go）。
 
 **（續 11:0x–15:0x，同 session 流延續——Douyin 吸收 + ComfyUI API control 打通 + compression bug 診斷；JARVIS ONE 自身無 code 改動）**
