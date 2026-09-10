@@ -11,6 +11,36 @@
 
 ---
 
+## 今日（2026-09-10/11 深夜 session 2）—— 1+2+3 清單 + AGENTS.md 修 bug + AI_Studio Phase 0 開工
+
+> Discord session（承接同日 handoff 整理）。SK 指示：「do 1+2+3 → fix agents.md → hold jarvis & mc → go for AI studio」。
+
+**1+2+3（全部完成，有實錘）**
+1. ✅ **JARVIS sidecar 重啟**（SK 批）：kill PID 24992 → **10 秒後 Electron 自動 respawn**（`/health` ok）；ctypes flood **373,158 → 0**；`serve.log` 137MB → 0（備份 gzip 977KB 留 `serve.log.bak-20260910.gz`）→ **`1bdac68`（alerts ctypes fix）正式生效**
+2. ✅ **MC Arch-3/3a commit `1ba048f`**（`fix(ask): keep [RECIPE_CARDS] catalog on no-tools fallback path`；連 `code_change_log.md` 條目）——**未 push**（跟規矩：等 SK restart game 真機煙測）
+3. ✅ **jarvis-pc docs push**（origin 到 `a276049`）；MC 保持 ahead 1
+
+**AGENTS.md 修復（捉到 3 個真 bug）**
+- ① `%USERPROFILE%\.hermes\` **根本唔存在**（檔案叫 agent 複製 SOUL.md 去嗰度）→ 改正做真實 Hermes home `C:\Users\skps9\AppData\Local\hermes`（Stack／Layout／Secrets 三處）
+- ② 斷句「已知坑（實測 + 社群確認）」→ 補完整
+- ③ 加規則：**HANDOFF 新 section 一律加最頂（時間倒序）**
+- 源頭 `Code_Project\Hermes\AGENTS.md` 已同步；驗證 live == source；backup `AGENTS.md.bak-20260910_234227`
+
+**AI_Studio（SK「go」）—— Phase 0 開工**
+- 📄 Runbook：`AI_Studio\docs\plans\2026-09-10-phase0-runbook.md`（環境現況／Phase 0 清單／spike 三類樣片＋收貨標準／SK 決定）
+- 🔧 GPU 安全閘 `AI_Studio\scripts\comfy_guard.py`（cursor 寫；Hermes 自己驗收）：pre-flight（activity gate／溫度／VRAM／ComfyUI health）＋序列 `JobLock`＋`>80°C` 自動 `/interrupt`＋job JSONL log。**實測**：`--status` 讀到真 GPU（45°C / 103W / VRAM 24951MB）；`--check` 正確 FAIL（`playing` + VRAM 7.5GB < 20GB 門檻）；py_compile OK；unittest **7/8**（1 個亂碼輸入 case fail → 已 dispatch cursor fix round）
+- ⚠️ **捉到坑**：官方 `api_minimax_h3_*.json` 範本其實用**雲端付費節點**（`MinimaxHailuo03FirstLastFrameNode`），本地零成本生成用唔到 → 要用原生節點手砌 API graph；H3 原生 schema（`MiniMaxH3ImageToVideo`／`ReferenceToVideo`／`EmptyMiniMaxH3LatentAV`／`SigmaShift`／`CreateVideo`／`SaveVideo`，含 required inputs）已寫入 skill `comfyui-desktop-headless`
+
+**SK 決定**：① 位置沿用 `Documents\AI_Studio\` ✅ ② 平台 **兩邊同出**（英 YouTube + 中文 B站/抖音）✅ ③ power limit ⏸（SK 問會唔會影響打機 → 我提議 **generation-only cap**：開 job 前 450W、完 job 還原 600W，打機零影響）④ spike 時段 ⏸（提議 auto idle 觸發）
+
+**JARVIS + MC 已 hold**（SK 指示）——3b shot0／`compileTestJava` 修復／LHM reboot 驗證／G 人手實測全部唔郁
+
+## Next（下次 session）
+1. **AI_Studio**：等 SK 答 power 策略 + spike 時段 → 砌原生 H3 workflow JSON（T2V/I2V）→ Phase 1 spike（3 類樣片，idle 時段跑）
+2. **MC**：SK restart game → Arch-3/3a 真機煙測 PASSED 先 push `1ba048f`（3b 之後再講）
+3. **JARVIS**：已清；等 SK 真 reboot 驗 LHM（hold 中）
+
+---
 ## 今日（2026-09-10 session）—— 全日三 session：alerts fix push + MC Arch-3/3a 落地（未 commit）+ AI_Studio 市場調查報告
 
 > 09-10 全日 = ① 00:15–02:30 跨午夜 MC 線 ② 07:35–09:35 Discord session（`20260910_073539_3e2db227`）③ 20:05–20:56 JARVIS voice + api_server session（`jarvis-07b64fe6`）。
