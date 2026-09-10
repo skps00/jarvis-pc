@@ -29,6 +29,7 @@
 **AI_Studio（SK「go」）—— Phase 0 開工**
 - 📄 Runbook：`AI_Studio\docs\plans\2026-09-10-phase0-runbook.md`（環境現況／Phase 0 清單／spike 三類樣片＋收貨標準／SK 決定）
 - 🔧 GPU 安全閘 `AI_Studio\scripts\comfy_guard.py`（cursor 寫；Hermes 自己驗收）：pre-flight（activity gate／溫度／VRAM／ComfyUI health）＋序列 `JobLock`＋`>80°C` 自動 `/interrupt`＋job JSONL log。**實測**：`--status` 讀到真 GPU（45°C / 103W / VRAM 24951MB）；`--check` 正確 FAIL（`playing` + VRAM 7.5GB < 20GB 門檻）；py_compile OK；unittest **7/8**（1 個亂碼輸入 case fail → 已 dispatch cursor fix round）
+- 🔗 **H3 API graph 已砌好**：`AI_Studio\workflows\h3_t2v.json` + `h3_i2v.json`（由官方**本地**範本 `video_minimax_h3_i2v.json` 嘅 subgraph 反推節點鏈：UNETLoader(fl2va) → LoraLoaderModelOnly(fl2v_turbo_8step) → MiniMaxH3ImageToVideo → BasicGuider / KSamplerSelect(res_multistep) / BasicScheduler(simple, steps=8) / RandomNoise / SamplerCustomAdvanced → VAEDecode(video VAE) + VAEDecodeAudio(audio VAE) → CreateVideo(24fps) → SaveVideo）；**靜態驗證對 `/object_info` PASS**（唯一提示 = LoadImage 佔位檔名，跑前換真圖）。⚠️ 真跑未做（等 SK 講時段 + power 決定）
 - ⚠️ **捉到坑**：官方 `api_minimax_h3_*.json` 範本其實用**雲端付費節點**（`MinimaxHailuo03FirstLastFrameNode`），本地零成本生成用唔到 → 要用原生節點手砌 API graph；H3 原生 schema（`MiniMaxH3ImageToVideo`／`ReferenceToVideo`／`EmptyMiniMaxH3LatentAV`／`SigmaShift`／`CreateVideo`／`SaveVideo`，含 required inputs）已寫入 skill `comfyui-desktop-headless`
 
 **SK 決定**：① 位置沿用 `Documents\AI_Studio\` ✅ ② 平台 **兩邊同出**（英 YouTube + 中文 B站/抖音）✅ ③ power limit ⏸（SK 問會唔會影響打機 → 我提議 **generation-only cap**：開 job 前 450W、完 job 還原 600W，打機零影響）④ spike 時段 ⏸（提議 auto idle 觸發）
