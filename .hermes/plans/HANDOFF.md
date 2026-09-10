@@ -19,8 +19,8 @@
 - ⚠️ working tree 淨低 pre-existing `self-evol-SUGGESTIONS.md` 修改（非本次範圍，冇郁）
 
 ## Next（下次 session）
-- **push `1bdac68`**（等 SK 話事）＋ sidecar restart 後確認 alerts 正常
-- backlog 其餘（skill-system 暫緩 / Arch-3 聽日開工 / ComfyUI 等拍板）——見 MC repo HANDOFF
+- ✅ **`1bdac68` 已經 push**（2026-09-10 20:37 實錘：`origin/feature/hermes-alerts-mcp` 已含，ahead/behind = 0/0）——但 **sidecar 未 restart → fix 未生效**：`%APPDATA%\Jarvis\serve.log`（已脹到 127MB）20:37 仍見 `ctypes.ArgumentError: int too long to convert` flood。**待 SK 開聲**：kill 8765 嘅 python（Electron 90s 內自動 respawn）→ 之後 grep serve.log 確認 flood 停。⚠️ 期間 JARVIS 語音（wake/STT/TTS）會停 ~90s，所以唔喺 SK 打機時做。
+- backlog 其餘（skill-system 暫緩 / **Arch-3 3a 已落地、未 commit（見 MC repo HANDOFF）** / ComfyUI 等拍板）——見 MC repo HANDOFF
 
 ---
 ## 今日（2026-09-09 session）—— ⚠️ Sidecar 8765 朝早 DOWN（~06:15 後–10:37 前）→ 已自行恢復；cron pause/resume（SK 指示）；無 code 改動
