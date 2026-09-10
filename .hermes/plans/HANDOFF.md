@@ -4,10 +4,21 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（含 `61c15c6` 本次）未 push；MC line Arch-3/3a 已 commit `1ba048f` 未 push（等煙測）；2026-09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（`d8bfe3d`／`bee2e6d`／`06aa722`，原稿寫嘅 `61c15c6` 係錯 hash，2026-09-11 cron 核實改正）未 push；MC line Arch-3/3a 已 commit `1ba048f` 未 push（等煙測）；2026-09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
+
+---
+
+## 今日（2026-09-11 05:45 cron 核實）—— 無新 session 工作；實錘核對 + 修正 3 處狀態 drift
+
+> jarvis-session-handoff cron（job `7b4af62c87c3`）。窗口 = 2026-09-10 06:00 → 09-11 05:45。逐個 session 核對（sessions DB：`20260910_073539_3e2db227` 07:35–09:31／`jarvis-14655cc5`＋`jarvis-8feaa634`＋`jarvis-07b64fe6` 20:0x–20:5x／`20260910_232411_ae42ba06` 23:24–23:52／`20260911_032609_bdd50fcc` 03:26–05:32）：**全部已有對應 section，冇未記錄嘅實際工作**。以下係核實出嚟嘅 drift 修正（全部有工具實錘）：
+
+1. **改正檔頭 hash**：原寫嘅 `61c15c6` **喺 repo 唔存在**（`git log --all` 實錘）→ 實際係 `06aa722`（09-11 04:12「docs(handoff): 2026-09-11 凌晨 — GPU TDR…」）。jarvis-pc 現時 **ahead 3 docs**：`d8bfe3d`、`bee2e6d`、`06aa722`（全部未 push）。
+2. **alerts.py ctypes 條目正式收口（實錘，唔再係「等 SK」）**：sidecar 09-10 23:4x 重啟之後——`GET /health` = `{"ok":true,"wake_on":true}`；`serve.log` 得 **27KB（05:44 還在寫正常 log）**；`grep -c "int too long to convert"` = **0**。即 `1bdac68` 已生效，136MB／370,905 次 flood 清零（備份 `serve.log.bak-20260910.gz` 977KB 保留）。
+3. **工作區狀態**：tracked 改動只有 `.hermes/plans/self-evol-SUGGESTIONS.md`（09-10 09:01 daily self-review cron 寫入嘅 3 條 TREND-err 建議：09-05／09-06／09-10，全部圍繞同一個 ctypes flood）——本 cron 順手補「已解決」狀態行 + 一併 commit（docs only）。
+4. **MC 線無變**：HEAD `1ba048f`（Arch-3/3a），working tree clean，仍等 SK 真機煙測先 push。
 
 ---
 
@@ -69,7 +80,7 @@
 **JARVIS + MC 已 hold**（SK 指示）——3b shot0／`compileTestJava` 修復／LHM reboot 驗證／G 人手實測全部唔郁
 
 ## Next（下次 session）
-1. **push 兩隻 repo（等 SK 一句）**：jarvis-pc **ahead 2**（`d8bfe3d`、`bee2e6d` docs）；MC repo 等 Arch-3/3a 真機煙測 PASSED 先 push `1ba048f`（ahead 1）
+1. **push 兩隻 repo（等 SK 一句）**：jarvis-pc **ahead 3**（`d8bfe3d`、`bee2e6d`、`06aa722` docs）；MC repo 等 Arch-3/3a 真機煙測 PASSED 先 push `1ba048f`（ahead 1）
 2. **AI_Studio**：等 SK 答 power 策略 + spike 時段 → Phase 1 spike（3 類樣片、idle 時段跑；H3 T2V/I2V workflow JSON 已砌好）
 3. **MC**：SK restart game → Arch-3/3a 真機煙測（問題「铁镐有什麼用途、配方和取得方式」期望 5 卡）→ PASSED 先 push → 之後 3b（shot0 毒化）
 4. **GPU TDR（2026-09-11 決定：唔做嘢）**：如再出黑屏 → 讀 `%LOCALAPPDATA%\hermes\state\gpu_tdr_incidents.jsonl`、跑 skill `windows-hardware-monitoring` 嘅 `scripts/gpu_tdr_check.ps1`（唯讀，先查滿保留期再講「首次」），再向 SK 提緩解選項（關 Threaded Optimization／WER LocalDumps／升 driver）
@@ -560,7 +571,19 @@
 7. **CI**：全套 **368 passed** + eval_gate --all 全綠（golden 30 files 337 / regression 16 / stress 68）+ `--lock` 一致（32 files）；hash `2a29a8ef41eb43c4`
 8. **規則更新（SK）**：any code 改動一律經 cursor-agent（cursor 改+review；自己唔好直接 patch jarvis code）
 
-## 現行狀態（2026-08-31 晚 session 尾）
+## 現行狀態
+
+> **2026-09-11 更新（cron 核實，實錘）**：
+> - **JARVIS ONE 0.4.10** 跑緊（`hud\dist\JARVIS-ONE-0.4.10.exe`；monorepo）；3 個 .lnk 指新位置
+> - **Sidecar 8765**：`GET /health` = `{"ok":true,"wake_on":true}`（09-10 23:4x 重啟，之後一直 UP）；`1bdac68`（alerts ctypes argtypes fix）**已生效**——serve.log 27KB、`int too long to convert` = 0（舊 136MB／370,905 次；備份 `serve.log.bak-20260910.gz`）
+> - **Ports**：8765（alerts MCP + /settings）、8770（reply）、8771（media bridge）、8642（Hermes API）、8643（Qwen video，關）
+> - **cron**：jarvis-sidecar-health（2m，monitor）、jarvis-daily-self-review（09:00，monitor）、jarvis-session-handoff（每日 05:45）、Gateway watchdog（2m）＋ 一個 disabled 嘅 skill-router-verify 週報
+> - **Git**：jarvis-pc `feature/hermes-alerts-mcp` **ahead 3 docs 未 push**（`d8bfe3d`／`bee2e6d`／`06aa722`）；MC repo `1ba048f`（Arch-3/3a）未 push（等真機煙測）
+> - **GPU**：2026-09-11 凌晨確診 NVIDIA 驅動 TDR（13 次同簽名）→ SK 決定唔郁（反轉條件見頂部 09-11 section）；incident log `%LOCALAPPDATA%\hermes\state\gpu_tdr_incidents.jsonl`
+>
+> **以下 2026-08-31 版保留做歷史**（細節已過時——睇上面同頂部日期 section 為準）：
+
+### 2026-08-31 晚 session 尾（歷史）
 
 - **JARVIS ONE 0.4.10**：`jarvis-pc\hud\dist\JARVIS-ONE-0.4.10.exe`（**monorepo**：jarvis-hud 已搬入 `hud/` 子目錄，git 歷史保留）；3 個 .lnk 全指新位置；**2026-09-01 已重啟切換到新位置 + 舊 jarvis-hud 目錄已刪（釋放 765MB）**
 - **Sidecar 8765**：PID 37496（restart 多次）；health OK wake_on=true；**onnxruntime 已 downgrade 1.27.0**（1.28 bug 令 openwakeword 輸出全 0——已 pin `<1.28`）
@@ -571,6 +594,8 @@
 - **Git**：`feature/hermes-alerts-mcp` branch；HEAD `84834f2`（2026-09-01 cron run：HANDOFF 自動更新）；9/1 晚 session 嘅 HANDOFF docs（Review 分類規則 + MC 摘要）由 2026-09-02 handoff commit（HEAD 再推前）
 
 ## 剩低（詳見 REMAINING_WORK.md）
+
+> **2026-09-11 更新（cron 核實）——現行 open items**：① 等 SK 一句 push（jarvis-pc 3 docs + MC `1ba048f`）；② MC Arch-3/3a 真機煙測（SK restart game）；③ AI_Studio：等 SK 答 power 策略 + spike 時段 → Phase 1 spike；④ GPU TDR = SK 決定唔郁（記錄完，反轉條件喺頂部）；⑤ G 人手實測等新 mic（Settings tab 可隨時）；⑥ stt_stats／clarify_stats 等數據 ≥7 日；⑦ LHM 開機 autostart 等真 reboot。**下面 2026-08-31 版清單保留做歷史**（多數已 ✅，細節睇各日期 section）：
 
 - ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修 + stt_preload 已開（2026-09-01）+ sidecar 已重啟；**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
 - ✅ **刪舊 jarvis-hud 目錄**（2026-09-01 完成）：JARVIS 已重啟切換新位置 + 確認冇 process 由舊路徑 load → 已刪（釋放 765MB）
@@ -588,7 +613,8 @@
 - ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
 - ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
 
-- 🟡 **alerts.py ctypes 64-bit hwnd bug：code 已修 + 已 push（`1bdac68`，2026-09-09 22:42；09-10 20:37 確認 origin 已含），但 sidecar 未重啟 → 未生效**（serve.log 09-10 23:25 = 136MB／370,905 次 `int too long to convert`）——cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠；**等 SK 開聲** kill 8765 python（Electron ~90s respawn）→ 之後 grep serve.log 確認 flood 停 + truncate log；詳見頂部「今日（2026-09-10 session）」+ `self-evol-SUGGESTIONS.md` TREND-err-2026-09-10
+- ✅ **alerts.py ctypes 64-bit hwnd bug：已完全收口（2026-09-11 cron 實錘）**——code 修 + push（`1bdac68`）→ 09-10 23:4x 重啟 sidecar → **`/health` ok、serve.log 27KB、`int too long to convert` = 0**（舊 136MB／370,905 次）；log 已 truncate（備份 `.gz`）。原 fix：cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠。詳見頂部 09-11 cron 核實 section + `self-evol-SUGGESTIONS.md`（TREND-err-2026-09-05/06/10 三條同源，已標 ✅）
+- ⏳ **detect_trend sustained-high 規則（未做，低優先）**：self_review 只喺「連續單調變差」先出 finding → step-change + plateau（如 ctypes flood 09-05→09-06 微跌）會靜音 3 個月；建議加「連續 ≥2 日 >10x 中位數」都出 finding（來源 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-06）。要唔要做由 SK 定。
 
 ## 陷阱（重溫）
 

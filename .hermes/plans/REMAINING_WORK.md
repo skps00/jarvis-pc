@@ -235,3 +235,15 @@
 - **AI_Studio 線（新，非 JARVIS）**：市場調查 + 9 頁 PDF 報告已交付（`Documents\AI_Studio\docs\report_20260910\`）；設計書 `docs\plans\2026-09-10-ai-video-production-design.md`；等 SK 拍板路線
 - **MC 線**：Arch-3/3a 已落地未 commit（`askNoTools` 食 `[RECIPE_CARDS]` catalog）；`compileTestJava` HEAD 已壞（pre-existing）→ 想恢復 Java harness 要另開一輪
 - **仍然等 SK**：新 mic（G 人手實測 pause；Settings tab 可隨時測）／LHM 開機 autostart（等真 reboot）／stt_stats・clarify_stats 數據 ≥7 日
+
+---
+
+## 現況 sync（2026-09-11 05:45 cron 核實）
+
+- ✅ **alerts.py ctypes 64-bit fix 完全收口**：`1bdac68` 已 push + sidecar 09-10 23:4x 重啟生效 → 實錘 `/health` ok、`serve.log` 27KB、`int too long to convert` = **0**（舊 136MB／370,905 次）；serve.log 已備份（`serve.log.bak-20260910.gz`）＋ truncate。→ 上一版 sync 嘅「未重啟 → 未生效」條目**作廢**。
+- 🆕 **GPU driver TDR（2026-09-11 凌晨）**：`javaw.exe` + `nvoglv64.dll` `0xc0000409` 同偏移 `0x108eb9d` 累計 13 次（4-5 月 + 09-11），跨 modpack／跨 Java = driver bug 非硬件；**SK 決定唔郁**（記錄 `%LOCALAPPDATA%\hermes\state\gpu_tdr_incidents.jsonl`；反轉條件：連環／explorer·dwm 都崩／換 pack 照出）。skill `windows-hardware-monitoring` 已加 TDR 段 + `scripts/gpu_tdr_check.ps1`。
+- 🆕 **AI_Studio Phase 0 開工（非 JARVIS，記錄備查）**：`scripts/comfy_guard.py` GPU 安全閘（實測 `--status` 讀真 GPU／`--check` 正確 FAIL；unittest 7/8 → 1 個亂碼 case 已 dispatch cursor）+ H3 本地 API graph `workflows/h3_t2v.json`／`h3_i2v.json`（靜態驗證對 `/object_info` PASS）；**真跑未做**（等 SK 答 power 策略 + spike 時段）。
+- **MC 線**：Arch-3/3a 已 commit `1ba048f`（working tree clean，ahead 1）→ 等 SK restart game 真機煙測 PASSED 先 push。
+- **Git**：jarvis-pc **ahead 3 docs 未 push**（`d8bfe3d`／`bee2e6d`／`06aa722`）＋ 本 cron docs commit。
+- **仍然等 SK**：新 mic（G 人手實測；Settings tab 可隨時）／LHM autostart（等真 reboot）／stt_stats・clarify_stats ≥7 日數據／push 兩個 repo 一句話。
+- ⏳ **低優先新項**：self_review `detect_trend` 加 sustained-high 規則（step-change + plateau 會靜音——來源 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-06）。
