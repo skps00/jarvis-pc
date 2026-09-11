@@ -11,6 +11,33 @@
 
 ---
 
+## 今日（2026-09-11 早 session，Discord）—— MC 線：Arch-3/3a 真機驗收 PASS ＋ 新捉到 DSML scrub bug（已修／已驗／已 review）
+
+> Discord session（SK「read hand off」→「what it fix」→「go」）。**全部 MC repo；JARVIS ONE 無 code 改動。**
+
+**1. Arch-3/3a（`1ba048f`）—— 舊 handoff 嘅「等你 restart game 煙測」係唔準確**
+- 實錘：commit 之後**根本冇 build 過 jar**（最後 build 09-10 01:53；commit 09-10 23:42）→ 即係「唔係等你測，係未 build」。
+- 今次補做：backup → 雙樹 build（forge JDK17／neo JDK21，`--rerun-tasks`）→ symbol 驗證（新 jar 有 `jeiForLlmFull`／`mergeJeiCatalogFull`／`capableForTools`，backup jar 完全冇）→ deploy。
+- **真機驗收 PASS**：config 暫設 `askNativeTools="off"` 強制走兜底路徑 → SK 問「铁镐…用途/配方/取得方式」（focus = `minecraft:iron_pickaxe`）→ log 實錘：**淨 1 輪 LLM、冇 tool_calls**（= 確實行咗 `askNoTools()`）、prompt 嘅 `jei` payload **開頭就係真 `[RECIPE_CARDS]` catalog**：5 條 index 0–4（`role=output/output/input/input/input`），同 `recipe cards focus=… count=5` 逐張對得上。舊 jar 技術上做唔到（jar 內冇嗰個 function）。
+- **`1ba048f` 已 push**（`96ad78a..1ba048f → main`；ahead/behind 0/0）。
+- ⚠️ 測完 config 已還原 `auto`。
+
+**2. 🐛 新捉到：DeepSeek DSML 標記漏入 UI（SK 截圖實錘）—— 已修**
+- 症狀：兜底路徑下 model 用**文字**寫工具呼叫 → 垃圾原樣顯示喺 UI。
+- Root cause（用**真 `AskReplyScrub` class** 跑真 reply ＋ reflection 逐個 pattern 實測）：model 今次吐**雙豎線 U+FF5C（`｜｜`）**＋ 容器字 **`calls`**（唔係 `tool_calls`）→ 四個 pattern 全部 `find=false` → 清唔走。（舊單豎線 case 有 test 守住，所以一路冇發現 → 典型「not every times」。）
+- Fix（經 cursor-agent，雙樹 lockstep）：① `DSML_PIPE_RUN` = 一條**或連續多條**豎線 ② 容器字放寬 `(?:tool_)?calls?` ③ `LEFTOVER_TOOL_TOKEN` 加 catch-all `</?[^<>]*DSML[^<>]*>` ④ 新 `dropResidualDsmlLines()` 最後防線（任何仍含 `DSML` 嘅整行丟棄）。
+- 驗收（全部 Hermes 自己跑，唔信 cursor 自報）：雙樹 `cmp` **byte-identical**｜雙樹 `compileJava --rerun-tasks` **BUILD SUCCESSFUL**｜`AskReplyScrubCheck -ea` **OK**（新 case K1–K4 全過）｜**真 reply 端到端 556 → 51 字**（DSML／invoke／parameter／item id 全清、合法【來源】行保留）｜python checks **FAIL=3 = baseline 一個唔差**。
+- cursor read-only review（V1–V6）：**SHIP**。2 個 LOW：catch-all 對「prose 含 literal `DSML`」有理論 false positive；測試可再補 3 個 case（兩段 block 中間 prose、結尾【來源】行、無尖括號嘅殘留 `DSML` 行）。
+- ⚠️ **Pre-existing 發現**：`AskReplyScrubCheck` L193（`!purpose.contains("[shift]")`）**喺 HEAD baseline 一樣 fail**（已對照實錘）→ 唔關今次改動；但因 `compileTestJava` 早已壞，呢個 check 一直冇跑。今次繞過方法：`javac -cp build/classes/java/main` 單獨編該 test class ＋ `java -ea` 跑（唔靠 gradle）。
+
+**3. 現況**
+- instance 現役 jar = Arch-3/3a **＋** scrub fix（sha `012da9cc…`）；config = `auto`；**新 jar 未真機 smoke**（要 SK 再 restart 一次）。
+- backups（全部喺 `dist/_smoke_backups/`，`mods/` 唔留 .bak）：`…forge.jar.bak-20260911_071206`（0.2.1 原版）、`…arch3a-bak-20260911_083313`（只含 Arch-3/3a）、`packai-client.toml.bak-20260911_071206`。
+- MC repo：`1ba048f` 已 push；**scrub fix 未 commit**（4 檔 modified：雙樹 `AskReplyScrub.java` ＋ 雙樹 `AskReplyScrubCheck.java`）。
+- **下一件**：SK restart MC → 問同一題（`auto`）→ 確認 ① Arch-3/3a 冇 regression ② DSML 唔再漏 → PASS 就 commit scrub fix（建議 `fix(ask): harden AskReplyScrub for doubled-pipe DSML variant`）。
+
+---
+
 ## 今日（2026-09-11 05:45 cron 核實）—— 無新 session 工作；實錘核對 + 修正 3 處狀態 drift
 
 > jarvis-session-handoff cron（job `7b4af62c87c3`）。窗口 = 2026-09-10 06:00 → 09-11 05:45。逐個 session 核對（sessions DB：`20260910_073539_3e2db227` 07:35–09:31／`jarvis-14655cc5`＋`jarvis-8feaa634`＋`jarvis-07b64fe6` 20:0x–20:5x／`20260910_232411_ae42ba06` 23:24–23:52／`20260911_032609_bdd50fcc` 03:26–05:32）：**全部已有對應 section，冇未記錄嘅實際工作**。以下係核實出嚟嘅 drift 修正（全部有工具實錘）：
