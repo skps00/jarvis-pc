@@ -4,10 +4,42 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（`d8bfe3d`／`bee2e6d`／`06aa722`，原稿寫嘅 `61c15c6` 係錯 hash，2026-09-11 cron 核實改正）未 push；MC line Arch-3/3a 已 commit `1ba048f` 未 push（等煙測）；2026-09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（`d8bfe3d`／`bee2e6d`／`06aa722`，原稿寫嘅 `61c15c6` 係錯 hash，2026-09-11 cron 核實改正）未 push；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy，待 SK restart 煙測；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
+
+---
+
+## 今日（2026-09-11 早 session，Discord，續）—— 為咩 OpenClaw / Hermes **唔會有** DSML 漏出問題（SK 問，架構比較）
+
+> 結論：**佢哋都撞過**，只係架構「唔確定就唔出街」；PackAI 係「照出，事後 regex 洗」→ 黑名單永遠追唔完（= SK 講嘅「not every times」**根因**）。
+
+**實錘 ①：OpenClaw 撞過一模一樣嘅**
+`openclaw/openclaw` PR **#128882**（merged 2026-08-29，closes #128858）：
+> fix(deepseek): **doubled-bar DSML tool calls are delivered as text and never executed**
+
+—— 連「never executed」都中（今次 log：`toolCards emission=0`，靠 `autoEmission` 補卡 = model 想叫工具但用戶乜都冇發生）。
+
+**實錘 ②：三邊架構對比**
+
+| | **OpenClaw** | **Hermes** | **PackAI** |
+|---|---|---|---|
+| 偵測位置 | transport **串流層**（文字未到 UI） | adapter normalize 之後 | UI 前最後一步，**事後 regex** |
+| 變體處理 | `["\|","｜","｜｜"]` **一次明列三種**（含雙豎線），recovery + filter 共用同一份 grammar | `_TOOL_CALL_LEAK_PATTERN`（`to=functions.x`） | `DSML_PIPE` = **淨一條** |
+| 撞到之後 | **Recovery：解析返做真 call 並執行** + 文字過濾 | **當回合 `incomplete`** → 清空 `final_text` → 重試要模型用正式 `tool_calls` | **淨刪唔執行** → 行動蒸發 |
+| 唔確定 | **fail-closed**（pair 唔上嘅 tag 唔准授權工具 + 256KB cap） | **fail-incomplete** | **fail-open** |
+
+- **OpenClaw 檔案**：`packages/ai/src/transports/deepseek-dsml-grammar.ts`（`DEEPSEEK_DSML_MARKERS`）、`deepseek-text-filter.ts`（串流 filter + buffer split tag 前綴）、`openai-completions-dsml.ts`（`RecoveredDeepSeekDsmlToolCall` = **執行返**）。PR 金句「**Each invocation, parameter, and suppressed block must close with its opening marker**」← 正解 review 提嘅 over-match LOW。
+- **Hermes 檔案**：`hermes-agent/agent/codex_responses_adapter.py` → `_TOOL_CALL_LEAK_PATTERN` + `leaked_tool_call_text`；註釋寫明「**no audit trail and no tools actually ran**」。主 loop 每回合都帶 tools（`tools=None` 只見於內部 summary call）→ 結構上少撞。
+
+**實錘 ③：PackAI 已經有救嘅機器，係兜底路線冇叫佢出嚟**
+- 已有 `hasLeakedToolXml()` / `parseEmbeddedToolCalls()` / `parseLeakedToolXml()`；但 `AskToolLoop.firstAsk` **L332** `if (!offer) return nz(llm.askNoTools());` ← 直接 return，冇經 recovery（`capableLoop` L373、`continueAfterAsk` L487 **有**行）。
+- ⚠️ **同一盲點第二個 site**：`AskToolLoop.DSML_TOKEN`（L72-73）同一個**單豎線 class** → **連偵測都認唔到**雙豎線。今日只修顯示層，**偵測層未修**。
+
+**建議（未拍板）**：**A** 放寬 `DSML_TOKEN`（細）｜**B** 抄 recovery：解析 → **真執行**（中，解「想叫工具但冇嘢發生」）｜**C** close tag 配對 + cap 取代鈍刀 `dropResidualDsmlLines()`（結構，順手清 over-match LOW）。
+
+**已寫入 skill**：`llm-tool-calling-reliability` → `references/tool-call-markup-leaks.md`，新 section「How the big runtimes avoid it (checked 2026-09-11)」（含 PR 編號／檔案路徑／audit-every-detector 提醒）。
 
 ---
 
