@@ -46,9 +46,9 @@
 
 | # | 事項 | 狀態 |
 |---|---|---|
-| 1 | **MC**：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」）→ 定案後才修 | ⏸ 等 go |
-| 2 | **MC**：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP） | ⏸ 等 go |
-| 3 | **jarvis-pc**：未 push commit 要唔要 push？（2026-09-12 06:1x 實測 remote main 仍係 `ca463a3`、**ahead 61**） | ⏸ 等 go |
+| 1 | ~~**MC**：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」）~~ ✅ **2026-09-12 07:0x 已加**（`LlmClient.completeRound`，雙樹 build OK、jar `17ebc474` 已 deploy）→ **等 SK restart MC 再問同一題收 log** | ⏳ 等 smoke |
+| 2 | ~~**MC**：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP）~~ ✅ **2026-09-12 07:0x 已 push**（commit `abbc698` → `origin/main`） | ✅ 完成 |
+| 3 | ~~**jarvis-pc**：未 push commit 要唔要 push？~~ ✅ **2026-09-12 07:0x 已 push** → `origin/feature/hermes-alerts-mcp` = `8e97a9b`（63 commit）；⚠️ **`origin/main` 仍係 `ca463a3`**（要 SK 決定開 PR 定 merge） | ✅ 做咗（main 待定） |
 | 4 | **語音線**：本地 ASR 連續聽錯 → ①打字重講 ②轉 MiMo 雲端 ASR ③本地 Fun-ASR-Nano | ⏸ 等揀 |
 | 5 | `self-evol-SUGGESTIONS.md` 3 行要唔要 commit | ⏸ 等 go |
 | 6 | **AI_Studio**：Phase 1 spike spec 已 staged（3 樣片＋驗收標準，見下面 09-11 日間 補記 §2）→ 等 SK 揀 idle 時段（power 策略已定 **B：唔 cap，先量真實功耗/溫度**） | ⏸ 等揀 |
