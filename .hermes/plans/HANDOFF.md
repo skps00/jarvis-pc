@@ -4,10 +4,25 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；jarvis-pc ahead 3 docs（`d8bfe3d`／`bee2e6d`／`06aa722`，原稿寫嘅 `61c15c6` 係錯 hash，2026-09-11 cron 核實改正）未 push；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy，待 SK restart 煙測；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc 由 2026-08-10 起 59 個 commit 全部未 push**（remote main = `ca463a3`，2026-09-12 `ls-remote` 實測；舊稿寫「已 push」／「ahead 3-4 docs」全部係錯）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
+
+---
+
+## 今日（2026-09-12 凌晨 session，Discord）—— MC 線：兜底路徑漏內部 FACT（實錘）＋ config `off` 未還原；history 核對捉到 3 處 drift
+
+**1. MC 線（詳見 `super_minecraft_AI_player/.hermes/plans/HANDOFF.md` 最頂）**
+- 09-11 嗰個 DSML 顯示層 fix **確認喺 deployed jar 跑緊**（sha256 前綴 `012da9cc`；`javap` 見 `dropResidualDsmlLines`／`DSML_PIPE_RUN`）→ 今日 01:59 SK 真機 run **冇再漏 markup** ✅。
+- 但同一 run 暴露**新一層**：兜底路徑（`askNativeTools="off"`）之下，model 把**整份 LLM-facing FACT／指令文**回吐入答案（玩家見到「勿宣稱無法合成」「推薦合成／取得時…」「注意：JEI 可能混入 NBT 變體」等內部字 + 內部 id）。log 實錘：單輪冇 tools、`prompt=9450 / completion=1237`；字串同 payload 逐字對得上（連 tag 剝走後嘅前導空格都保留）；尾行【來源】係 `ReplySources.ensure()` 加嘅。
+- ⚠️ **09-11 寫「測完 config 已還原 auto」係錯**：instance 檔一直係 `off`（即係一路行兜底）→ 02:09 SK 自己改返 `auto`（檔案已寫入 ✅，即時生效、唔使重啟）。教訓：mod config 要 game 關咗先改 + 讀檔驗，唔好信改完嗰一刻。
+- 未拍板：**加 raw-reply log**（一行，分辨「AI 照抄 payload」vs「程式貼 facts 兜底」）→ 定案後才修；另 09-11 DSML scrub fix（4 檔）**仍未 commit**。
+
+**2. ⚠️ History 核對：3 處 drift（實錘，唔係照抄舊稿）**
+- **(a) jarvis-pc 由 2026-08-10 之後 59 個 commit 全部未 push。** 實測 `git fetch origin main` + `git ls-remote` → remote main = `ca463a3`（2026-08-10 10:57，PR #11）。舊 HANDOFF 寫「`1bdac68` 已 push」「ahead 3/4 docs」**全部係錯**（實際上 `1bdac68` 同之後嘅 docs 都喺未 push 嘅 59 個入面）。
+- **(b) 09-11 23:36 深夜 session（`jarvis-a1692f57`）未記錄**：連續 5 句廣東話語音被本地 ASR（sensevoice）聽錯（「大心你去哎下。」「去就可以孭噶啦。」…），當時提咗三選一 —— ① 打字重講 ② 轉 MiMo 雲端 ASR（key 已配）③ 試本地 Fun-ASR-Nano —— **SK 未答** → 浮返 pending（語音線）。
+- **(c) `.hermes/plans/self-evol-SUGGESTIONS.md` 有未 commit 改動**（+3 行，09-11 self-review append）→ 未 commit（留返畀 SK 決定）。
 
 ---
 
