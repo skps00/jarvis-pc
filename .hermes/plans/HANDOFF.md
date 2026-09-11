@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-09-12 06:15 開機後核對（SK 講「any task that request restart is done」）—— LHM autostart **驗收 PASS**，順手捉到 HWiNFO 同 LHM 並行
+
+**1. 唯一「等真 reboot」pending → 收口**
+- `LastBootUpTime` = **09/12 06:15:38**（真 boot）；task `JARVIS LHM Sensor` LastRunTime **06:16:16**、State=Running（onlogon 真係 fire）。
+- LHM exe 行緊 + **8085 LISTEN** + `data.json` 104KB／**365 個 sensor 有值**；CPU `Core (Tctl/Tdie)` = **70.5°C** → `hw_monitor.py cpu_temp_c = 70.8`（以前係 null）→ **AMD CPU 溫度 reboot 後存活 ✅**（`references` 記錄嘅驗證三步全過）。
+- 冇彈窗：LHM config 三個 key 齊（`runWebServerMenuItem` / `startMinMenuItem` / `minTrayMenuItem` = true、`listenerPort` 8085）。
+
+**2. JARVIS 全套自己起返（Electron spawn 正常）**
+- `JARVIS-ONE-0.4.10.exe`（06:16:57）→ temp 子進程 `JARVIS ONE.exe`（**單一 instance**，portable 正常行為）；8770／8771 LISTEN。
+- sidecar `python -m jarvis serve`（06:17）單一；`/health` = ok／`wake_on:true`；`jarvis_wake_status` = 就緒 / `hey_jarvis` true；`hermes_alert_poll_loop.py`（pythonw）行緊。
+
+**3. ⚠️ 新觀察：`HWiNFO.exe`（06:16:27 起）同 LHM 並行**
+- 兩隻硬體監控同時讀 MSR/SMU（skill 記過會互搶／讀 0）；**而家讀數正常**（365 sensor 有值），但長遠應該留一隻。已問 SK。
+
+**4. 本輪冇改 code／config。**
+
+---
+
 ## 今日（2026-09-12 凌晨 session，Discord）—— MC 線：兜底路徑漏內部 FACT（實錘）＋ config `off` 未還原；history 核對捉到 3 處 drift
 
 **1. MC 線（詳見 `super_minecraft_AI_player/.hermes/plans/HANDOFF.md` 最頂）**
