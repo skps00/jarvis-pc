@@ -24,6 +24,38 @@
 - **(b) 09-11 23:36 深夜 session（`jarvis-a1692f57`）未記錄**：連續 5 句廣東話語音被本地 ASR（sensevoice）聽錯（「大心你去哎下。」「去就可以孭噶啦。」…），當時提咗三選一 —— ① 打字重講 ② 轉 MiMo 雲端 ASR（key 已配）③ 試本地 Fun-ASR-Nano —— **SK 未答** → 浮返 pending（語音線）。
 - **(c) `.hermes/plans/self-evol-SUGGESTIONS.md` 有未 commit 改動**（+3 行，09-11 self-review append）→ 未 commit（留返畀 SK 決定）。
 
+**3. 等 SK 一句（本 session 收工狀態：冇郁任何 code／任何設定）**
+
+| # | 事項 | 狀態 |
+|---|---|---|
+| 1 | **MC**：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」）→ 定案後才修 | ⏸ 等 go |
+| 2 | **MC**：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP） | ⏸ 等 go |
+| 3 | **jarvis-pc**：59 個未 push commit 要唔要 push？（`git fetch` 後 remote main 仍係 `ca463a3`） | ⏸ 等 go |
+| 4 | **語音線**：本地 ASR 連續聽錯 → ①打字重講 ②轉 MiMo 雲端 ASR ③本地 Fun-ASR-Nano | ⏸ 等揀 |
+| 5 | `self-evol-SUGGESTIONS.md` 3 行要唔要 commit | ⏸ 等 go |
+
+---
+
+## 補記（2026-09-11 晚 session，Discord）—— 抖音批量收尾 + watchdog 修 + Ref2VA 下載驗證 + AI_Studio 就緒（原本漏記，2026-09-12 補）
+
+**1. 抖音批量分析完成（實錘）**
+- 最終數字：**325 / 327 條已轉錄**（有內容 297、純音樂 28、被封鎖 0），總字數 293,150；報告已出檔。
+- 過程中 CPU 只 23% → 5 shard 並行加速（`DY_SHARD`/`DY_SLEEP` env），per-id txt cache 令 shard 安全可續。
+
+**2. cron watchdog 三個坑（已修 + 已寫入 skill）**
+- ❌ `(Get-Process python).Count` 判斷「仲跑緊」永遠 true（機常有 python：gateway／ComfyUI／browser-harness）→ 每 5 分鐘照報唔收尾。✅ 改按 `Get-CimInstance Win32_Process` + `CommandLine -like '*dy_batch*'` 過濾。
+- ❌ `subprocess.run(timeout=…)` 只殺「等待」唔殺子進程 → 兩個 `dy_batch_run.py` 17:58 掛到 21:26（已 `Stop-Process`）。
+- ✅ 自靜音靠 DONE marker（首次完成寫檔，之後 `raise SystemExit(0)` 零輸出）；cron 已刪。
+- ⚠️ 語法坑：`cronjob(schedule="5m")` 係**一次性**（`once in 5m`）→ 要 `"*/5 * * * *"` + 明設 `repeat`，再用 `list` 驗 `k/200` 而唔係 `1/1`。
+- 全部寫入 skill `douyin-tiktok-content/references/batch-asr-deepread.md` §G。
+
+**3. AI_Studio 就緒（等 SK 唔打機）**
+- Ref2VA checkpoint 下載完成 + **SHA256／size 驗證**（19.5GB，同 FL2VA 並存）；2 個 turbo LoRA（FL2V 8-step / Ref2V 4-step）；4 條 workflow（t2v / i2v / 多鏡頭 22 節點 / 人物設計圖 20 節點）已砌好；ComfyUI server 8000 跑住。
+- SK 決定：power 策略 **B（唔 cap，先量真實功耗／溫度）**。
+- ⏸ 兩件等 idle：**Mage-VL 讀圖**（73 note + 畫面文字，~9.5GB VRAM）、**H3 首次真跑**（峰值 ~31.8GB VRAM）。
+
+**4. 本 session 冇改 jarvis-pc code。**
+
 ---
 
 ## 今日（2026-09-11 早 session，Discord，續）—— 為咩 OpenClaw / Hermes **唔會有** DSML 漏出問題（SK 問，架構比較）
