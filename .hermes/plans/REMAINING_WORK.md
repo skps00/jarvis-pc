@@ -247,3 +247,20 @@
 - **Git**：jarvis-pc **ahead 3 docs 未 push**（`d8bfe3d`／`bee2e6d`／`06aa722`）＋ 本 cron docs commit。
 - **仍然等 SK**：新 mic（G 人手實測；Settings tab 可隨時）／LHM autostart（等真 reboot）／stt_stats・clarify_stats ≥7 日數據／push 兩個 repo 一句話。
 - ⏳ **低優先新項**：self_review `detect_trend` 加 sustained-high 規則（step-change + plateau 會靜音——來源 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-06）。
+
+---
+
+## 現況 sync（2026-09-12 06:00 cron 核實）
+
+> 窗口 = 2026-09-11 06:00 → 09-12 06:17（逐個 session 核對：`20260911_060629_9296dc8b` 06:06–21:52 主 Discord session／09:00 self-review cron／5 個 power 研究 subagent／4 個 H3 研究 subagent／`jarvis-32eceb44`・`jarvis-2516ecb6`・`jarvis-e87e0c3f`・`jarvis-835d07a8`・`jarvis-a1692f57`（語音 garble）／`jarvis-9912e09f`・`jarvis-86fd00c5`（09-12 凌晨閒聊）／`20260912_020019_aa00a236` 02:00–02:55 MC 線）。**JARVIS ONE 本體 09-11～09-12 無 code 改動**（工作全部喺 MC repo／AI_Studio／skills）。
+
+- **Git**：jarvis-pc **ahead 61 未 push**（remote main 仍 `ca463a3`，即 2026-08-10 之後全部未上 GitHub；09-12 06:1x `git rev-list --count origin/main..HEAD` 實測）。`.hermes/plans/self-evol-SUGGESTIONS.md` 仍有未 commit 改動（09-11 self-review append，等 SK 決定；本 cron 冇 touch）。
+- **MC 線**：09-11 早 Arch-3/3a 真機驗收 PASS（`1ba048f` 已 push）＋ 新 DSML scrub fix（4 檔，已驗／review SHIP，**未 commit**）；09-12 01:59 真機跑確認 **DSML fix 生效**，但揭出兜底路徑（`askNativeTools="off"`）漏內部 FACT 入答案 → 加 raw-reply log 未拍板；⚠️ instance config 09-11 寫錯「已還原 auto」（實際一直 `off`）→ 02:09 已由 SK 改返 `auto`（讀檔驗過）。詳見 MC repo `.hermes/plans/HANDOFF.md`。
+- **AI_Studio（非 JARVIS，記錄備查）**：
+  - Phase 0 完成 → **Phase 1 spike spec staged**（`docs\plans\2026-09-11-phase1-spike-jobspec.md`：3 樣片＋逐項技術 PASS 標準＋kill criteria；等 SK 揀 idle 時段）。上一版 sync 嘅「H3 真跑未做（等 SK 答 power 策略 + spike 時段）」仍然成立，但 **power 策略已定：B（唔 cap，先量真實功耗/溫度）**。
+  - **5090 供電安全研究**：117 個 domain ＋ 5 個並行 subagent → `docs\plans\2026-09-11-power-limit-research.md`。結論：軟件 power limit（nvidia-smi -pl）本身安全（450W ≈ -5~8% 效能）但**保護唔到接頭熔**（500W＋降壓都熔過、-100W 照熔）→ 唔可以講「保證冇問題」；**generation-only cap 有盲點**（打機時照 600W）。交付：緊急應變卡 HTML＋PDF（`deliverables\`）＋ 機率模型 doc（`docs\plans\2026-09-11-risk-probability-model.md`，方法論／來源分級明寫，回應 SK「有冇根據」）。周邊：WireView Pro II 查證、本地修卡點（Rivia 深水埗／JKIT 新高登／張哥修電腦）→ 已入 memory + user profile。
+  - **H3 多鏡頭工作流**：4 條 workflow 已砌（t2v／i2v／多鏡頭 22 節點／人物設計圖 20 節點）＋研究整合 doc（37 B站／31 YT／49 GitHub 來源）＋ workflow 圖 HTML；Ref2VA checkpoint 已下載＋SHA256／size 驗證；ComfyUI server 8000 跑住。
+  - ⏸ 兩件等 idle：**Mage-VL 讀 73 note 圖**（~9.5GB VRAM；script `%TEMP%\dy_notes_mage.py`——SK 09-11 18:10 講過「no need, will consume too much vram」，所以押後唔係拒絕）、**H3 首次真跑**（峰值 ~31.8GB VRAM → 跑前要熄 MC）。
+- **抖音線**：09-11 全量 deep-read 收尾 **325/327 已轉錄**（有內容 297／純音樂 28／封鎖 0，總 293,150 字；報告 `docs\plans\2026-09-11-douyin-full-deepread.md`、分類 `dy_classified.json`）。**skill 真坑已修 2 個**：① 抖音 caption anchor 位置已變（舊 `span[class*='#']` 完全失效，509/509 desc 全空 → 改用 card 內 `img[alt]`，之後 509/509 有 desc）；② batch-ASR 進度 watchdog 三坑（`Get-Process python` 判斷永遠 true→改 `Get-CimInstance` + CommandLine 過濾；`subprocess.run(timeout=)` 唔殺子進程；DONE marker 自靜音）＋ Hermes cron `script` 欄唔支援參數。
+- **語音線（優先度升）**：本地 ASR（sensevoice）短句粵語 **09-11 全日 6 句 garble**（serve.log `[ear] raw=` 實錘：07:40／20:01／22:27／22:52／23:36／09-12 00:38；另 2 次空／單字誤觸）——同日英文句轉得準 → 係短句粵語系統性弱，唔係環境噪音。三選一（①打字重講 ②MiMo 雲端 ASR，key 已配 ③本地 Fun-ASR-Nano）**等 SK 揀**。其餘 mic 相關（headset wake／Tier 1／聲紋／AEC）照舊等新 mic。
+- **仍然等 SK**：① push 兩個 repo ② MC raw-reply log ＋ DSML fix commit ③ 語音 ASR 方向 ④ AI_Studio Phase 1 spike 時段 ⑤ `self-evol-SUGGESTIONS.md` commit；另 LHM autostart 等真 reboot、stt_stats・clarify_stats ≥7 日數據、GPU TDR 決定唔郁（反轉條件見 HANDOFF 頂部）。

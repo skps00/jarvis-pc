@@ -4,7 +4,7 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc 由 2026-08-10 起 59 個 commit 全部未 push**（remote main = `ca463a3`，2026-09-12 `ls-remote` 實測；舊稿寫「已 push」／「ahead 3-4 docs」全部係錯）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc 由 2026-08-10 起 61 個 commit 全部未 push**（remote main = `ca463a3`；2026-09-12 06:1x `git rev-list --count origin/main..HEAD` = **61** 實測；舊稿寫「已 push」／「ahead 3-4 docs」全部係錯）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
@@ -21,7 +21,7 @@
 
 **2. ⚠️ History 核對：3 處 drift（實錘，唔係照抄舊稿）**
 - **(a) jarvis-pc 由 2026-08-10 之後 59 個 commit 全部未 push。** 實測 `git fetch origin main` + `git ls-remote` → remote main = `ca463a3`（2026-08-10 10:57，PR #11）。舊 HANDOFF 寫「`1bdac68` 已 push」「ahead 3/4 docs」**全部係錯**（實際上 `1bdac68` 同之後嘅 docs 都喺未 push 嘅 59 個入面）。
-- **(b) 09-11 23:36 深夜 session（`jarvis-a1692f57`）未記錄**：連續 5 句廣東話語音被本地 ASR（sensevoice）聽錯（「大心你去哎下。」「去就可以孭噶啦。」…），當時提咗三選一 —— ① 打字重講 ② 轉 MiMo 雲端 ASR（key 已配）③ 試本地 Fun-ASR-Nano —— **SK 未答** → 浮返 pending（語音線）。
+- **(b) 09-11 23:36 深夜 session（`jarvis-a1692f57`）未記錄**：連續 5 句廣東話語音被本地 ASR（sensevoice）聽錯（「大心你去哎下。」「去就可以孭噶啦。」…），當時提咗三選一 —— ① 打字重講 ② 轉 MiMo 雲端 ASR（key 已配）③ 試本地 Fun-ASR-Nano —— **SK 未答** → 浮返 pending（語音線）。→ **2026-09-12 cron 實測更正：唔止 5 句，全日 6 句 garble、跨 07:40–09-12 00:38（詳見下面 09-11 日間 補記 §5）**。
 - **(c) `.hermes/plans/self-evol-SUGGESTIONS.md` 有未 commit 改動**（+3 行，09-11 self-review append）→ 未 commit（留返畀 SK 決定）。
 
 **3. 等 SK 一句（本 session 收工狀態：冇郁任何 code／任何設定）**
@@ -30,9 +30,10 @@
 |---|---|---|
 | 1 | **MC**：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」）→ 定案後才修 | ⏸ 等 go |
 | 2 | **MC**：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP） | ⏸ 等 go |
-| 3 | **jarvis-pc**：59 個未 push commit 要唔要 push？（`git fetch` 後 remote main 仍係 `ca463a3`） | ⏸ 等 go |
+| 3 | **jarvis-pc**：未 push commit 要唔要 push？（2026-09-12 06:1x 實測 remote main 仍係 `ca463a3`、**ahead 61**） | ⏸ 等 go |
 | 4 | **語音線**：本地 ASR 連續聽錯 → ①打字重講 ②轉 MiMo 雲端 ASR ③本地 Fun-ASR-Nano | ⏸ 等揀 |
 | 5 | `self-evol-SUGGESTIONS.md` 3 行要唔要 commit | ⏸ 等 go |
+| 6 | **AI_Studio**：Phase 1 spike spec 已 staged（3 樣片＋驗收標準，見下面 09-11 日間 補記 §2）→ 等 SK 揀 idle 時段（power 策略已定 **B：唔 cap，先量真實功耗/溫度**） | ⏸ 等揀 |
 
 ---
 
@@ -55,6 +56,29 @@
 - ⏸ 兩件等 idle：**Mage-VL 讀圖**（73 note + 畫面文字，~9.5GB VRAM）、**H3 首次真跑**（峰值 ~31.8GB VRAM）。
 
 **4. 本 session 冇改 jarvis-pc code。**
+
+---
+
+## 補記（2026-09-11 日間 session，Discord）—— 5090 供電安全研究／應變卡 ＋ H3 多鏡頭工作流 ＋ Phase 1 spike spec（原本漏記，2026-09-12 cron 補）
+
+> 同一個 Discord session（`20260911_060629_9296dc8b`，09-11 06:06–21:52）嘅日間至晚間時段。早段 MC Arch-3/3a 真機驗收＋DSML scrub fix（06:06–08:33）同 09:26 嘅 OpenClaw/Hermes 架構比較已見上面兩個 section；本節補其餘產出。**JARVIS ONE 無 code 改動**（產出全部喺 AI_Studio／skills／MC）。
+
+**1. RTX 5090 供電安全研究（SK「保證鎖 450W 冇問題？」→ 要求 ≥50 個網站）**
+- 規模：**117 個獨立 domain** ＋ **5 隊並行 subagent**（各自再驗 12–20+ domain；Reddit 對爬蟲 403 → 只靠二手轉述）。
+- 結論（`AI_Studio\docs\plans\2026-09-11-power-limit-research.md`）：① 軟件 power limit（`nvidia-smi -pl`）本身安全、官方支援，450W 代價 ~5–8% 遊戲效能 ② ⚠️ **但 cap 保護唔到接頭熔**——有 5090 喺 500W＋0.9V 降壓下照熔、亦有「-100W 上限照熔」報告 → **唔可以講「保證冇問題」** ③ 反而 undervolt 更易出怪問題 → SK 揀 power cap 係較安全路線 ✅ ④ **揭出 plan 盲點**：generation-only cap 只封生成時段，**打機時照跑 600W**（而打機正正係長時間高功耗場景）→ 接頭風險冇降低。
+- 交付（SK「make it, don't print it，我存 WhatsApp」）：**緊急應變卡** → `AI_Studio\deliverables\rtx5090-emergency-card.html` ＋ `RTX5090-emergency-card-20260911.pdf`；另 `docs\plans\2026-09-11-risk-probability-model.md`（各情境機率模型——SK 質疑「有冇根據」→ 開頭明寫方法論：廠商基礎率 × 調整因子 × 自己 log 實測，禁假精度）。
+- 周邊查證：**WireView Pro II**（pros/cons）＋ 最壞情況處理（本地修卡點：Rivia 深水埗代理／JKIT 新高登／張哥修電腦）→ 已入 memory + user profile。
+
+**2. AI_Studio Phase 1 spike spec staged**：`docs\plans\2026-09-11-phase1-spike-jobspec.md`——3 條樣片（① ASMR/感官系＝測 H3 原生立體聲 ② 無對白治癒系＝測鏡頭運動＋英中兩邊共用 ③ 高資訊密度/速度感＝測上限，最燒 GPU 排最後）＋ 先定驗收標準（片長 ≥5s／無破損／有聲／無 validation error／功耗溫度有 log）＋ kill criteria。共同參數 1344×768、length 124（≈5.2s）、8 steps、隨機 seed。**等 SK 揀時段**（H3 峰值 VRAM ~31.8GB → 跑前要熄 MC）。
+- 已知缺口記低：`comfy_guard.py` 冇 prompt/seed override（短期用 run-specific JSON 繞，長期 `--set node.key=value` 屬新功能要經 cursor-agent）；`h3_i2v.json` 嘅 `LoadImage.image` 仍係 placeholder。
+
+**3. H3 多鏡頭工作流重建**（SK「點解人哋可以用好多 node 好多 prompt 生一條片」→「研究下其他人點砌，睇多幾個人再整合，特別係 B站/YT，github also」）：4 隊 subagent（B站／YouTube／GitHub+HF／社群用例）＋自己抽官方文件字幕 → 整合 **37 B站 ＋ 31 YouTube ＋ 49 GitHub** 來源 → `docs\plans\2026-09-11-h3-multishot-research-synthesis.md` ＋ workflow 圖 `docs\workflow-h3-diagram.html`（ComfyUI 開喺 monitor 2 畀 SK 睇）。
+- 順手寫咗 **CDP harness**（`%TEMP%\cdp_comfy.py`／`cdp_shot.py`／`open_comfy.ps1`／`move_comfy.ps1`）去 drive agent 自己開嘅 ComfyUI Chrome 窗（唔搶 SK 焦點）；產物截圖 `AI_Studio\deliverables\comfy-h3-*.png`（t2v-loaded／multishot／multishot-solattn／r2v-character／r2v-sheet）。
+
+**4. 抖音「人物設計圖」實測 ＋ 修 skill 真坑**（SK「u watch tiktok first, some video is about 人物設計圖」）：掃自己收藏 **509 條**（video 425／note 84；desc 覆蓋 509/509）→ 強相關 29 條 → **真睇片**（抽幀＋OCR）＋讀 note → `AI_Studio\docs\plans\2026-09-11-douyin-character-sheet-findings.md`（核心發現：「人物角色版」取代傳統三視圖）。
+- 🔧 **實錘 skill 坑（已修）**：`douyin-favorites-browser.md` §3 caption 抽取法**已失效**——舊靠 `span[class*='#']`，今日 509/509 desc **全部空**；真位置係 card 內 `<img alt="...">` → 改 `querySelector('img[alt]')` 後 509/509 有 desc。教訓：`nonempty == 0` **唔好當「冇 caption」**，係 selector 死咗（呢個坑用咗 3 個 call 才捉到）。
+
+**5. 語音線實錘（補強 pending #4）**：本地 ASR（sensevoice）**全日**連環聽錯——serve.log `[ear] raw=` 實錘 **6 句** garble：「当这是修杰克技也就是越来越瘦的这一像 p i 二零二六。」(07:40)／「大心你去哎下。」(20:01)／「窗噶啦。」(22:27)／「中信鼓楼。」(22:52)／「去就可以孭噶啦。」(23:36)／「啊，我系金三衣人啊好利。」(09-12 00:38)，另加 2 次空／單字誤觸（「。」「呃。」）。→ **唔係「深夜 5 句偶發」，係跨 17 小時全日性**、全部短句廣東話、全部 sensevoice（同一日英文句反而轉啱）→ pending #4（打字／MiMo 雲端 ASR／本地 Fun-ASR-Nano）優先度應升。
 
 ---
 
@@ -679,6 +703,11 @@
 
 ## 現行狀態
 
+> **2026-09-12 更新（cron 核實，實錘）**：
+> - **Git**：jarvis-pc `feature/hermes-alerts-mcp` **ahead 61 未 push**（remote main 仍 `ca463a3`；09-12 06:1x 實測）；MC repo 狀態見頂部 09-12 section（DSML scrub fix 未 commit、instance config 已還原 `auto`）；`.hermes/plans/self-evol-SUGGESTIONS.md` 仍有未 commit 改動（等 SK 決定，本 cron 冇 touch）
+> - **AI_Studio（非 JARVIS，記錄備查）**：Phase 0 完成 → **Phase 1 spike spec staged**（3 樣片＋驗收標準＋kill criteria，等 SK 揀時段）；H3 4 條 workflow（含多鏡頭 22 節點／人物設計圖 20 節點）＋多鏡頭研究整合（37 B站／31 YT／49 GitHub）；Ref2VA checkpoint 已下載＋SHA256 驗證；**5090 供電安全研究（117 domain ＋ 5 subagent）＋ 緊急應變卡 HTML/PDF 已交付**
+> - **語音**：sensevoice 短句粵語 09-11 **全日 6 句 garble**（07:40→09-12 00:38，serve.log `[ear] raw=` 實錘）→ 三選一（打字／MiMo 雲端 ASR／本地 Fun-ASR-Nano）等 SK 揀
+>
 > **2026-09-11 更新（cron 核實，實錘）**：
 > - **JARVIS ONE 0.4.10** 跑緊（`hud\dist\JARVIS-ONE-0.4.10.exe`；monorepo）；3 個 .lnk 指新位置
 > - **Sidecar 8765**：`GET /health` = `{"ok":true,"wake_on":true}`（09-10 23:4x 重啟，之後一直 UP）；`1bdac68`（alerts ctypes argtypes fix）**已生效**——serve.log 27KB、`int too long to convert` = 0（舊 136MB／370,905 次；備份 `serve.log.bak-20260910.gz`）
@@ -701,6 +730,8 @@
 
 ## 剩低（詳見 REMAINING_WORK.md）
 
+> **2026-09-12 更新（cron 核實）——現行 open items（呢條取代下面嗰條）**：① MC：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」，等 go）；② MC：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP，等 go）；③ jarvis-pc **61 個未 push commit** 要唔要 push（等 go）；④ **語音**：sensevoice 短句粵語**全日 6 句 garble 實錘** → ①打字重講 ②MiMo 雲端 ASR（key 已配）③本地 Fun-ASR-Nano（等揀）；⑤ `self-evol-SUGGESTIONS.md` 3 行要唔要 commit（等 go）；⑥ **AI_Studio Phase 1 spike 時段**（spec 已 staged，等揀）；⑦ 其餘不變：G 人手實測等新 mic（Settings tab 可隨時）、LHM autostart 等真 reboot、stt_stats／clarify_stats ≥7 日數據、GPU TDR 唔郁。
+>
 > **2026-09-11 更新（cron 核實）——現行 open items**：① 等 SK 一句 push（jarvis-pc 3 docs + MC `1ba048f`）；② MC Arch-3/3a 真機煙測（SK restart game）；③ AI_Studio：等 SK 答 power 策略 + spike 時段 → Phase 1 spike；④ GPU TDR = SK 決定唔郁（記錄完，反轉條件喺頂部）；⑤ G 人手實測等新 mic（Settings tab 可隨時）；⑥ stt_stats／clarify_stats 等數據 ≥7 日；⑦ LHM 開機 autostart 等真 reboot。**下面 2026-08-31 版清單保留做歷史**（多數已 ✅，細節睇各日期 section）：
 
 - ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修 + stt_preload 已開（2026-09-01）+ sidecar 已重啟；**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
