@@ -145,6 +145,34 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 2. 「what did I miss」經 router → 摘要 → TTS 嘅完整鏈路（query intent 類型存在，handler 要新寫）。
 3. Process-based gaming 訊號嘅誤判率（SK 開 Prism 但唔玩）→ 要 SK 定門檻。
 
+## Review Round 2 — 中立裁判裁決（2026-09-12）+ v3 必須修正
+
+**比數：反方贏 6:4**（Round 1 係 8:2）——今輪雙方**同意核心方向**（deterministic policy ＋ critical class ＋ 單一 speaker gate ＋ held 唔准 GC ＋ `mark_spoken` 原子），分歧只在**Task 1 規格完整性**同**次序**。反方 4 個 HIGH 全部 code-verified，係真 defect（唔係口味）；正方亦證實 baseline 健康（379 passed / eval_gate HASH `0b88e6f6bab43269`）。
+
+**🔴 開工前必須修（v3 REQUIRED）**
+1. **Critical class 定義要跟 code 門檻**：`gpu_health` soft=83°C 每 120s 會 fire（`gpu_health.py:60-63`，打機時 GPU 長期 83-88°C）→ 若照我原本寫「>80 穿透」＝**打機 spam bomb**。→ 只有 **hard（temp≥90 / mem≥95）同 `cursor_approve` 穿透**；**soft 83 打機時入 digest**。
+2. **Held → pending 嘅 release 觸發要明寫**：而家 plan 令 `expired()` 對 held 回 False（唔准 GC）但 `peek()` 只回 `pending` → 冇任何 caller 轉返 pending ＝ **永久黑洞**（全 repo grep `release_held` = 0 定義 0 caller）。→ poll_loop 每輪讀 activity：`gaming=False` → `release_held()`；且 `hold_until` 過期要轉 digest/drop，唔可以永久豁免 GC。
+3. **`enqueue()` max_depth eviction 要保護 held/critical**：`alert_store.py:141-148` 超 `max_depth=32` 會刪最舊非 acked 行 → held/critical 會被當垃圾丟 ＝ 打破「critical 唔可以被靜音」承諾。→ eviction 只可剔 `state=='pending' and priority=='normal'`，並加單元測試。
+4. **Gate 唔好擺 `AlertStore.peek()`**：`peek()` 係 8765 MCP `peek_alert` 同 cron 共用入口 → gate 擺入去＝打機時連查都查唔到。→ gate 擺 **speaker 出口**（`poll_loop` / `speak_once` 共用一個 `should_speak(row) -> SpeakPlan` helper），store 保持中性，**單一 speaker 仍然成立**。
+
+**🟠 其他要一併處理（MED）**
+- **Gaming 訊號**：`apps[]` 有 **180 秒 flap-guard**（`activity_monitor.py:614-620`）＋同前景無關 → gate 要加 **freshness（timestamp ≤ N 秒）**；並且**要同 `gpu_policy.gaming_now()` 共用同一個 `is_gaming()`**（否則兩處各自定義會漂移 —— 今日已經中同一個 bug）。
+- **「同 sender 15 分鐘升級」做唔到**：`StoredAlert` **冇 sender 欄**（只有 id/kind/phrase/app/detail/ts/ttl_s/status/lease_until）＋ whatsapp phrase 重複極高 → **Phase 1 刪走呢條規則**，唔好當已解；要就要先抽取 WinRT toast sender。
+- **Ledger 唔可以變第三個 source of truth**：由 **AlertStore 內部**喺每次狀態轉變（enqueue/spoken/held/digest/dropped）append 單一 append-only `miss_ledger.jsonl`；「what did I miss」只讀 ledger；HUD 二選一。
+- **POLICY 表唔好變第三個 hardcode**：`shape()` 要 **delegate 去 `alerts.alert_phrase_for()` / `gpu_health_phrase()`**，policy 由 **settings 欄位 derive**（已有 `alert_voice/alert_discord/alert_cursor/alert_whatsapp` 布林），唯一新增嘅係「純 ASCII 保證」。
+- **L4 對即時態零價值**：實測 5.86s > timebox 3s → polish 到達時已經講完。→ **Task 4 只做 digest（坦承），刪「即時 polish」幻覺**；Task 4 暫緩至 benchmark 完。
+- **eval_gate 同步**：新增 test 檔要同步 `GOLDEN_SUITES` mapping ＋ `.hermes/plans/self-evol-golden-set.md`，跑 `--lock` 唔止 `--all`（`eval_gate.py:296-322` doc↔mapping 逐 basename 比對）。
+- **鎖**：新 writer（hold/mark_spoken/release_held）一律行同一 `_DirLock`（`alert_store.py:63-94`）＋補多 writer 並發測試。
+- **「what did I miss」**：`_QUERY_MARKERS`（`router.py:263-276`）冇 miss 字眼＋`hermes_enabled` 時 query short-circuit 去 Hermes（`engine.py:127-136`）→ 加明確 phrase match ＋ local handler ＋ bypass；**輸出前強制 ASCII**（`mouth.speak` 會靜默跳過 CJK）。
+- **`_enqueue_alert` 簽名**：現時 `(kind, phrase, *, app, log_prefix)` **冇 `detail`**（`shell_app.py:550`）→ Task 2 要一齊改。
+
+**✅ 開工範圍（v3 定案建議，＝雙方共識交集）**
+- **即做（零風險、唔掂 store、可即測）**：Task 2 `shape()` 純函數（extend `alert_phrase_for`）＋ Task 5 settings 欄位／clamp。
+- **等 2 個實測**：① 打機時 GPU**軟**警報實際頻率（反方反轉條件：1 小時 ≤2 次）；② process-based 訊號 FP 率（Prism 開住唔玩 30 分鐘，FP<5%）→ **shadow mode 先做**：新 policy 只寫 ledger 唔出聲 48 小時，對比實際出聲集合，攞真數據才 enforce。
+- **等 SK 定義 2 樣**：Q1 digest 定義（30 分鐘一句 vs 即時）；Q2「開住 game 唔玩」算唔算打機。
+- **Task 4（LLM）** 等 ranking prompt benchmark（p95 ≤3s 才上）。
+- **反轉條件（一觸即停）**：改到 `hud/`／`hermes_bridge.py`／要新 port 新 cron；或 379 baseline 有 regression。
+
 ## Review Round 1 — 完整記錄（三階段）
 - **Stage 1 反方（最強反）**：否決 v1 Task 5／Task 2 實作；8 條 HIGH（B1-B8 上表）全部有 file:line。
 - **Stage 2 正方（最強支持）**：認為 v1 嘅方向係結構性（刪通道，唔係叫模型自律）＋同 `clarify_gate`、`jarvis_speak` 既有 gate 一致；但**同意 v1 嘅 Hermes API 前提要驗**。
