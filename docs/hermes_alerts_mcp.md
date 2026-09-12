@@ -51,19 +51,43 @@ producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
 | `alert_digest_interval_s` | `1800` | digest 一句嘅間隔 |
 | `alert_digest_ttl_s` | `86400` | digest 行 TTL |
 | `alert_dedupe_window_s` | `300` | 同 kind 去重（0 = 停用） |
-| `alert_llm_polish` | `off` | L4 LLM 只做 digest 潤飾 |
+| `alert_llm_polish` | `off` | ⚠️ **未接線**（Task 10 暫緩：冇 runtime reader、冇 UI 控件） |
+| `alert_llm_timeout_s` | `3.0` | ⚠️ **未接線**（同上；預留畀 Task 10） |
 
 **「what did I miss」**：講 `"what did i miss"`（或 `did i miss anything`／`miss咗啲咩`…）→ router `alert_miss` intent → **本機處理**（唔經 Hermes，即使 `hermes_enabled`）→ 讀 24 小時 `miss_ledger.jsonl` → 一句 ASCII 英文（例：`"Sir, 3 alerts went unanswered while you were away: whatsapp x2, gpu health x1."`；冇嘢 = `"Sir, nothing missed."`）。
 
 **⚠️ 未啟用**：`alert_policy_mode` 默認 `off`（settings.json 亦未寫入新 keys）——要 restart sidecar，再以 `shadow` 收 ≥48 小時樣本（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）才上 `enforce`。
 
-## Baseline（2026-09-12 23:5x，親跑）
+## 2026-09-13 修復輪（fix1–fix9，全部由 Hermes 親跑收貨）
+
+| 修咗咩 | 實錘 |
+|---|---|
+| 「what did I miss」**報大數**（把 ledger 事件行當未答 alert） | 按 id 去重、只計未 `spoken`；`over 999` 句法；label 消毒次序修好 |
+| `release_held()` 之後行即刻 `ttl_expired` **靜默消失** | release 時 refresh `ts` → 仍可講／入 digest |
+| release 窗寫 180s、實際 3 秒 | 改純時間窗 `RELEASE_QUIET_S = 180` |
+| 生產 `AlertStore()` **冇注入 policy**（critical 變 normal） | 新 `default_store()` 工廠，生產點全部走佢 |
+| settings key **寫得入冇人讀** | 真接線（held cap／dedupe window／digest TTL）；未接線 LLM key 由 UI 拆走 |
+| digest flush **先講後 clear** → 撞鎖會重講 | 先 `mark_spoken` claim → 講 → 失敗還原、`clear` 包 try |
+| `alert_tts=piper` 係**第二條 speaker**（繞過 gate） | piper 分支改走 `should_speak` ＋ `alert_dispatch.enforce` |
+| release **一次過放晒**（打機完連珠炮發） | 只放 critical ＋最新一條 normal，其餘留 held → digest 一句講完 |
+| `[warn] release_held noop` 每秒印（~86k 行/日） | 60 秒 rate-limit |
+| **dedupe key 用常數**（吞真事件） | 改 `hash(summary)`（同內容才 dedupe） |
+| **`guard` 冇傳落 TTS 子進程**（聊天回覆被 strict 吞） | `guard` 傳落 subprocess |
+| `should_speak` **忽略 `row.priority`** | `priority == "critical"` 第一短路口；critical 由 `priority_for` 單一來源 |
+| `sidecar_down` **冇 producer**（假安全感） | 明文移除（要真 watchdog 才加返） |
+| mode 切 `off` 之後 held／digest **變殭屍** | off 模式照 gc ＋ 講一次 digest ＋ 放 held |
+| MCP `peek_alert` lease 仍 30s（可重讀同一句） | 300s |
+| `default_store()` fallback 冇 policy | fallback 都注入 |
+| `gpu_hard` producer 傳 **空 phrase** → `enqueue()` raise → **critical alert 靜默消失**（fix8 引入、fix9 修） | producer 傳 `alert_phrase_for(kind)`；`shape()` delegate 同一函數（單一來源）＋ 空 phrase 防守 |
+| LOW | 刪死碼（`is_metric_noise`／`quiet_iters`／`process_row`／`_ = gaming`）｜`--json` 真生效｜`label_for` 統一｜`enforce` 重用 `effective_action`｜`HB_INTERVAL_S` 匯出｜mouth strict 同 choke 同一 validator |
+
+## Baseline（2026-09-13 01:2x，親跑）
 
 ```text
-python -m pytest tests/ -q          → 472 passed / 0 failed
-python -m jarvis.eval_gate --lock   → 一致（44 test files）
+python -m pytest tests/ -q          → 522 passed / 0 failed
+python -m jarvis.eval_gate --lock   → 一致（52 test files）
 python -m jarvis.eval_gate --all    → golden / regression / stress 三 suite ok=True
-                                      HASH 3317f6997f5ff7fb
+                                      HASH 655b15e8bca241de
 ```
 
 ## TTS modes (`alert_tts`)

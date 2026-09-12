@@ -11,6 +11,31 @@
 
 ---
 
+## 2026-09-13 00:0x–01:2x（Discord session）—— Alert pipeline 收尾：Task 7 收貨、兩輪獨立 review、fix1–fix9 全部收貨（**code 仍未 commit**）
+
+**1. 做咗咩（全部有實測證據）**
+- Task 7（「what did I miss」）由 cursor 交付 → Hermes 自己收貨（py_compile／targeted／全量／`--lock`／`--all`／26 項 probe）。
+- **兩輪獨立 review**：① cursor read-only 12-area（NEEDS-FIX）② subagent 品質 review（2 HIGH＋8 MEDIUM＋8 條 spec 偏離）→ 全部 findings 我逐個自己核實（read code／probe），再派 **fix1–fix9** 修到清。
+- 期間我自己 probe 捉到 review 冇捉到嘅嘢：Task 7 句子**報大數**（ledger 事件行 ≠ 未答 alert）；**fix8 引入嘅 HIGH regression**：`gpu_hard` producer 傳空 phrase → `enqueue()` raise `ValueError` → **hard GPU critical alert 靜默消失**（fix9 修，並加 2 個防守 test）。
+- **最終驗收（親跑，2026-09-13 01:2x）**：`pytest tests/ -q` = **522 passed / 0 failed**；`eval_gate --lock` = 一致（**52** files）；`eval_gate --all` = 三 suite ok；HASH `655b15e8bca241de`；自寫 probe（fix6 9 項、fix7 9 項）全 PASS。
+- docs 已更新：`docs/hermes_alerts_mcp.md`（新增「2026-09-13 修復輪」表 ＋ 新 baseline；`alert_llm_*` 標明未接線）；plan 尾加「2026-09-13 收貨記錄」＋ 8 條規格偏離；`AGENTS.md` 坑 section 已有 alert pipeline 一句（commit `8cff405`）——**舊稿寫「AGENTS.md 做唔到」係過時，已更正**。
+
+**2. 而家喺邊（唔可以當完成嘅嘢）**
+- **所有 code 未 commit**（`git status` 見 18 modified ＋ 25 untracked）；
+- **pipeline 未生效**：`alert_policy_mode` 仍 `off`、`%APPDATA%\Jarvis\settings.json` 未有新 keys → 要 restart sidecar；
+- **shadow 樣本未開始收**（P1 通關條件：M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）；
+- **真機驗收未做**（打機／通話／idle 三情境）；Task 10（LLM digest 潤飾）仍暫緩（要 benchmark p95 ≤3s）。
+
+**3. 下次做咩（優先序）**
+1. 等 SK go → **restart sidecar 一次** ＋ 寫 `alert_policy_mode=shadow` → 收 ≥48h 樣本（用 `scripts/alert_shadow_report.py` 每小時睇分佈）。
+2. 等 SK go → **commit code**（建議拆 2-3 個 commit：pipeline 新模組／store 狀態機／docs）。
+3. 真機驗收（SK idle 時）→ 過關才 `enforce`。
+4. repo root 殘留檔（`_staging/`、`_tmp_test_write.txt`、`_compile_check2.py`、`_apply_and_compile.bat`、`nonexistent/`）→ 要 SK 批准才清。
+5. Task 10 要跑 ranking prompt benchmark（p95 ≤3s）先開工。
+
+**4. 順帶（side topic）**
+- Chrome「cookie 設定有問題」（`accounts.google.com/CookieMismatch`）：root cause = Chrome 設定「封鎖第三方 Cookie」（`cookie_controls_mode=2`）＋ 上次 Chrome 係 crash 收場。已（SK 批准後）備份 `Preferences.bak-20260913-0048` 並改為 `1`（只在無痕封鎖）。另發現：Chrome 開機自動背景啟動（HKCU Run `GoogleChromeAutoLaunch_…`）＋ 一個 kill 唔到嘅 **stuck GPU process**（`--type=gpu-process`，父 process 已死）——同 5090 driver TDR 條線或有關，值得跟。
+
 ## 2026-09-12 09:0x–23:5x（同一個 Discord session，中途 auto-reset）—— Alert pipeline 大重整：plan v5.1 定案 ＋ 15 個 task 落咗 14 個（**全部 code 未 commit**）
 
 **1. 呢個 session 做咗咩（一條龍）**

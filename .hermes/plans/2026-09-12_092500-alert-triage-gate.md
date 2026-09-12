@@ -400,3 +400,24 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 - **Stage 3 中立裁判**：**反方 8:2**。原因：反方 HIGH 全部係 code-verified blocker（唔係口味），照 v1 落會即日壞；正方勝在認清問題層次（要刪通道），故保留其目標、換 placement。
 - **最大未知**：L4（LLM 改寫）實際延遲／質量；如果 background polish 慢過出聲，L4 價值就只剩 digest。
 - **反轉條件**：如果 Hermes API 證實可以 per-request tools-off 且 p95 < 2s（實測），而 SK 接受「LLM 可 suppress」，v1 式設計可以重評。
+
+
+---
+
+## 2026-09-13 收貨記錄（Hermes 親跑；所有 code 仍未 commit）
+
+**驗收數字**：`pytest tests/ -q` = **522 passed / 0 failed**；`eval_gate --lock` = 一致（**52** test files）；`eval_gate --all` = 三 suite ok；HASH `655b15e8bca241de`。
+
+**本輪修改輪次**：fix1（miss 句語意）→ fix2（label／over 999）→ fix3（release 生命週期／180s 窗／default_store 注入／settings 接線／stats dropped）→ fix4（mouth strict/lenient、shadow 匯報 CLI、stale activity hold、drop reason、CRITICAL 測試）→ fix5／5b（policy CRITICAL 次序、共用 `alert_dispatch`、GC 寫入收斂、loop state）→ fix6（digest claim、piper gate、死碼、mark_spoken refresh）→ fix7（release 收斂、warn rate-limit、dedupe key、guard 傳 subprocess、priority、sidecar_down、off 收斂、MCP lease、fallback policy）→ fix8（LOW 清理＋3 個 test）→ fix9（gpu_hard 空 phrase regression）。
+
+**兩輪獨立 review**：① cursor read-only 12-area（verdict NEEDS-FIX：digest 先講後 clear／piper 第二 speaker／死碼）② subagent 品質 review（2 HIGH：release 洗版／warn spam；8 MEDIUM；8 條 spec 偏離）→ 全部修完並補回歸測試。
+
+**規格偏離（刻意，已記錄）**
+1. `last_digest_ts` 持久化 → 改為 per-row `digest_at`／`ts`（語意等價，唔另開 state 檔）。
+2. shadow ledger 欄位 `would_be_action` → 改名 `decision`（report CLI 同步）。
+3. `StoredAlert.state` 冇 `dropped`（drop 直接刪行 ＋ ledger 寫 reason）——避免「已 drop 行」佔 queue。
+4. self-monitor threshold 方向：plan 要求由 `run_once()` 提供 enum；實作改為 regex 解析（`n/a` → `unchanged`），未接 enum。
+5. `sidecar_down` 由 `CRITICAL`／`POLICY` **移除**（全 repo 冇 producer；保留會係假安全感）。要真 watchdog 才加返。
+6. release／digest 收斂實作在 `poll_loop`（plan 原本寫 store／speaker 分工唔夠清楚）。
+7. `alert_release_quiet_s` 冇開 settings key（用 module 常數 `RELEASE_QUIET_S=180`）——減少 UI 面。
+8. `alert_llm_polish`／`alert_llm_timeout_s` 保留在 `settings.py` 但**冇 reader、冇 UI**（Task 10 暫緩）。
