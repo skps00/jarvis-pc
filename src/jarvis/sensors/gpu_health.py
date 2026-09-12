@@ -38,6 +38,7 @@ class GpuHealthHit:
     kind: str
     phrase: str
     detail: str
+    is_hard: bool = False
 
 
 @dataclass
@@ -128,7 +129,10 @@ class GpuHealthMonitor:
             f"reason={reason} hard={hard} calib={self._calibrated} "
             f"src={snap.source}"
         )
-        return GpuHealthHit(kind="gpu_health", phrase=phrase, detail=detail)
+        kind = "gpu_hard" if hard else "gpu_health"
+        return GpuHealthHit(
+            kind=kind, phrase=phrase, detail=detail, is_hard=hard
+        )
 
     def _clear_state(self) -> None:
         self._hist.clear()

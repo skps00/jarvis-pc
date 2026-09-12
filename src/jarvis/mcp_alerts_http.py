@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from jarvis.alert_store import AlertStore, default_queue_path
+from jarvis.alert_store import AlertStore, default_queue_path, default_store
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -324,7 +324,7 @@ def build_mcp(
     from starlette.responses import JSONResponse
 
     host = _require_loopback(host)
-    st = store or AlertStore()
+    st = store or default_store()
     expected = token.strip()
     if not expected:
         raise ValueError("alerts MCP token required")
@@ -340,8 +340,11 @@ def build_mcp(
     )
 
     @mcp.tool()
-    def peek_alert(lease_s: float = 30.0) -> dict[str, Any]:
-        """Lease next alert. Speak ``phrase`` then call ack_alert."""
+    def peek_alert(lease_s: float = 300.0) -> dict[str, Any]:
+        """Lease next alert. Speak ``phrase`` then call ack_alert.
+
+        Lease must cover the full TTS window (≥300s).
+        """
         row = st.peek(lease_s=float(lease_s))
         if row is None:
             return {"ok": True, "alert": None}
@@ -369,7 +372,7 @@ def build_mcp(
         """Speak English text via Jarvis Piper (non-blocking)."""
         global _speak_last_ts
         from jarvis.activity import gaming, voice_call
-        from jarvis.mouth import has_cjk
+        from jarvis.alert_policy import guard_for_speech, strict_ok
 
         if gaming():
             return {"ok": False, "reason": "gaming"}
@@ -380,14 +383,17 @@ def build_mcp(
             if now - _speak_last_ts < _SPEAK_MIN_INTERVAL_S:
                 return {"ok": False, "reason": "rate_limit"}
             _speak_last_ts = now
-        if not (text or "").strip() or has_cjk(text):
-            return {"ok": False, "reason": "cjk"}
+        # Same verdict as mouth strict_ok; reason from guard_for_speech.
+        if not strict_ok(text):
+            reason = guard_for_speech(text) or "not_speakable"
+            print(f"[jarvis_speak] skip reason={reason}", flush=True)
+            return {"ok": False, "reason": reason}
         from jarvis.mouth import speak
 
         threading.Thread(
             target=speak,
             args=(text,),
-            kwargs={"blocking": False},
+            kwargs={"blocking": False, "guard": "lenient"},
             daemon=True,
             name="jarvis-mcp-speak",
         ).start()
@@ -516,7 +522,7 @@ def serve(
 
     host = _require_loopback(host)
     tok = resolve_token(token)
-    store = AlertStore(store_path) if store_path else AlertStore()
+    store = default_store(store_path) if store_path else default_store()
     _mcp, app, _st = build_mcp(store=store, token=tok, host=host, port=port)
     uvicorn.run(app, host=host, port=int(port), log_level="warning")
 

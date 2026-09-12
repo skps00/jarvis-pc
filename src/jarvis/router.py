@@ -12,7 +12,7 @@ from jarvis.config import Profile, Registry
 class Intent:
     """Structured result of local routing (Hands never trusts free paths)."""
 
-    kind: str  # open_profile | close_profile | restart_profile | restore_battlefield | refuse | unknown | query | system_power
+    kind: str  # open_profile | close_profile | restart_profile | restore_battlefield | refuse | unknown | query | system_power | alert_miss
     profile_id: str | None = None
     open_verb: str | None = None
     target_raw: str | None = None
@@ -173,6 +173,15 @@ def route(text: str, registry: Registry) -> Intent:
 
     lower = original.lower()
 
+    # 0a) missed-alerts digest (local; never Hermes)
+    miss_norm = _miss_normalized(text)
+    if (
+        miss_norm in _MISS_PHRASES
+        or _MISS_EN_RE.match(miss_norm)
+        or _MISS_CJK_RE.match(miss_norm)
+    ):
+        return Intent(kind="alert_miss", caption="missed alerts")
+
     # 0) query → caption only (LLM later)
     q = _match_query(original)
     if q:
@@ -259,6 +268,48 @@ def route(text: str, registry: Registry) -> Intent:
                 )
     return intent
 
+
+_MISS_PHRASES: frozenset[str] = frozenset(
+    {
+        "what did i miss",
+        "did i miss anything",
+        "what have i missed",
+        "jarvis what did i miss",
+        "miss咗啲咩",
+        "miss左啲咩",
+        "miss咗咩",
+        "miss左咩",
+        "miss咗啲乜",
+        "miss左啲乜",
+        "我miss咗啲咩",
+        "我miss左啲咩",
+    }
+)
+
+_MISS_WAKE_RE = re.compile(r"^(?:hey\s+|ok\s+|yo\s+)?jarvis[\s,，:]*", re.I)
+_MISS_TAIL_RE = re.compile(
+    r"(?:呀|呢|㗎|吖|啦|啊|先|嘛|please|plz)[\s!?。！？]*$", re.I
+)
+_MISS_EN_RE = re.compile(
+    r"^(?:what\s+(?:did|have)\s+i\s+miss(?:ed)?|did\s+i\s+miss)"
+    r"(?:\s+(?:anything|any|today|sir|yet|alerts?|messages?|notifications?)){0,4}"
+    r"[\s.!?。！？]*$",
+    re.I,
+)
+_MISS_CJK_RE = re.compile(
+    r"^(?:我)?miss(?:咗|左|了)?(?:啲|d|呢啲|既)?(?:咩|乜|乜嘢|什麼|甚麼)"
+)
+
+
+def _miss_normalized(text: str) -> str:
+    s = _MISS_WAKE_RE.sub("", str(text or "").strip().lower())
+    s = s.strip(" \t。．.！!？?，,、；;：:")
+    while True:
+        t2 = _MISS_TAIL_RE.sub("", s).strip()
+        if t2 == s:
+            break
+        s = t2
+    return s
 
 _QUERY_MARKERS = (
     "幫我查",

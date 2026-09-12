@@ -123,6 +123,17 @@ def execute_utterance(
 
     hermes_on = bool(load_settings().hermes_enabled)
 
+    if intent.kind == "alert_miss":
+        try:
+            from jarvis.alert_store import format_missed_sentence, read_miss_ledger
+
+            sentence = format_missed_sentence(read_miss_ledger())
+        except Exception:  # noqa: BLE001 — fail-open: 語音迴路永遠唔可以炸
+            sentence = "Sir, the alert ledger is unavailable."
+        lines.append(f"[speak] {sentence}")
+        lines.append(f"[caption] {sentence}")
+        return RunResult(True, lines)
+
     # Phase1: query/unknown → Hermes; skip dual-brain when enabled
     if hermes_on and intent.kind in ("query", "unknown"):
         return _dispatch_hermes(

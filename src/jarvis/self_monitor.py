@@ -19,6 +19,12 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import NamedTuple
+
+
+class MonitorResult(NamedTuple):
+    summary: str
+    notable: bool
 
 _TAIL_LINES = 2000
 _THR_MIN = 0.25
@@ -220,8 +226,8 @@ def _query_vram_gb() -> str:
         return "?"
 
 
-def run_once() -> tuple[str, bool]:
-    """Run one self-monitor pass. Returns (summary_line, notable).
+def run_once() -> MonitorResult:
+    """Run one self-monitor pass. Returns MonitorResult(summary, notable).
 
     notable = threshold changed / serve errors / fp >= 3 (things SK should hear).
     Writes the summary to ``%APPDATA%\\Jarvis\\self_monitor.log`` regardless.
@@ -293,7 +299,7 @@ def run_once() -> tuple[str, bool]:
         or (latency is not None and latency > 5.0)  # E3: resp latency bottleneck 提示
         or lat_fmt_err  # ⑭: mouth tts_ok 格式改咗 → 出聲話俾 SK 聽
     )
-    return summary, notable
+    return MonitorResult(summary, notable)
 
 
 def main() -> int:

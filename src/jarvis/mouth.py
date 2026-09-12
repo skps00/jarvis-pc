@@ -238,7 +238,7 @@ def _tts_python() -> str:
     return str(exe)
 
 
-def _speak_subprocess(text: str, *, force: bool) -> bool:
+def _speak_subprocess(text: str, *, force: bool, guard: str = "strict") -> bool:
     """Play in a fresh interpreter — avoids ORT DLL fights with torch/FunASR."""
     global _last_error
     env = os.environ.copy()
@@ -252,6 +252,7 @@ def _speak_subprocess(text: str, *, force: bool) -> bool:
     code = (
         "from jarvis.mouth import speak, last_speak_error; "
         f"ok=speak(\"{safe}\", blocking=True, force={force_lit}, "
+        f"guard={guard!r}, "
         f"_allow_subprocess=False); "
         "raise SystemExit(0 if ok else 1)"
     )
@@ -290,12 +291,16 @@ def speak(
     volume: float | None = None,
     output_device: Any = _USE_SETTINGS_DEVICE,
     force: bool = False,
+    guard: str = "strict",
     _allow_subprocess: bool = True,
 ) -> bool:
     """Synthesize and play *text* with Jarvis voice.
 
     Only ASCII/English text is spoken — CJK is skipped. Speed／volume／speaker
     from Settings unless overridden (settings preview).
+    ``guard="strict"`` = alert fail-closed (``alert_policy.strict_ok`` /
+    ``is_speakable`` — same gate as speaker choke); ``guard="lenient"`` =
+    chat/preview only (never blocks on metric-like text).
     Returns True if playback succeeded.
     """
     global _last_error, _prefer_subprocess
@@ -304,6 +309,13 @@ def speak(
     if not text.strip() or _has_cjk(text):
         _last_error = "empty or CJK text"
         return False
+    from jarvis.alert_policy import guard_for_speech, strict_ok
+
+    if str(guard or "").strip().lower() != "lenient":
+        if not strict_ok(text):
+            _guard_reason = guard_for_speech(text) or "not_speakable"
+            print(f"[mouth] skip speak reason={_guard_reason}", flush=True)
+            return False
     enabled, ls, vol, out_dev = _tts_params()
     if not enabled and not force:
         _last_error = "tts_enabled=false"
@@ -317,9 +329,9 @@ def speak(
 
     if _prefer_subprocess and _allow_subprocess:
         if blocking:
-            return _speak_subprocess(text, force=force)
+            return _speak_subprocess(text, force=force, guard=guard)
         threading.Thread(
-            target=lambda: _speak_subprocess(text, force=force),
+            target=lambda: _speak_subprocess(text, force=force, guard=guard),
             daemon=True,
         ).start()
         return True
@@ -374,7 +386,7 @@ def speak(
                 _last_error = f"{type(exc).__name__}: {exc}"
                 if _allow_subprocess and _dll_error(_last_error):
                     _prefer_subprocess = True
-                    return _speak_subprocess(text, force=force)
+                    return _speak_subprocess(text, force=force, guard=guard)
                 return False
 
     if blocking:

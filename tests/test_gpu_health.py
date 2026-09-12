@@ -52,6 +52,87 @@ def test_hard_temp_always_triggers() -> None:
     )
     assert hit is not None
     assert "thermal" in hit.phrase.lower()
+    assert hit.is_hard is True
+    assert hit.kind == "gpu_hard"
+
+
+def test_hard_vs_soft_kind_and_flag() -> None:
+    """temp ≥90 / mem ≥95 → hard; 83 ≤ temp < 90 → soft after calib."""
+    hard_m = GpuHealthMonitor(
+        soft_cooldown_s=0.0,
+        hard_cooldown_s=0.0,
+        hard_temp_c=90.0,
+        soft_temp_c=83.0,
+        calibrate_loaded_samples=99,
+    )
+    hard = hard_m.evaluate(
+        GpuSnapshot(ok=True, temp_c=90.0, util_pct=10.0, clock_mhz=500.0)
+    )
+    assert hard is not None
+    assert hard.is_hard is True
+    assert hard.kind == "gpu_hard"
+
+    mem_m = GpuHealthMonitor(
+        soft_cooldown_s=0.0,
+        hard_cooldown_s=0.0,
+        hard_temp_c=90.0,
+        mem_temp_warn_c=95.0,
+        soft_temp_c=83.0,
+        calibrate_loaded_samples=99,
+    )
+    mem = mem_m.evaluate(
+        GpuSnapshot(
+            ok=True, temp_c=70.0, mem_temp_c=95.0, util_pct=10.0, clock_mhz=500.0
+        )
+    )
+    assert mem is not None
+    assert mem.is_hard is True
+    assert mem.kind == "gpu_hard"
+
+    soft_m = GpuHealthMonitor(
+        soft_cooldown_s=0.0,
+        hard_cooldown_s=0.0,
+        hard_temp_c=90.0,
+        soft_temp_c=83.0,
+        calibrate_loaded_samples=3,
+        util_load_pct=60.0,
+    )
+    for clk in (2800.0, 2750.0, 2700.0):
+        soft_m.evaluate(
+            GpuSnapshot(ok=True, temp_c=70.0, util_pct=90.0, clock_mhz=clk)
+        )
+    soft = soft_m.evaluate(
+        GpuSnapshot(ok=True, temp_c=85.0, util_pct=10.0, clock_mhz=500.0)
+    )
+    assert soft is not None
+    assert soft.is_hard is False
+    assert soft.kind == "gpu_health"
+
+
+def test_hard_not_swallowed_by_soft_cooldown() -> None:
+    """Soft emit starts soft cooldown; hard must still fire."""
+    m = GpuHealthMonitor(
+        soft_cooldown_s=999.0,
+        hard_cooldown_s=0.0,
+        hard_temp_c=90.0,
+        soft_temp_c=83.0,
+        calibrate_loaded_samples=3,
+        util_load_pct=60.0,
+    )
+    for clk in (2800.0, 2750.0, 2700.0):
+        m.evaluate(GpuSnapshot(ok=True, temp_c=70.0, util_pct=90.0, clock_mhz=clk))
+    soft = m.evaluate(
+        GpuSnapshot(ok=True, temp_c=85.0, util_pct=10.0, clock_mhz=500.0)
+    )
+    assert soft is not None
+    assert soft.kind == "gpu_health"
+    # Soft cooldown would block another soft "hot"; hard must still fire.
+    hard = m.evaluate(
+        GpuSnapshot(ok=True, temp_c=95.0, util_pct=10.0, clock_mhz=500.0)
+    )
+    assert hard is not None
+    assert hard.is_hard is True
+    assert hard.kind == "gpu_hard"
 
 
 def test_soft_temp_waits_for_calibration() -> None:
@@ -124,6 +205,8 @@ def test_per_reason_cooldown_independent() -> None:
     )
     assert hit_hot is not None
     assert "thermal" in hit_hot.phrase.lower()
+    assert hit_hot.is_hard is True
+    assert hit_hot.kind == "gpu_hard"
 
 
 def test_gap_clears_hist(monkeypatch) -> None:

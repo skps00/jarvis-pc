@@ -131,6 +131,18 @@ class Settings:
     # P0: RTX GPU health via nvidia-smi → Hermes (no HUD)
     alert_gpu_health: bool = True
     alert_gpu_poll_s: float = 5.0
+    # Alert policy (hold/digest/dedupe/LLM polish) — see alert_policy.py
+    alert_policy_mode: str = "off"  # off / shadow / enforce
+    alert_gaming: str = "hold"  # hold / drop while gaming
+    alert_hold_ttl_s: int = 900
+    alert_held_cap: int = 64
+    alert_digest_interval_s: int = 1800
+    alert_digest_ttl_s: int = 86400
+    alert_dedupe_window_s: int = 300  # 0 = disabled
+    # reserved for Task 10 (deferred); no runtime reader yet
+    alert_llm_polish: str = "off"  # off / on
+    # reserved for Task 10 (deferred); no runtime reader yet
+    alert_llm_timeout_s: float = 3.0
     # Mage-VL local vision ("eyes") — lazy ~10GB VRAM; default off
     mage_enabled: bool = False
     mage_prompt_default: str = "Describe this image in detail."
@@ -305,6 +317,48 @@ def _clamp(s: Settings) -> Settings:
     except (TypeError, ValueError):
         s.alert_gpu_poll_s = 5.0
     s.alert_gpu_poll_s = max(2.0, min(60.0, s.alert_gpu_poll_s))
+    apm = str(getattr(s, "alert_policy_mode", "off") or "off").strip().lower()
+    if apm not in ("off", "shadow", "enforce"):
+        apm = "off"
+    s.alert_policy_mode = apm
+    ag = str(getattr(s, "alert_gaming", "hold") or "hold").strip().lower()
+    if ag not in ("hold", "drop"):
+        ag = "hold"
+    s.alert_gaming = ag
+    try:
+        s.alert_hold_ttl_s = int(s.alert_hold_ttl_s)
+    except (TypeError, ValueError):
+        s.alert_hold_ttl_s = 900
+    s.alert_hold_ttl_s = max(30, min(3600, s.alert_hold_ttl_s))
+    try:
+        s.alert_held_cap = int(s.alert_held_cap)
+    except (TypeError, ValueError):
+        s.alert_held_cap = 64
+    s.alert_held_cap = max(8, min(256, s.alert_held_cap))
+    try:
+        s.alert_digest_interval_s = int(s.alert_digest_interval_s)
+    except (TypeError, ValueError):
+        s.alert_digest_interval_s = 1800
+    s.alert_digest_interval_s = max(300, min(7200, s.alert_digest_interval_s))
+    try:
+        s.alert_digest_ttl_s = int(s.alert_digest_ttl_s)
+    except (TypeError, ValueError):
+        s.alert_digest_ttl_s = 86400
+    s.alert_digest_ttl_s = max(3600, min(604800, s.alert_digest_ttl_s))
+    try:
+        s.alert_dedupe_window_s = int(s.alert_dedupe_window_s)
+    except (TypeError, ValueError):
+        s.alert_dedupe_window_s = 300
+    s.alert_dedupe_window_s = max(0, min(3600, s.alert_dedupe_window_s))
+    alp = str(getattr(s, "alert_llm_polish", "off") or "off").strip().lower()
+    if alp not in ("off", "on"):
+        alp = "off"
+    s.alert_llm_polish = alp
+    try:
+        s.alert_llm_timeout_s = float(s.alert_llm_timeout_s)
+    except (TypeError, ValueError):
+        s.alert_llm_timeout_s = 3.0
+    s.alert_llm_timeout_s = max(1.0, min(10.0, s.alert_llm_timeout_s))
     try:
         s.alerts_mcp_port = int(getattr(s, "alerts_mcp_port", 8765))
     except (TypeError, ValueError):
@@ -590,15 +644,14 @@ def invalidate_settings_cache() -> None:
 
 # ---- H2 (2026-08-29): single-writer settings patch (dir-lock + atomic + pending-apply) ----
 
-_PATCH_LOCK: Path | None = None
 _pending_apply: dict[str, Any] | None = None
 
 
 def _patch_lock_path() -> Path:
-    global _PATCH_LOCK
-    if _PATCH_LOCK is None:
-        _PATCH_LOCK = SETTINGS_DIR / ".settings.lockdir"
-    return _PATCH_LOCK
+    # Always derive from current SETTINGS_DIR — never cache. Tests monkeypatch
+    # SETTINGS_DIR to a TemporaryDirectory; a cached path dangles after teardown
+    # and breaks later save_settings_patch() calls in the same process.
+    return SETTINGS_DIR / ".settings.lockdir"
 
 
 def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:

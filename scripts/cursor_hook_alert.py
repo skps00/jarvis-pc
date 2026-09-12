@@ -143,12 +143,12 @@ def main() -> int:
         return 0
     phrase, detail = pair
     try:
-        from jarvis.alert_store import AlertStore
+        from jarvis.alert_store import default_store
 
         conv = str(data.get("conversation_id") or "")[:12]
         if conv:
             detail = f"{detail} conv={conv}"
-        AlertStore().enqueue(
+        default_store().enqueue(
             kind="cursor",
             phrase=phrase,
             app="Cursor",

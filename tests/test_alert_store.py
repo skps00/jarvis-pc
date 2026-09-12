@@ -65,3 +65,8 @@ def test_stats(store: AlertStore) -> None:
     assert s["open"] == 1
     assert s["leased"] == 1
     assert s["pending"] == 0
+    # state machine breakdown (open/pending/leased still map to state==pending)
+    assert s["states"]["pending"] == 1
+    assert s["states"]["held"] == 0
+    assert s["states"]["digest"] == 0
+    assert s["states"]["spoken"] == 0

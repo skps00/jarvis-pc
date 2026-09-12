@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
+from dataclasses import replace
 from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING, Any
@@ -40,6 +41,14 @@ from jarvis.settings import (
 
 if TYPE_CHECKING:
     pass
+
+
+def apply_ui_settings(base: Settings, **ui_values: Any) -> Settings:
+    """Overwrite only UI-bound fields; leave unbound keys on ``base`` intact.
+
+    Prevents silent revert of keys with no widget (e.g. stt_preload, tts_ack).
+    """
+    return replace(base, **ui_values)
 
 
 def list_input_mics() -> list[tuple[int | None, str]]:
@@ -524,13 +533,79 @@ class SettingsWindow:
             variable=self.var_alert_gpu,
         ).grid(row=13, column=0, columnspan=2, sticky="w", pady=2)
 
+        self.var_alert_policy_mode = tk.StringVar(
+            value=str(getattr(s, "alert_policy_mode", "off") or "off")
+        )
+        tk.Label(frm, text="Policy 模式").grid(row=14, column=0, sticky="w", pady=2)
+        ttk.Combobox(
+            frm,
+            textvariable=self.var_alert_policy_mode,
+            values=("off", "shadow", "enforce"),
+            state="readonly",
+            width=12,
+        ).grid(row=14, column=1, sticky="w", pady=2)
+
+        self.var_alert_gaming = tk.StringVar(
+            value=str(getattr(s, "alert_gaming", "hold") or "hold")
+        )
+        tk.Label(frm, text="Gaming").grid(row=15, column=0, sticky="w", pady=2)
+        ttk.Combobox(
+            frm,
+            textvariable=self.var_alert_gaming,
+            values=("hold", "drop"),
+            state="readonly",
+            width=12,
+        ).grid(row=15, column=1, sticky="w", pady=2)
+
+        self.var_alert_hold_ttl = tk.StringVar(
+            value=str(int(getattr(s, "alert_hold_ttl_s", 900)))
+        )
+        tk.Label(frm, text="Hold TTL 秒").grid(row=16, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_hold_ttl, width=8).grid(
+            row=16, column=1, sticky="w", pady=2
+        )
+
+        self.var_alert_held_cap = tk.StringVar(
+            value=str(int(getattr(s, "alert_held_cap", 64)))
+        )
+        tk.Label(frm, text="Held cap").grid(row=17, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_held_cap, width=8).grid(
+            row=17, column=1, sticky="w", pady=2
+        )
+
+        self.var_alert_digest_interval = tk.StringVar(
+            value=str(int(getattr(s, "alert_digest_interval_s", 1800)))
+        )
+        tk.Label(frm, text="Digest 間隔秒").grid(row=18, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_digest_interval, width=8).grid(
+            row=18, column=1, sticky="w", pady=2
+        )
+
+        self.var_alert_digest_ttl = tk.StringVar(
+            value=str(int(getattr(s, "alert_digest_ttl_s", 86400)))
+        )
+        tk.Label(frm, text="Digest TTL 秒").grid(row=19, column=0, sticky="w", pady=2)
+        tk.Entry(frm, textvariable=self.var_alert_digest_ttl, width=8).grid(
+            row=19, column=1, sticky="w", pady=2
+        )
+
+        self.var_alert_dedupe_window = tk.StringVar(
+            value=str(int(getattr(s, "alert_dedupe_window_s", 300)))
+        )
+        tk.Label(frm, text="Dedupe 窗秒（0=關）").grid(
+            row=20, column=0, sticky="w", pady=2
+        )
+        tk.Entry(frm, textvariable=self.var_alert_dedupe_window, width=8).grid(
+            row=20, column=1, sticky="w", pady=2
+        )
+
         bf = tk.Frame(frm)
-        bf.grid(row=14, column=0, columnspan=2, sticky="w", pady=8)
+        bf.grid(row=21, column=0, columnspan=2, sticky="w", pady=8)
         tk.Button(bf, text="試語音提醒", command=self._test_alert).pack(side=tk.LEFT)
 
         self._hint(
             frm,
-            15,
+            22,
             "Hooks 不穩可關 hooks、開 Toast。"
             " Install：python -m jarvis cursor-hooks install。"
             " hermes＝入隊；piper＝本機；off＝唔讀。"
@@ -979,7 +1054,7 @@ class SettingsWindow:
             try:
                 from jarvis.mouth import speak
 
-                speak("Audio test, sir.", blocking=False)
+                speak("Audio test, sir.", blocking=False, guard="lenient")
             except Exception as exc:
                 err = str(exc)
                 self.win.after(
@@ -1361,6 +1436,7 @@ class SettingsWindow:
             "Jarvis online. Speed and volume check.",
             blocking=False,
             force=True,
+            guard="lenient",
             length_scale=float(self.var_tts_speed.get()),
             volume=float(self.var_tts_vol.get()),
             output_device=self._spk_label_to_id.get(self.var_tts_spk_label.get()),
@@ -1378,7 +1454,7 @@ class SettingsWindow:
         if not available():
             messagebox.showwarning("TTS", "未裝 Piper 模型", parent=self.win)
             return
-        speak("Alert system ready.", blocking=False, force=True)
+        speak("Alert system ready.", blocking=False, force=True, guard="lenient")
 
     def _model_choices(self, current: str) -> tuple[str, ...]:
         seen: set[str] = set()
@@ -1525,8 +1601,23 @@ class SettingsWindow:
                 "JARVIS 設定", "提醒冷卻秒必須係數字", parent=self.win
             )
             return
+        try:
+            alert_hold_ttl = int(self.var_alert_hold_ttl.get() or 900)
+            alert_held_cap = int(self.var_alert_held_cap.get() or 64)
+            alert_digest_interval = int(self.var_alert_digest_interval.get() or 1800)
+            alert_digest_ttl = int(self.var_alert_digest_ttl.get() or 86400)
+            alert_dedupe_window = int(self.var_alert_dedupe_window.get() or 300)
+        except ValueError:
+            messagebox.showerror(
+                "JARVIS 設定", "提醒 policy 數值必須係數字", parent=self.win
+            )
+            return
 
-        s = Settings(
+        # Start from on-disk settings so unbound keys (stt_preload, tts_ack, …)
+        # are not silently reverted to dataclass defaults.
+        base = load_settings(force=True)
+        s = apply_ui_settings(
+            base,
             asr_provider=asr_id,
             asr_api_key=self.var_asr_key.get().strip(),
             asr_base_url=self.var_asr_base.get().strip(),
@@ -1571,6 +1662,15 @@ class SettingsWindow:
             alert_cd_seconds=alert_cd,
             alert_tts=str(self.var_alert_tts.get() or "hermes").strip().lower(),
             alert_gpu_health=bool(self.var_alert_gpu.get()),
+            alert_policy_mode=str(
+                self.var_alert_policy_mode.get() or "off"
+            ).strip().lower(),
+            alert_gaming=str(self.var_alert_gaming.get() or "hold").strip().lower(),
+            alert_hold_ttl_s=alert_hold_ttl,
+            alert_held_cap=alert_held_cap,
+            alert_digest_interval_s=alert_digest_interval,
+            alert_digest_ttl_s=alert_digest_ttl,
+            alert_dedupe_window_s=alert_dedupe_window,
         )
         path = save_settings(s)
 

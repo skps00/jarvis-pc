@@ -5,6 +5,7 @@ Hermes owns chat/voice. This shell = desktop alerts eyes + Approve companion.
 
 from __future__ import annotations
 
+import hashlib
 import queue
 import re
 import sys
@@ -14,6 +15,7 @@ import tkinter as tk
 from typing import Any
 from tkinter import messagebox, scrolledtext, ttk
 
+from jarvis import alert_policy
 from jarvis.engine import RunResult, execute_utterance
 from jarvis.settings import Settings, hotkey_display, load_settings
 # NOTE: jarvis.settings_ui (tkinter SettingsWindow) FROZEN 2026-08-31 (#12):
@@ -547,14 +549,38 @@ class JarvisShell:
         except Exception as exc:  # noqa: BLE001
             self._ui_queue.put(("log", f"[fail] alert poller：{exc}"))
 
-    def _enqueue_alert(self, kind: str, phrase: str, *, app: str = "", log_prefix: str = "alert") -> None:
-        """Enqueue an alert phrase into the store (poller will speak it)."""
+    def _enqueue_alert(
+        self,
+        kind: str,
+        phrase: str,
+        *,
+        app: str = "",
+        log_prefix: str = "alert",
+        detail: str = "",
+    ):
+        """Enqueue an alert phrase into the store (poller will speak it).
+
+        Returns the ``StoredAlert`` row, or ``None`` on failure.
+        """
         try:
-            from jarvis.alert_store import AlertStore
-            AlertStore().enqueue(kind=kind, phrase=phrase, app=app)
-            self._ui_queue.put(("log", f"[ok] {log_prefix}: {phrase[:80]}"))
+            from jarvis.alert_store import default_store
+            row = default_store().enqueue(
+                kind=kind,
+                phrase=phrase,
+                app=app,
+                detail=detail,
+                dedupe_key=(
+                    hashlib.sha1(str(detail or phrase).encode("utf-8")).hexdigest()[:16]
+                    if kind == "self-monitor"
+                    else ""
+                ),
+            )
+            # On dedupe hit, log the persisted row phrase (not the new one).
+            self._ui_queue.put(("log", f"[ok] {log_prefix}: {row.phrase[:80]}"))
+            return row
         except Exception as exc:  # noqa: BLE001
             self._ui_queue.put(("log", f"[fail] {log_prefix}: {exc}"))
+            return None
 
     def _ensure_self_monitor(self) -> None:
         """Daily self-monitor (wake/serve stats + threshold auto-tune) in-app.
@@ -574,8 +600,12 @@ class JarvisShell:
                     summary, notable = run_once()
                     if not notable:
                         return
+                    spoken = alert_policy.shape("self-monitor", detail=summary)
                     self._enqueue_alert(
-                        "self-monitor", summary, log_prefix="self-monitor notable"
+                        "self-monitor",
+                        spoken,
+                        detail=summary,
+                        log_prefix="self-monitor notable",
                     )
                 except Exception as exc:  # noqa: BLE001
                     self._ui_queue.put(("log", f"[fail] self-monitor: {exc}"))
@@ -872,7 +902,7 @@ class JarvisShell:
 
                 if _tts_avail():
                     threading.Thread(
-                        target=lambda: _tts_speak("Yes, Sir."),
+                        target=lambda: _tts_speak("Yes, Sir.", guard="lenient"),
                         daemon=True,
                     ).start()
         except Exception:
@@ -1354,7 +1384,7 @@ class JarvisShell:
 
                 def _speak(text: str = reply) -> None:
                     try:
-                        speak(text, blocking=True)
+                        speak(text, blocking=True, guard="lenient")
                     finally:
                         self._tts_holding_pause = False
                         if (
@@ -1424,7 +1454,12 @@ class JarvisShell:
                 # CRITICAL: no mouth.speak — Hermes polls MCP
                 self._enqueue_alert(akind or "extra", phrase)
             else:
+                # piper: enqueue → speak_gate → enforce (same choke as poller)
+                from jarvis.activity import load_activity
+                from jarvis.alert_dispatch import enforce
+                from jarvis.alert_store import default_store
                 from jarvis.mouth import available, speak
+                from jarvis.speak_gate import should_speak
 
                 if not available():
                     self.append_log(
@@ -1435,18 +1470,32 @@ class JarvisShell:
                         "[warn] alert TTS 忙，略過重複（只朗讀英文提醒句）"
                     )
                 else:
-                    self._alert_speaking = True
-                    self._write_voice_status()
-                    self._tts_holding_pause = True
-                    self._wake_pause.set()
-                    self.append_log(f"[alert] 朗讀: {phrase}")
+                    row = self._enqueue_alert(akind or "extra", phrase)
+                    if row is None:
+                        return
+                    settings = _load_s()
+                    plan = should_speak(
+                        row,
+                        activity=load_activity(),
+                        settings=settings,
+                    )
+                    store = default_store()
+                    now = time.time()
 
-                    def _alert_speak(text: str = phrase) -> None:
+                    def _alert_speak(text: str) -> bool:
+                        self._alert_speaking = True
+                        self._write_voice_status()
+                        self._tts_holding_pause = True
+                        self._wake_pause.set()
+                        self.append_log(f"[alert] 朗讀: {text}")
                         try:
                             from jarvis.mouth import last_speak_error
 
                             ok = speak(
-                                text, blocking=True, force=True
+                                text,
+                                blocking=True,
+                                force=True,
+                                guard="strict",
                             )
                             if not ok:
                                 err = last_speak_error() or "unknown"
@@ -1456,6 +1505,7 @@ class JarvisShell:
                                         f"[fail] alert TTS：{err}",
                                     )
                                 )
+                            return bool(ok)
                         finally:
                             self._alert_speaking = False
                             self._write_voice_status()
@@ -1467,9 +1517,45 @@ class JarvisShell:
                             ):
                                 self._wake_pause.clear()
 
-                    threading.Thread(
-                        target=_alert_speak, daemon=True
-                    ).start()
+                    def _run_enforce() -> None:
+                        try:
+                            enforce(
+                                store,
+                                row,
+                                plan,
+                                cfg=settings,
+                                now=now,
+                                speak=_alert_speak,
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            self._ui_queue.put(
+                                ("log", f"[fail] alert enforce: {exc}")
+                            )
+                        finally:
+                            # Choke/drop may skip speak — still clear pre-claim.
+                            if self._alert_speaking:
+                                self._alert_speaking = False
+                                self._write_voice_status()
+                                self._tts_holding_pause = False
+                                if (
+                                    self._wake_on
+                                    and not self._busy
+                                    and not self._voice_call_mute
+                                ):
+                                    self._wake_pause.clear()
+
+                    if str(getattr(plan, "action", "")) == "speak":
+                        # Claim busy before thread so a second alert cannot
+                        # race into another piper speak.
+                        self._alert_speaking = True
+                        self._write_voice_status()
+                        self._tts_holding_pause = True
+                        self._wake_pause.set()
+                        threading.Thread(
+                            target=_run_enforce, daemon=True
+                        ).start()
+                    else:
+                        _run_enforce()
         except Exception as exc:  # noqa: BLE001
             self.append_log(f"[fail] alert handler: {exc}")
 

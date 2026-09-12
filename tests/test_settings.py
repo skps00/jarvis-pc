@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
@@ -33,13 +34,23 @@ from jarvis.settings import (
 from jarvis.ear import transcribe_mimo, transcribe_openai_audio, transcribe_path
 
 
+@contextmanager
 def _isolated_settings(tmp: Path):
     path = tmp / "settings.json"
-    return mock.patch.multiple(
+    with mock.patch.multiple(
         settings_mod,
         SETTINGS_DIR=tmp,
         SETTINGS_PATH=path,
-    )
+    ):
+        # Invalidate any cached lock path so TemporaryDirectory teardown cannot
+        # leave a dangling .settings.lockdir for later tests in this process.
+        if hasattr(settings_mod, "_PATCH_LOCK"):
+            settings_mod._PATCH_LOCK = None
+        try:
+            yield
+        finally:
+            if hasattr(settings_mod, "_PATCH_LOCK"):
+                settings_mod._PATCH_LOCK = None
 
 
 def test_openai_chat_url():

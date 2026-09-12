@@ -229,6 +229,8 @@ def alert_phrase_for(kind: str, *, app_label: str = "") -> str:
         return "WhatsApp has a new message."
     if kind == "gpu_health":
         return "GPU health warning."
+    if kind == "gpu_hard":
+        return "Sir, GPU critical limit reached."
     if kind.startswith("extra:"):
         label = (app_label or kind[6:] or "App").strip()
         # Piper ASCII-only — strip non-ascii from label
@@ -734,10 +736,20 @@ class AlertWatcher:
                     hit = monitor.evaluate(snap)
                     if hit is not None:
                         # Per-reason cooldown inside monitor; bypass global alert_cd.
+                        # Single source for the sentence: alert_phrase_for("gpu_hard")
+                        # (speaker-side alert_policy.shape delegates to the same fn).
+                        # NEVER pass an empty phrase: enqueue() rejects "".
+                        phrase = (
+                            alert_phrase_for(hit.kind)
+                            if hit.kind == "gpu_hard"
+                            else hit.phrase
+                        )
+                        if not str(phrase or "").strip():
+                            phrase = alert_phrase_for(hit.kind)
                         self._emit(
                             AlertEvent(
                                 kind=hit.kind,
-                                phrase=hit.phrase,
+                                phrase=phrase,
                                 detail=hit.detail,
                             ),
                             force=True,
@@ -767,8 +779,8 @@ class AlertWatcher:
         if self._on_event:
             try:
                 self._on_event(ev)
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001
+                print(f"[fail] alert emit: {exc}")
 
     def _on_flash(self, hwnd: int) -> None:
         if not self._enabled or not hwnd:

@@ -219,18 +219,51 @@ def _speak_hermes(phrase: str) -> bool:
 
 
 def main() -> int:
-    from jarvis.alert_store import AlertStore
+    from jarvis.alert_dispatch import effective_action, enforce
+    from jarvis.alert_store import default_store
+    from jarvis.settings import load_settings
+    from jarvis.speak_gate import SpeakPlan, should_speak
 
-    st = AlertStore()
-    row = st.peek(lease_s=60.0)
+    cfg = load_settings()
+    mode = str(getattr(cfg, "alert_policy_mode", "off") or "off").strip().lower()
+    st = default_store()
+    # Lease must cover TTS (same fix as poll_loop).
+    row = st.peek(lease_s=max(300.0, 60.0 * 10.0))
     if row is None:
         return 0  # silent tick
-    ok = _speak_hermes(row.phrase)
-    if ok:
-        st.ack(row.id)
-        return 0
-    print(f"[fail] speak {row.id[:8]}", file=sys.stderr)
-    return 1
+
+    if mode in ("shadow", "enforce"):
+        from jarvis import alert_shadow
+
+        plan = should_speak(row, settings=cfg)
+        alert_shadow.record_decision(
+            str(row.kind or ""), str(row.id or ""), plan, mode=mode
+        )
+        if mode == "enforce":
+            action = effective_action(plan, cfg=cfg)
+            result = enforce(
+                st,
+                row,
+                plan,
+                cfg=cfg,
+                speak=_speak_hermes,
+                claim=True,
+            )
+            if action != "speak":
+                return 0
+            return 0 if result == "speak" else 1
+
+    # off / shadow: speak path (shadow already logged above)
+    result = enforce(
+        st,
+        row,
+        SpeakPlan("speak", mode or "off"),
+        cfg=cfg,
+        speak=_speak_hermes,
+        claim=False,
+    )
+    return 0 if result == "speak" else 1
+
 
 
 if __name__ == "__main__":
