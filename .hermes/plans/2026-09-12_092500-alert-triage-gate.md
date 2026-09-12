@@ -136,6 +136,37 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 - **確認 Task 2 係真新邏輯**（唔係薄 wrapper）：今日 `mouth.py:35-40,304-305` **只跳 CJK**，`=`／URL／非 ASCII 一樣照讀 → 所以「純 ASCII 保證」係新 code（亦證實 bug 面）。
 - **OK 確認**：settings `alert_voice/discord/cursor/whatsapp` 存在（`settings.py:112-121`）＋`_clamp`；`gpu_health` soft 83 / hard 90 / mem 95 真值；`gpu_policy.gaming_now()` 真係 relay 去 `activity.gaming()`（同一個 foreground bug）；`router._QUERY_MARKERS` 冇 miss 字眼；加新 test 檔**一定要**改 golden-set doc（`eval_gate.py:296-322`）；tests 34 個 `test_*.py`，CI = `pytest tests/ -q`（冇 GitHub Actions）。
 
+## Review Round 3 — 中立裁判裁決（2026-09-12 14:0x）+ v4 修正
+
+**比數：反方贏 7:3**（Round 1 8:2 → Round 2 6:4 → Round 3 7:3）。今輪反方兩個 CRITICAL 都係我自己引入嘅新問題，唔係舊問題：
+
+**🔴 CRITICAL-1：digest 係新嘅無底黑洞（＝Round-1「無聲蒸發」改名）**
+v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，**但全 plan 冇寫邊個讀 digest、幾時 summarise、幾時 ack**。→ 打機 3 小時 = 幾十條永久卡死喺 `queue.jsonl`（唔出聲、唔會 GC、冇 emitter）。
+**修正（v4）**：**owner = poll_loop**：每 `alert_digest_interval_s` **或** gaming→idle 轉換時，讀 `state=='digest'` 行 → **一句英文（唔靠 LLM：每 kind 一句 + 總數）** → `mark_spoken` + ack 全部；**digest TTL 24h** 過期 → `drop(reason='digest_expired')` 寫 ledger；`last_digest_ts` **持久化落 state 檔**（restart 唔會重覆／漏）。
+
+**🔴 CRITICAL-2：P1「shadow 只寫 ledger」根本量唔到數，而且默認就 enforce**
+決策喺 speaker（Task 4）、ledger 喺 store（Task 6）→ shadow 期間冇真實狀態轉變 = **冇 ledger 行** → P2 依賴嘅兩個 metric 永遠計唔出；而 `alert_policy_enabled='on'` 默認 = **落地即 enforce**。
+**修正（v4）**：改用 **`alert_policy_mode = off | shadow | enforce`（默認 `off`）**；shadow 由 **speak_gate 計完 SpeakPlan 寫獨立 `shadow_ledger.jsonl`**（`row.id / decision / would_be_action / reason / ts`），**零執行路徑改動**；P2 才 `enforce`。P1 通關條件 = shadow ledger **≥48 小時樣本**。
+
+**🟠 v4 亦要修（反方 HIGH/MED）**
+1. **`peek()` 未 filter state + hold verdict 冇定義 lease 處理** → 一係靜默 ack 丟 alert（違反 critical 唔可以被靜音），一係最舊 held 每 1s 被 re-lease 卡死 loop、critical 排唔到（**飢餓**）。→ **明文**：`peek()` 只回 `state=='pending'`；`should_speak` 回 hold 時**必須 `hold(row.id)` + 即時釋放 lease + continue 下一行**；測試：held 唔會再被 peek、hold 唔會 ack、critical 唔會排在 held 之後。
+2. **held 無上限 + release 一次過洗版**：`alert_store.py:141-148` 冇 candidate 時 `for/else: break`（＝`max_depth` 對 held 完全失效），而且 release 一次過 20+ 條 = 連續講 40–120 秒（違反 Q1「最多 30 分鐘一句」）。→ **held 硬上限 64**；同 `kind+app` 只留最新；`priority=='normal'` 超額即轉 digest；release 每次只放 **critical + 最新一條 normal**，其餘交 digest flush；每次 peek 都全文重寫（O(n)）呢點要一併收斂。
+3. **`idle_seconds<120` 係錯訊號**：`GetLastInputInfo` **唔計 gamepad**（手制打機 → idle 高 → 誤判「唔打機」）；反過來任何 2 分鐘 AFK（CS2 排隊／睇片）就 flush 全部 held。→ v2 規則：**game process AND（前景=game OR fullscreen OR idle<120）**；並**要 SK 用手制實測一次**（今日可做）。
+4. **freshness 60s 對唔上 cron 1 分鐘寫入週期**（`activity_watch.py` every 1m）→ tick jitter 就會 flap。→ 窗改 **≥180s（3×）**；**release 要連續 non-gaming ≥180s**；flap 保護擺 gate 層。
+5. **P1 改 `activity.gaming()` ＝ 唔係 shadow**：`gaming()` 另外餵 `ear.py:36-38 should_stt_use_gpu()`（STT 用唔用 GPU）同 `mcp_alerts_http.py:374 jarvis_speak` gate → 一改即時變行為（可能令 STT 意外跌落 CPU）。→ **另開 `is_gaming_v2()`**，P1 期間**只有 v2 寫 shadow ledger**，舊 `gaming()` 保持 v1；P2 才逐個 consumer 切換 + 驗。
+6. **raw→TTS 冇 choke point（Goal 未真正保證！）**：兩條出聲路都係 `_speak_hermes(row.phrase)` 直接講 store 內字串；舊 queue 行、MCP `jarvis_alert(phrase)`（LLM 自由填）、`cursor_hook_alert.py:151` 直入 store 嘅字，全部原句出聲，而 `alert_tts='hermes'` 呢條路**冇 CJK 檢查**（只有 `mouth.py:304` Piper 路徑有）。→ **fail-closed validator 擺喺 speaker 出口（唯一 choke point）**：`_speak_hermes` 之前過 `shape()`＋ASCII 檢查，唔過 → **拒講**＋ledger `drop(reason='non_ascii')`；測試：直接 enqueue CJK／URL／`=` 行，斷言唔會到 TTS。
+7. **voice_call hold 冇 release 路徑**：v3 只寫「gaming=False → release」→ 通話中照出聲（`shell_app.py:1655-1690` 有 `_voice_call_mute` 但只覆蓋 app 內 TTS）。→ release 條件改 **`not gaming AND not voice_call`**（或 hold 帶 reason 各自 release）；測試：`voice_call=True, gaming=False → 唔 release`。
+8. **store 唔應該讀 settings**（否則 `tests/test_alert_store.py` / `test_alert_tts_sink.py` 會跟你當日 settings 漂移）→ `enqueue(..., priority=...)` 由 caller 傳；**policy 以參數注入**（`AlertStore(policy=...)`），測試傳 fake policy。
+9. **`dedupe_key` 唔可以留死欄位** → 明文在 `enqueue()` 內 enforce（`kind+dedupe_key+5 分鐘`重複 → digest／`drop(reason='dedupe')`）＋測試；否則刪走個欄位。
+10. **ledger 必須 fail-open**：append／rotate 包 `try/except` + rate-limited `[warn]`，**絕對唔可以影響 queue 讀寫**（否則 audit 功能會搞到全線靜音）；測試：模擬 ledger 路徑不可寫，`enqueue/peek` 照常。
+11. **baseline 要寫清**：改完之後 = 新 pytest 總數（>379）＋ **新 eval_gate hash**（`0b88e6f6bab43269` 會失效）＋ `--lock` 一致，三者全綠。
+
+**⚠️ 期望管理（要同 SK 講清楚）**：唔做 sender 之後，「重要性」**只剩 kind 級**（4 個 settings 開關 + 3 條 critical 硬門檻）。要做到「按訊息內容／邊個發」嘅重要性，**必須**先做 **WinRT toast sender 抽取**（`StoredAlert` 加 sender）＋ per-sender 白名單 → 列入 **P4（future）**，唔可以當已解。
+
+**✅ P0 範圍收窄（反方有條件批准，v4 定案）**
+- **只做**：新建 `src/jarvis/alert_policy.py` **純函數**（`shape()`＝ASCII 保證 wrapper，delegate `alert_phrase_for`）＋ 測試；Task 7 settings key 定義（`alert_policy_mode` 默認 **off**）＋ `_clamp` ＋ **eval_gate golden 同步**。
+- **唔做（推去 P2，要有 shadow 數據先）**：改 `alerts.alert_phrase_for()` 現有句子（會即時改口風，而且撞 `tests/test_alerts.py:60/73-74` 字眼斷言）；`alert_policy_mode` 轉 `enforce`。
+
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 
 | 系統 | 做法（重點） | 對我哋嘅意義 |
