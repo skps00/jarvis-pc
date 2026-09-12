@@ -30,9 +30,9 @@
 | ⚠️ 1 項做唔到 | Task 11 剩「AGENTS.md 一句」：**Hermes hardline 擋咗寫入 AGENTS.md（agent 指令檔要 SK 明確批准）**——等 SK 一句 go 才補 |
 
 **3. 本 session 親跑嘅實錘（最終，2026-09-13 00:0x）**
-- `pytest tests/ -q` = **472 passed / 0 failed**（baseline 379 → +93；Task 7 落咗 8 個 test 之後由 464 升到 472）
+- `pytest tests/ -q` = **483 passed / 0 failed**（baseline 379 → +104；Task 7 fix1/fix2 後 19 個 test）
 - `eval_gate --lock` 一致（**44** test files）；`eval_gate --all` 三 suite `ok=True`；HASH **`3317f6997f5ff7fb`**（Task 7 前係 `0d3619650adb805b`）
-- Task 7 邊界 probe（Hermes 自己寫、26 項）：24h window／rotate 檔／壞 JSON 行／missing file → `[]`／CJK kind → ASCII／>3 kinds → `and others`／99999 行 → fallback 句／7 句正面 route 命中／3 句負面唔命中／真機 `execute_utterance("what did I miss")` → `[route] alert_miss` ＋ `[speak]` ASCII 英文，**零 Hermes 呼叫**
+- Task 7 邊界 probe（Hermes 自己寫、40 項，fix2 後**全 PASS**）：24h window／rotate 檔／壞 JSON 行／missing file → `[]`／CJK kind → ASCII／>3 kinds → `and others`／99999 行 → fallback 句／7 句正面 route 命中／3 句負面唔命中／真機 `execute_utterance("what did I miss")` → `[route] alert_miss` ＋ `[speak]` ASCII 英文，**零 Hermes 呼叫**
 - 新增 src：`alert_policy.py`／`alert_shadow.py`／`speak_gate.py`；新增 test 11 個（含 `test_miss_ledger.py`）
 
 **3b. SK 決定（2026-09-13 00:5x，Discord）**
@@ -44,7 +44,7 @@
 - **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。
 - **14/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。
 
-**5. 下次 session 起點**：Task 7／11 已收貨（472 passed／HASH `3317f6997f5ff7fb`）→ 剩：① SK go 才補 AGENTS.md 一句；② restart sidecar（B）＋ 寫 `alert_policy_mode=shadow` 收 ≥48h 樣本；③ 真機驗收（打機／通話／idle 三情境）；④ **問 SK 才 commit code**（SK 指示 test-first，現時 18 modified ＋ 14 新檔仍未 commit）；⑤ Task 10 等 benchmark。
+**5. 下次 session 起點**：Task 7（含 fix1/fix2）／11 已收貨（**483 passed**／HASH `3317f6997f5ff7fb`）→ 剩：① SK go 才補 AGENTS.md 一句；② restart sidecar（B）＋ 寫 `alert_policy_mode=shadow` 收 ≥48h 樣本；③ 真機驗收（打機／通話／idle 三情境）；④ **問 SK 才 commit code**（SK 指示 test-first，現時 18 modified ＋ 14 新檔仍未 commit）；⑤ Task 10 等 benchmark。
 
 ---
 
