@@ -15,9 +15,9 @@
 
 **1. 做咗咩（全部有實測證據）**
 - Task 7（「what did I miss」）由 cursor 交付 → Hermes 自己收貨（py_compile／targeted／全量／`--lock`／`--all`／26 項 probe）。
-- **兩輪獨立 review**：① cursor read-only 12-area（NEEDS-FIX）② subagent 品質 review（2 HIGH＋8 MEDIUM＋8 條 spec 偏離）→ 全部 findings 我逐個自己核實（read code／probe），再派 **fix1–fix9** 修到清。
+- **三輪獨立 review**：① cursor read-only 12-area（NEEDS-FIX）② subagent 品質 review（2 HIGH＋8 MEDIUM＋8 條 spec 偏離）→ 全部 findings 我逐個自己核實（read code／probe），再派 **fix1–fix11** 修到清（fix10 修 release 收斂失效／spoken ledger 缺失／digest 句安全／clear_digest；fix11 修一個用假時間嘅 test）。
 - 期間我自己 probe 捉到 review 冇捉到嘅嘢：Task 7 句子**報大數**（ledger 事件行 ≠ 未答 alert）；**fix8 引入嘅 HIGH regression**：`gpu_hard` producer 傳空 phrase → `enqueue()` raise `ValueError` → **hard GPU critical alert 靜默消失**（fix9 修，並加 2 個防守 test）。
-- **最終驗收（親跑，2026-09-13 01:2x）**：`pytest tests/ -q` = **522 passed / 0 failed**；`eval_gate --lock` = 一致（**52** files）；`eval_gate --all` = 三 suite ok；HASH `655b15e8bca241de`；自寫 probe（fix6 9 項、fix7 9 項）全 PASS。
+- **最終驗收（親跑，2026-09-13 01:2x）**：`pytest tests/ -q` = **532 passed / 0 failed**；`eval_gate --lock` = 一致（**53** files）；`eval_gate --all` = 三 suite ok；HASH `3e5e074479192100`；自寫 probe（fix6 9 項、fix7 9 項）全 PASS。
 - docs 已更新：`docs/hermes_alerts_mcp.md`（新增「2026-09-13 修復輪」表 ＋ 新 baseline；`alert_llm_*` 標明未接線）；plan 尾加「2026-09-13 收貨記錄」＋ 8 條規格偏離；`AGENTS.md` 坑 section 已有 alert pipeline 一句（commit `8cff405`）——**舊稿寫「AGENTS.md 做唔到」係過時，已更正**。
 
 **2. 而家喺邊（唔可以當完成嘅嘢）**

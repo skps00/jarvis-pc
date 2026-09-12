@@ -79,15 +79,24 @@ producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
 | MCP `peek_alert` lease 仍 30s（可重讀同一句） | 300s |
 | `default_store()` fallback 冇 policy | fallback 都注入 |
 | `gpu_hard` producer 傳 **空 phrase** → `enqueue()` raise → **critical alert 靜默消失**（fix8 引入、fix9 修） | producer 傳 `alert_phrase_for(kind)`；`shape()` delegate 同一函數（單一來源）＋ 空 phrase 防守 |
+| release 收斂**失效**（release 後冇 reset `quiet_since` → 每 tick 再放一條） | release 成功即 `quiet_since=t`；連續 tick 實測 `[3,0,0,0,0]` |
+| mode=off／shadow **出聲成功唔寫 `spoken` ledger** →「what did I miss」報大數 | `enforce` 出聲成功**無條件**寫 `spoken`；claim 階段改用 `speak_claim`；失敗寫真 reason |
+| digest 句含 4+ 位數字（`extra:app1234`）→ 唔 speakable、永遠講唔出 | `label_for` 去數字 ＋ `is_speakable` fallback 句；失敗 log 60s rate-limit |
+| `clear_digest` 永遠清唔到（`mark_spoken` 後已非 digest） | 改為**按 id** 刪（同 `drop()` 一致） |
+| `jarvis_speak` pre-check 口徑同 mouth 唔同（回 `ok:true` 但冇聲） | 改用同一 `strict_ok`，mouth 用 `guard="lenient"` |
+| `release_held` 空轉都重寫全檔（mode=off 1 Hz） | 冇改動唔寫檔 |
+| `dedupe_key` 用 built-in `hash()`（跨進程唔穩） | 改 `hashlib.sha1(...).hexdigest()[:16]` |
+| digest 行**無上限**（打機幾小時可累積過千行） | 加 `digest_cap`（最舊先 drop，ledger `digest_cap`） |
+| 死碼／重複 | 刪 `plan_for("off")` 不可達分支、`strict_ok` 改 alias、兩段 digest flush 抽 `_flush_digest_common` |
 | LOW | 刪死碼（`is_metric_noise`／`quiet_iters`／`process_row`／`_ = gaming`）｜`--json` 真生效｜`label_for` 統一｜`enforce` 重用 `effective_action`｜`HB_INTERVAL_S` 匯出｜mouth strict 同 choke 同一 validator |
 
 ## Baseline（2026-09-13 01:2x，親跑）
 
 ```text
-python -m pytest tests/ -q          → 522 passed / 0 failed
-python -m jarvis.eval_gate --lock   → 一致（52 test files）
+python -m pytest tests/ -q          → 532 passed / 0 failed
+python -m jarvis.eval_gate --lock   → 一致（53 test files）
 python -m jarvis.eval_gate --all    → golden / regression / stress 三 suite ok=True
-                                      HASH 655b15e8bca241de
+                                      HASH 3e5e074479192100
 ```
 
 ## TTS modes (`alert_tts`)

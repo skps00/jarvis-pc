@@ -406,9 +406,9 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 
 ## 2026-09-13 收貨記錄（Hermes 親跑；所有 code 仍未 commit）
 
-**驗收數字**：`pytest tests/ -q` = **522 passed / 0 failed**；`eval_gate --lock` = 一致（**52** test files）；`eval_gate --all` = 三 suite ok；HASH `655b15e8bca241de`。
+**驗收數字**：`pytest tests/ -q` = **532 passed / 0 failed**；`eval_gate --lock` = 一致（**53** test files）；`eval_gate --all` = 三 suite ok；HASH `3e5e074479192100`。
 
-**本輪修改輪次**：fix1（miss 句語意）→ fix2（label／over 999）→ fix3（release 生命週期／180s 窗／default_store 注入／settings 接線／stats dropped）→ fix4（mouth strict/lenient、shadow 匯報 CLI、stale activity hold、drop reason、CRITICAL 測試）→ fix5／5b（policy CRITICAL 次序、共用 `alert_dispatch`、GC 寫入收斂、loop state）→ fix6（digest claim、piper gate、死碼、mark_spoken refresh）→ fix7（release 收斂、warn rate-limit、dedupe key、guard 傳 subprocess、priority、sidecar_down、off 收斂、MCP lease、fallback policy）→ fix8（LOW 清理＋3 個 test）→ fix9（gpu_hard 空 phrase regression）。
+**本輪修改輪次**：fix1（miss 句語意）→ fix2（label／over 999）→ fix3（release 生命週期／180s 窗／default_store 注入／settings 接線／stats dropped）→ fix4（mouth strict/lenient、shadow 匯報 CLI、stale activity hold、drop reason、CRITICAL 測試）→ fix5／5b（policy CRITICAL 次序、共用 `alert_dispatch`、GC 寫入收斂、loop state）→ fix6（digest claim、piper gate、死碼、mark_spoken refresh）→ fix7（release 收斂、warn rate-limit、dedupe key、guard 傳 subprocess、priority、sidecar_down、off 收斂、MCP lease、fallback policy）→ fix8（LOW 清理＋3 個 test）→ fix9（gpu_hard 空 phrase regression）→ fix10（release 收斂失效／spoken ledger 缺失／digest 句安全／clear_digest／validator 口徑／寫入收斂／dedupe 穩定／digest cap／死碼）→ fix11（test 假時間）。
 
 **兩輪獨立 review**：① cursor read-only 12-area（verdict NEEDS-FIX：digest 先講後 clear／piper 第二 speaker／死碼）② subagent 品質 review（2 HIGH：release 洗版／warn spam；8 MEDIUM；8 條 spec 偏離）→ 全部修完並補回歸測試。
 
@@ -421,3 +421,6 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 6. release／digest 收斂實作在 `poll_loop`（plan 原本寫 store／speaker 分工唔夠清楚）。
 7. `alert_release_quiet_s` 冇開 settings key（用 module 常數 `RELEASE_QUIET_S=180`）——減少 UI 面。
 8. `alert_llm_polish`／`alert_llm_timeout_s` 保留在 `settings.py` 但**冇 reader、冇 UI**（Task 10 暫緩）。
+
+9. **digest 句措辭**：plan 範例 `"Sir, 3 messages and 2 GPU notices while you were away."`；實作改用 `label_for` 全稱 label（例 `"Sir, 3 GPU health warnings, 2 WhatsApp notifications and 1 Discord notification while you were away."`）——語意相同、字面唔同，唔算 bug，記錄備查。
+10. **三個 review 輪次**：① cursor 12-area ② subagent 品質 ③ subagent 最終驗證（verdict CONDITIONAL PASS：10/14 fix 確認、1 REFUTED〔release 收斂〕）→ 全部 findings 修完並由 Hermes probe 重驗（D1–D4 全綠）。
