@@ -303,14 +303,14 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 
 **進度（cron／session 交接用）— 2026-09-12 23:5x 由 Hermes 逐項實查（唔係照抄舊稿；證據＝檔案存在＋測試綠）**
 - [x] 1 Task 0 ✅　- [x] 2 Task 1 ✅　- [x] 3 Task 1b ✅　- [x] 4 Task 1c ✅　- [x] 5 Task 5a ✅　- [x] 6 Task 3 ✅　- [x] 7 Task 4（v2 shadow）✅　- [x] 8 Task 6 ✅　- [x] 9 Task 2 ✅　- [x] 10 Task 4e/5b ✅（enforce choke ＋ poll loop）
-- [~] 11 Task 7 🔄（`AlertStore._ledger()` 寫入／rotate **已喺**；缺 **reader ＋ router `alert_miss` ＋ engine 本地 handler ＋ `tests/test_miss_ledger.py`** → 2026-09-12 23:5x 已 dispatch cursor（instructions `%TEMP%\cursor_task7_instructions.md`，process `proc_ad52db7034bc` running）
+- [x] 11 Task 7 ✅（`read_miss_ledger()` 24h window／rotate／fail-open ＋ `format_missed_sentence()` 純 ASCII ＋ router `alert_miss` ＋ engine 本地 handler（繞 Hermes short-circuit）＋ `tests/test_miss_ledger.py` 8 tests）——2026-09-12 23:5x cursor dispatch 完，Hermes 收貨：py_compile OK、targeted 8 passed、全量 472 passed、probe 26 項 PASS、`--lock` 44 files、HASH 3317f6997f5ff7fb
 - [x] 12 Task 8 ✅（digest flush ＋ release 收斂 已喺 `poll_loop`；age 用 row `digest_at`／`ts`，所以唔需要另存 `last_digest_ts`）
 - [x] 13 Task 9 ✅（`peek(lease_s=max(300,interval*10))` ＋ `mark_spoken` 原子 claim）
 - [ ] 14 Task 10 ⏸（按 plan 暫緩：要先跑 ranking benchmark p95 ≤3s）
-- [ ] 15 Task 11 ⏳（docs：`docs/hermes_alerts_mcp.md` pipeline 圖／AGENTS.md 一句／handoff；baseline：新 pytest 總數＋新 eval_gate HASH）
+- [x] 15 Task 11 ✅（`docs/hermes_alerts_mcp.md` 加咗 pipeline 圖＋模組表＋新 settings keys 表＋「what did I miss」；baseline 已寫入）——**淨低「AGENTS.md 一句」被 Hermes hardline 擋（要 SK 明確批准）**
 
-**實測（2026-09-12 23:4x，本 session 親跑）**：`pytest tests/ -q` = **464 passed / 0 failed**（baseline 379 → +85）；`eval_gate --lock` 一致（43 files）；`eval_gate --all` 三 suite ok、HASH `0d3619650adb805b`。
-**⚠️ 全部 15 個 task 嘅改動仍然係未 commit working-tree 狀態**（`git status --short` 見 14 modified ＋ 13 untracked）。
+**實測（2026-09-12 23:4x，本 session 親跑）**：`pytest tests/ -q` = **472 passed / 0 failed**（baseline 379 → +93）；`eval_gate --lock` 一致（44 files）；`eval_gate --all` 三 suite ok、HASH `3317f6997f5ff7fb`。
+**⚠️ 全部 code 改動仍然係未 commit working-tree 狀態**（SK 指示 test-first；docs／HANDOFF 已 commit `8fb6116`）。
 
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 

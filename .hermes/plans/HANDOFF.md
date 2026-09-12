@@ -11,7 +11,7 @@
 
 ---
 
-## 2026-09-12 09:0x–23:5x（同一個 Discord session，中途 auto-reset）—— Alert pipeline 大重整：plan v5.1 定案 ＋ 15 個 task 落咗 13 個（**全部 code 未 commit**）
+## 2026-09-12 09:0x–23:5x（同一個 Discord session，中途 auto-reset）—— Alert pipeline 大重整：plan v5.1 定案 ＋ 15 個 task 落咗 14 個（**全部 code 未 commit**）
 
 **1. 呢個 session 做咗咩（一條龍）**
 - 09:00 SK 聽到 JARVIS 唸「數字 + `=`」→ root-cause = self-monitor raw metric 行經 `hermes_alert_poll_loop._speak_hermes()` 原句照讀（詳見下面 09:0x section）。
@@ -25,22 +25,22 @@
 
 | 狀態 | Task |
 |---|---|
-| ✅ 13 個 | 0（`alert_policy.shape()` 純函數 ＋ ASCII 保證）、1（settings keys ＋ `_clamp` ＋ eval_gate golden 同步）、1b（`settings_ui._save()` 靜默還原欄位 bug）、1c（self-monitor 出聲改走 `shape()`＋`MonitorResult` NamedTuple）、5a（`mouth.speak()` 出口 validator）、3（`gpu_hard` flag 貫穿 `gpu_health → alerts → store`）、4（`speak_gate.should_speak()`＋`is_gaming_v2()`）、6（shadow mode ＋ `shadow_ledger.jsonl`＋heartbeat）、2（AlertStore 狀態機：hold／held cap／dedupe／eviction 保護／ledger fail-open／`_DirLock`）、4e+5b（enforce choke point 生效）、8（digest flush ＋ release 收斂）、9（lease 300s ＋ `mark_spoken` 原子 claim） |
-| 🔄 1 個 | **Task 7**「what did I miss」——ledger 寫入／rotate **已喺**；**缺** reader ＋ router `alert_miss` ＋ engine 本地 handler（繞 Hermes short-circuit）＋ `tests/test_miss_ledger.py` → 2026-09-12 23:5x 已 dispatch cursor（instructions `%TEMP%\cursor_task7_instructions.md`） |
+| ✅ **14 個**（完成） | 0（`alert_policy.shape()` 純函數 ＋ ASCII 保證）、1（settings keys ＋ `_clamp` ＋ eval_gate golden 同步）、1b（`settings_ui._save()` 靜默還原欄位 bug）、1c（self-monitor 出聲改走 `shape()`＋`MonitorResult` NamedTuple）、5a（`mouth.speak()` 出口 validator）、3（`gpu_hard` flag 貫穿 `gpu_health → alerts → store`）、4（`speak_gate.should_speak()`＋`is_gaming_v2()`）、6（shadow mode ＋ `shadow_ledger.jsonl`＋heartbeat）、2（AlertStore 狀態機：hold／held cap／dedupe／eviction 保護／ledger fail-open／`_DirLock`）、4e+5b（enforce choke point 生效）、8（digest flush ＋ release 收斂）、9（lease 300s ＋ `mark_spoken` 原子 claim）、**7（`read_miss_ledger()`＋`format_missed_sentence()`＋router `alert_miss`＋engine 本地 handler＋`tests/test_miss_ledger.py` 8 個 test）**、**11（`docs/hermes_alerts_mcp.md` pipeline 圖＋settings 表＋baseline）** |
 | ⏸ 1 個 | Task 10（L4 LLM digest polish）——按 plan 暫緩，要先跑 ranking benchmark p95 ≤3s |
-| ⏳ 1 個 | Task 11（docs：`docs/hermes_alerts_mcp.md` pipeline 圖＋AGENTS.md 一句；baseline：新 pytest 總數 ＋ 新 eval_gate HASH） |
+| ⚠️ 1 項做唔到 | Task 11 剩「AGENTS.md 一句」：**Hermes hardline 擋咗寫入 AGENTS.md（agent 指令檔要 SK 明確批准）**——等 SK 一句 go 才補 |
 
-**3. 本 session 親跑嘅實錘**
-- `pytest tests/ -q` = **464 passed / 0 failed**（baseline 379 → +85；新 test 檔 10 個：alert_policy／poll_race／shadow／speak_gate／speaker_choke／store_gate／gpu_hard_e2e／self_monitor_result／settings_alert_keys／settings_ui_preserve）
-- `eval_gate --lock` 一致（43 files）；`eval_gate --all` 三 suite `ok=True`；HASH **`0d3619650adb805b`**（舊 `0b88e6f6bab43269` 已失效）
-- 新增 src：`alert_policy.py`／`alert_shadow.py`／`speak_gate.py`
+**3. 本 session 親跑嘅實錘（最終，2026-09-13 00:0x）**
+- `pytest tests/ -q` = **472 passed / 0 failed**（baseline 379 → +93；Task 7 落咗 8 個 test 之後由 464 升到 472）
+- `eval_gate --lock` 一致（**44** test files）；`eval_gate --all` 三 suite `ok=True`；HASH **`3317f6997f5ff7fb`**（Task 7 前係 `0d3619650adb805b`）
+- Task 7 邊界 probe（Hermes 自己寫、26 項）：24h window／rotate 檔／壞 JSON 行／missing file → `[]`／CJK kind → ASCII／>3 kinds → `and others`／99999 行 → fallback 句／7 句正面 route 命中／3 句負面唔命中／真機 `execute_utterance("what did I miss")` → `[route] alert_miss` ＋ `[speak]` ASCII 英文，**零 Hermes 呼叫**
+- 新增 src：`alert_policy.py`／`alert_shadow.py`／`speak_gate.py`；新增 test 11 個（含 `test_miss_ledger.py`）
 
 **4. ⚠️ 未生效／未做**
 - **新 pipeline 未生效**：`alert_policy_mode` 默認 `off`、`%APPDATA%\Jarvis\settings.json` 仲係舊 keys（未經 sidecar `POST /settings` 寫入）；SK 揀 **B** = 全部 task 完成後才 restart sidecar **一次**。
 - **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。
-- **13/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。
+- **14/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。
 
-**5. 下次 session 起點**：等 Task 7 cursor 完 → 逐項收貨（`py_compile` → `tests/test_miss_ledger.py` → 全量 pytest → `eval_gate --lock/--all` → 邊界 probe：fire 數／CJK／空 ledger）→ Task 11 → restart sidecar（B）→ 真機驗收（打機／通話／idle 三情境）→ 問 SK 才 commit code。
+**5. 下次 session 起點**：Task 7／11 已收貨（472 passed／HASH `3317f6997f5ff7fb`）→ 剩：① SK go 才補 AGENTS.md 一句；② restart sidecar（B）＋ 寫 `alert_policy_mode=shadow` 收 ≥48h 樣本；③ 真機驗收（打機／通話／idle 三情境）；④ **問 SK 才 commit code**（SK 指示 test-first，現時 18 modified ＋ 14 新檔仍未 commit）；⑤ Task 10 等 benchmark。
 
 ---
 

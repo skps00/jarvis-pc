@@ -20,6 +20,52 @@ Hermes cron (backup, ≥1m): jarvis-alerts-speak --no-agent
 Hermes schedule units are **minutes+** (`every 1m` min for intervals). Gateway ticks ~**60s**.  
 Eng plan 「≤1s poll」→ use **`hermes_alert_poll_loop.py`** (started by `jarvis serve` when `alert_tts=hermes`). Cron = slow backup only.
 
+## Alert pipeline (v5.1, 2026-09-12) — raw 字串永遠唔准出聲
+
+```text
+producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
+   ↓ L1 shape   alert_policy.shape()        raw metrics / URL / CJK → deterministic English template
+   ↓ L2 policy  alert_policy.policy_for()   kind × settings → speak_now | digest | drop（CRITICAL 唔可降級）
+   ↓ L3 gate    speak_gate.should_speak()   gaming / voice_call → hold（critical 穿透）
+   ↓ speaker    scripts/hermes_alert_poll_loop.py（唯一出路）→ mark_spoken → TTS → ack → miss_ledger
+```
+
+**硬規則**：任何 raw 字串（`fires=…`、URL、中文 toast body）**永遠冇通道去到 TTS**；`mouth.speak()` 出口有 validator（fail-closed）。講／唔講 **100% deterministic**（`alert_policy.policy_for` ＋ `speak_gate.should_speak`）；LLM（L4）只可以做 digest 潤飾，**永遠唔可以 suppress／降級**，默認 `off`。
+
+| 模組 | 責任 |
+|---|---|
+| `src/jarvis/alert_policy.py` | 純函數：`shape()`（template）／`policy_for()`／`priority_for()`／`sanitize()`／`is_speakable()`／`CRITICAL` |
+| `src/jarvis/speak_gate.py` | `should_speak(row) -> SpeakPlan`（`speak`／`hold`／`digest`／`drop`）＋ `is_gaming_v2()`（process-based，唔靠 foreground） |
+| `src/jarvis/alert_shadow.py` | shadow mode：只寫 `%APPDATA%\Jarvis\alerts\shadow_ledger.jsonl`（＋heartbeat），零執行改動 |
+| `src/jarvis/alert_store.py` | 狀態機 pending／held／digest／spoken／dropped；`miss_ledger.jsonl` append-only（每次狀態轉變 ＋ reason，>2MB rotate `.1`，fail-open） |
+| `scripts/hermes_alert_poll_loop.py` | 唯一 speaker：release held → digest flush（30 分鐘 或 gaming→idle 一句）→ `peek(lease_s ≥ 300)` → `mark_spoken` → TTS |
+
+**新 settings keys**（`src/jarvis/settings.py`；全部默認 = 今日行為）：
+
+| Key | Default | 意思 |
+|---|---|---|
+| `alert_policy_mode` | `off` | `off`／`shadow`（只寫 ledger）／`enforce` |
+| `alert_gaming` | `hold` | 打機時 `hold`／`drop` |
+| `alert_hold_ttl_s` | `900` | hold 最長幾久（過期轉 digest） |
+| `alert_held_cap` | `64` | held 行上限（防黑洞） |
+| `alert_digest_interval_s` | `1800` | digest 一句嘅間隔 |
+| `alert_digest_ttl_s` | `86400` | digest 行 TTL |
+| `alert_dedupe_window_s` | `300` | 同 kind 去重（0 = 停用） |
+| `alert_llm_polish` | `off` | L4 LLM 只做 digest 潤飾 |
+
+**「what did I miss」**：講 `"what did i miss"`（或 `did i miss anything`／`miss咗啲咩`…）→ router `alert_miss` intent → **本機處理**（唔經 Hermes，即使 `hermes_enabled`）→ 讀 24 小時 `miss_ledger.jsonl` → 一句 ASCII 英文（例：`"Sir, 3 alerts went unanswered while you were away: whatsapp x2, gpu health x1."`；冇嘢 = `"Sir, nothing missed."`）。
+
+**⚠️ 未啟用**：`alert_policy_mode` 默認 `off`（settings.json 亦未寫入新 keys）——要 restart sidecar，再以 `shadow` 收 ≥48 小時樣本（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）才上 `enforce`。
+
+## Baseline（2026-09-12 23:5x，親跑）
+
+```text
+python -m pytest tests/ -q          → 472 passed / 0 failed
+python -m jarvis.eval_gate --lock   → 一致（44 test files）
+python -m jarvis.eval_gate --all    → golden / regression / stress 三 suite ok=True
+                                      HASH 3317f6997f5ff7fb
+```
+
 ## TTS modes (`alert_tts`)
 
 | Value | Behavior |
