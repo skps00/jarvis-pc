@@ -118,6 +118,24 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 
 **唔做（v3 明確刪走）**：「同一 sender 15 分鐘第 2 條 → 升級」（`StoredAlert` 冇 sender 欄，要 WinRT toast 抽取先做得，列入 future）
 
+## Review Round 3 — cursor review-only 裁決（2026-09-12）+ v3.1 修正
+
+**VERDICT: NEEDS-FIX（1 個 P0 blocker）** — 全部 file:line 已驗。
+
+**🔴 P0 blocker：Task 2 唔係「零行為改動」**
+- 我 plan 話 P0「零風險、唔改變你聽到嘅嘢」係**錯**：`shell_app.py:577-578` 一改 enqueue `spoken` 英文句，self-monitor 條 metrics 就**即刻唔再讀**（＝正是今次想修嘅嘢）。
+- **修法**：拆做 **P0a（真零改動）**＝新建 `alert_policy.py`（純函數）＋ Task 7 settings keys ＋ 測試，**唔接線**；**P0b（即刻見效）**＝接 self-monitor 出聲句（＝修好你聽到「numbers + =」嗰單），有明確 acceptance。
+- 誠實講：P0b **係**有行為改動，但改嘅係你今日投訴嗰句，所以係 fix 唔係風險。
+
+**🔴 非 P0 但必須修（Task 3 前提）**：`gpu_health` 今日**冇** hard/soft 之分 —— `GpuHealthHit.kind` 永遠係 `"gpu_health"`，hard/soft 只藏在 `detail`／reason（`gpu_health.py:114-131,173-184`）。→ Task 3 要先加結構化 flag／新 kind（例如 `gpu_hard`），**唔可以今日就 key kind 字串**。
+
+**🟠 其他**
+- **Task 6 hook 位置寫錯**：要掛在 `execute_utterance` **line 121-126 之間**（Hermes short-circuit `:127` 之前）；`_dispatch_intent:271` 在 Hermes 開住時根本唔會行到。
+- **Held 無上限**（cursor 指出係 deadlock-class 風險）：eviction 保護 held/critical 之後，如果冇 eligible victim，`while` 迴圈可能**揸住 `_DirLock` 空轉** → 全部 alert 操作停擺。→ Task 1 要**明文上限**（held 硬上限，例如 64；超出 → 最舊 held 轉 digest／drop）＋ 迴圈一定要有 escape。
+- **冇 template 嘅 kind**：`self-monitor`（正是今次主角）、`test`、bare `extra` → Task 2 要明確覆蓋。
+- **確認 Task 2 係真新邏輯**（唔係薄 wrapper）：今日 `mouth.py:35-40,304-305` **只跳 CJK**，`=`／URL／非 ASCII 一樣照讀 → 所以「純 ASCII 保證」係新 code（亦證實 bug 面）。
+- **OK 確認**：settings `alert_voice/discord/cursor/whatsapp` 存在（`settings.py:112-121`）＋`_clamp`；`gpu_health` soft 83 / hard 90 / mem 95 真值；`gpu_policy.gaming_now()` 真係 relay 去 `activity.gaming()`（同一個 foreground bug）；`router._QUERY_MARKERS` 冇 miss 字眼；加新 test 檔**一定要**改 golden-set doc（`eval_gate.py:296-322`）；tests 34 個 `test_*.py`，CI = `pytest tests/ -q`（冇 GitHub Actions）。
+
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 
 | 系統 | 做法（重點） | 對我哋嘅意義 |
