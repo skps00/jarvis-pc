@@ -35,6 +35,10 @@
 - Task 7 邊界 probe（Hermes 自己寫、26 項）：24h window／rotate 檔／壞 JSON 行／missing file → `[]`／CJK kind → ASCII／>3 kinds → `and others`／99999 行 → fallback 句／7 句正面 route 命中／3 句負面唔命中／真機 `execute_utterance("what did I miss")` → `[route] alert_miss` ＋ `[speak]` ASCII 英文，**零 Hermes 呼叫**
 - 新增 src：`alert_policy.py`／`alert_shadow.py`／`speak_gate.py`；新增 test 11 個（含 `test_miss_ledger.py`）
 
+**3b. SK 決定（2026-09-13 00:5x，Discord）**
+- **HWiNFO ＋ LHM 兩隻硬體監控照留**（SK：`2 still b`＝both）——唔郁，維持 8085 讀數正常嘅現狀。
+- 語音 ASR 三選一、`self-evol-SUGGESTIONS.md` commit、AI_Studio spike、push 決策：**仍未答**。
+
 **4. ⚠️ 未生效／未做**
 - **新 pipeline 未生效**：`alert_policy_mode` 默認 `off`、`%APPDATA%\Jarvis\settings.json` 仲係舊 keys（未經 sidecar `POST /settings` 寫入）；SK 揀 **B** = 全部 task 完成後才 restart sidecar **一次**。
 - **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。
