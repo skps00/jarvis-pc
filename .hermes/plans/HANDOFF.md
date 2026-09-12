@@ -4,14 +4,14 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc 由 2026-08-10 起 61 個 commit 全部未 push**（remote main = `ca463a3`；2026-09-12 06:1x `git rev-list --count origin/main..HEAD` = **61** 實測；舊稿寫「已 push」／「ahead 3-4 docs」全部係錯）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc：feature 分支 `feature/hermes-alerts-mcp` 已 push ＋ 開咗 PR #12（<https://github.com/skps00/jarvis-pc/pull/12>，base `main`＝`ca463a3`，**未 merge**；2026-09-13 03:3x `git rev-list --count origin/main..HEAD` = **87** 實測——包含 08-10 之後所有未推工作，唔止 alert pipeline）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
 
 ---
 
-## 2026-09-13 00:0x–01:2x（Discord session）—— Alert pipeline 收尾：Task 7 收貨、兩輪獨立 review、fix1–fix9 全部收貨（**code 仍未 commit**）
+## 2026-09-13 00:0x–03:3x（Discord session）—— Alert pipeline 收尾：Task 7 收貨、**三輪獨立 review**、fix1–fix11 全部收貨、code 已 commit（`be099a7`）＋ PR #12、shadow 已生效收樣本
 
 **1. 做咗咩（全部有實測證據）**
 - Task 7（「what did I miss」）由 cursor 交付 → Hermes 自己收貨（py_compile／targeted／全量／`--lock`／`--all`／26 項 probe）。
@@ -36,17 +36,28 @@
 **1d. Shadow 首批數據（03:2x，`alert_shadow_report.py --hours 6`）**
 `decisions: hold=1, speak=0, digest=0, drop=0`｜`reasons: gaming=1`｜`heartbeat lines=18, game_active_hours=0.06`｜**`gaming_v1_true=18 / v2_true=5 / v1_only=13 / v2_only=0`** → 現行前景制 gate 有 **13 次**把「game 開住但冇輸入」當成打機（FP），新 process+輸入制 0 次漏判——正正係 M3 要量嘅數字（未達 48h 樣本，未可定論）。
 
-**2. 而家喺邊（唔可以當完成嘅嘢）**
-- **所有 code 未 commit**（`git status` 見 18 modified ＋ 25 untracked）；
-- **pipeline 未生效**：`alert_policy_mode` 仍 `off`、`%APPDATA%\Jarvis\settings.json` 未有新 keys → 要 restart sidecar；
-- **shadow 樣本未開始收**（P1 通關條件：M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）；
-- **真機驗收未做**（打機／通話／idle 三情境）；Task 10（LLM digest 潤飾）仍暫緩（要 benchmark p95 ≤3s）。
+**1e. 第三輪獨立 review（subagent，2026-09-13 01:2x）—— verdict：CONDITIONAL PASS**
+- 14 項核實：**10 CONFIRMED、3 PARTIAL、1 REFUTED**；另報 2 HIGH＋5 MEDIUM＋4 LOW。
+- **唯一 REFUTED**：fix7 嘅「release 收斂」實作**無效**——`quiet_since` 喺 release 後冇 reset，每個 tick 再放一條 normal，最終全部放出（洗版原封不動）。
+- **第 2 個 HIGH（新捉）**：`mode=off`／shadow（claim=False 路徑）出聲成功**冇寫任何 `spoken` ledger** → 「what did I miss」把真正講過嘅 alert 報成未答（fix1 去重判定形同虛設）。
+- **MEDIUM 之中我實錘 4 個**：digest 句含 4+ 位數字（`extra:app1234`）→ `is_speakable=False` 且冇 fallback → 永遠講唔出＋每秒刷 log；`clear_digest` 永遠清唔到（先 `mark_spoken` 已非 `digest` state）＝死碼＋有機會刪未出聲行；`jarvis_speak` 用弱 validator（`guard_for_speech`）做 pre-check 但 mouth 用 strict → 回 `ok:true` 冇聲；`release_held` 空轉都重寫全檔。
+- **收貨證據（Hermes 自己 probe，fix10 前後對照）**：D1 release `[3,1,1,1,1]`（洗版）→ fix10 後 `[3,0,0,0,0]` ✅；D2 ledger `["enqueue"]` → `["enqueue","spoken"]`（`Sir, nothing missed.`）✅；D3 `is_speakable=False` → `True`（label 去數字）✅；D4 `clear_digest` 回 0 → 回 1 ✅。test blind spot 全部補：release 連續 call N 次、spoken ledger 兩條路徑、digest fallback、clear_digest。
+- **fix11（test-only）**：`test_digest_cap_drops_oldest` 用假 epoch（`t0=1_700_000_000`）令行被 wall-clock GC 當過期 → 期望 4 條得 1 條；我用真時間 probe 同情境 = 4 條（cap 正確）→ 判 test 錯，**只改 test，唔准遷就 production code**。
+
+**2. 而家喺邊（2026-09-13 03:3x 更新——以下為當下事實）**
+- ✅ **Code 已 commit**：`be099a7 feat(alerts): alert pipeline v5.1`（21 modified ＋ 25 新檔；`git status` 只剩 `.hermes/plans/self-evol-SUGGESTIONS.md` 未批）。
+- ✅ **Pipeline 已生效（shadow）**：sidecar pid 38860 ＋ poll loop 45964（03:06 起，跑新 code）；`settings.json` 有 `alert_policy_mode="shadow"`。
+- ⏳ **Shadow 樣本收集中**（03:06 開始；P1 通關條件：M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）；每 6 小時 cron 自動報告。
+- ⏳ **真機驗收未做**（SK 選 4b＝下次 session；打機／通話／idle 三情境，過關才 `enforce`）。
+- ⏳ Task 10（LLM digest 潤飾）暫緩（要先 benchmark ranking prompt p95 ≤3s）。
+- ⏳ **PR #12 未 merge**（等 SK 決定；PR 相對 `origin/main` 87 commit／189 檔）。
+- ⏳ 未了：`self-evol-SUGGESTIONS.md` 3 行、MC 兜底 FACT 測試（等 SK 關 game）、語音 ASR（SK 選 d 唔理住）、AI_Studio Phase 1 spike。
 
 **3. 下次做咩（優先序）**
 1. ✅ **已做（09-13 03:06）** restart ＋ shadow 生效 → 等 ≥48h 樣本，用 `scripts/alert_shadow_report.py` 睇分佈（M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）。
-2. 等 SK go → **commit code**（建議拆 2-3 個 commit：pipeline 新模組／store 狀態機／docs）。
+2. ✅ **已 commit（`be099a7`）＋ push＋開 PR #12**——merge 與否等 SK。
 3. 真機驗收（SK 選 **4b＝下次 session**，唔急）→ 過關才 `enforce`。
-4. ✅ 殘留檔已清（3 個 tracked 已 commit 刪除；2 個 folder 已搬去 %TEMP% 備份）。
+4. ✅ 殘留檔已清（3 個 tracked 已 commit 刪除；2 個 folder 已搬去 %TEMP% 備份）。10 條規格偏離全部寫入 plan（第 9 條＝digest 句措辭；第 10 條＝三輪 review 記錄）。
 5. Task 10 要跑 ranking prompt benchmark（p95 ≤3s）先開工。
 
 **4. 順帶（side topic）**
@@ -68,7 +79,7 @@
 |---|---|
 | ✅ **14 個**（完成） | 0（`alert_policy.shape()` 純函數 ＋ ASCII 保證）、1（settings keys ＋ `_clamp` ＋ eval_gate golden 同步）、1b（`settings_ui._save()` 靜默還原欄位 bug）、1c（self-monitor 出聲改走 `shape()`＋`MonitorResult` NamedTuple）、5a（`mouth.speak()` 出口 validator）、3（`gpu_hard` flag 貫穿 `gpu_health → alerts → store`）、4（`speak_gate.should_speak()`＋`is_gaming_v2()`）、6（shadow mode ＋ `shadow_ledger.jsonl`＋heartbeat）、2（AlertStore 狀態機：hold／held cap／dedupe／eviction 保護／ledger fail-open／`_DirLock`）、4e+5b（enforce choke point 生效）、8（digest flush ＋ release 收斂）、9（lease 300s ＋ `mark_spoken` 原子 claim）、**7（`read_miss_ledger()`＋`format_missed_sentence()`＋router `alert_miss`＋engine 本地 handler＋`tests/test_miss_ledger.py` 8 個 test）**、**11（`docs/hermes_alerts_mcp.md` pipeline 圖＋settings 表＋baseline）** |
 | ⏸ 1 個 | Task 10（L4 LLM digest polish）——按 plan 暫緩，要先跑 ranking benchmark p95 ≤3s |
-| ⚠️ 1 項做唔到 | Task 11 剩「AGENTS.md 一句」：**Hermes hardline 擋咗寫入 AGENTS.md（agent 指令檔要 SK 明確批准）**——等 SK 一句 go 才補 |
+| ✅ 已補（09-13） | Task 11「AGENTS.md 一句」：SK 批 `1` 後已寫入 `jarvis-pc\AGENTS.md:88`（commit `8cff405`）——舊稿寫「做唔到」係當時狀態 |
 
 **3. 本 session 親跑嘅實錘（最終，2026-09-13 00:0x）**
 - `pytest tests/ -q` = **483 passed / 0 failed**（baseline 379 → +104；Task 7 fix1/fix2 後 19 個 test）
@@ -81,11 +92,11 @@
 - 語音 ASR 三選一、`self-evol-SUGGESTIONS.md` commit、AI_Studio spike、push 決策：**仍未答**。
 
 **4. ⚠️ 未生效／未做**
-- **新 pipeline 未生效**：`alert_policy_mode` 默認 `off`、`%APPDATA%\Jarvis\settings.json` 仲係舊 keys（未經 sidecar `POST /settings` 寫入）；SK 揀 **B** = 全部 task 完成後才 restart sidecar **一次**。
-- **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。
-- **14/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。
+- **新 pipeline 未生效**：`alert_policy_mode` 默認 `off`、`%APPDATA%\Jarvis\settings.json` 仲係舊 keys（未經 sidecar `POST /settings` 寫入）；SK 揀 **B** = 全部 task 完成後才 restart sidecar **一次**。〔→ **09-13 03:06 已 restart＋開 shadow**〕
+- **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。〔→ **09-13 03:06 開始收，每 6 小時 cron 自動報**〕
+- **14/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。〔→ **09-13 已全部 commit `be099a7`**〕
 
-**5. 下次 session 起點**：Task 7（含 fix1/fix2）／11 已收貨（**483 passed**／HASH `3317f6997f5ff7fb`）→ 剩：① SK go 才補 AGENTS.md 一句；② restart sidecar（B）＋ 寫 `alert_policy_mode=shadow` 收 ≥48h 樣本；③ 真機驗收（打機／通話／idle 三情境）；④ **問 SK 才 commit code**（SK 指示 test-first，現時 18 modified ＋ 14 新檔仍未 commit）；⑤ Task 10 等 benchmark。
+**5. 下次 session 起點**（**已被最頂 09-13 section 取代**，以下為當時狀態）：Task 7（含 fix1/fix2）／11 已收貨（**483 passed**／HASH `3317f6997f5ff7fb`）→ 剩：① SK go 才補 AGENTS.md 一句；② restart sidecar（B）＋ 寫 `alert_policy_mode=shadow` 收 ≥48h 樣本；③ 真機驗收（打機／通話／idle 三情境）；④ **問 SK 才 commit code**（SK 指示 test-first，現時 18 modified ＋ 14 新檔仍未 commit）；⑤ Task 10 等 benchmark。
 
 ---
 

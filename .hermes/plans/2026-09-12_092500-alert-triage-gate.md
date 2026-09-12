@@ -309,7 +309,7 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 - [x] 12 Task 8 ✅（digest flush ＋ release 收斂 已喺 `poll_loop`；age 用 row `digest_at`／`ts`，所以唔需要另存 `last_digest_ts`）
 - [x] 13 Task 9 ✅（`peek(lease_s=max(300,interval*10))` ＋ `mark_spoken` 原子 claim）
 - [ ] 14 Task 10 ⏸（按 plan 暫緩：要先跑 ranking benchmark p95 ≤3s）
-- [x] 15 Task 11 ✅（`docs/hermes_alerts_mcp.md` 加咗 pipeline 圖＋模組表＋新 settings keys 表＋「what did I miss」；baseline 已寫入）——**淨低「AGENTS.md 一句」被 Hermes hardline 擋（要 SK 明確批准）**
+- [x] 15 Task 11 ✅（`docs/hermes_alerts_mcp.md` 加咗 pipeline 圖＋模組表＋新 settings keys 表＋「what did I miss」；baseline 已寫入）——**AGENTS.md 一句已於 09-13 補做（SK 批 `1`；commit `8cff405`）**
 
 **實測（2026-09-12 23:4x，本 session 親跑）**：`pytest tests/ -q` = **483 passed / 0 failed**（baseline 379 → +104；Task 7 fix1/fix2 各加測試）；`eval_gate --lock` 一致（44 files）；`eval_gate --all` 三 suite ok、HASH `3317f6997f5ff7fb`。
 **⚠️ 全部 code 改動仍然係未 commit working-tree 狀態**（SK 指示 test-first；docs／HANDOFF 已 commit `8fb6116`）。
@@ -404,7 +404,9 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 
 ---
 
-## 2026-09-13 收貨記錄（Hermes 親跑；所有 code 仍未 commit）
+## 2026-09-13 收貨記錄（Hermes 親跑；code 已 commit `be099a7`，2026-09-13 03:3x 起生效於 shadow）
+
+**最終驗收**：`pytest` **532 passed / 0 failed**、`eval_gate --lock` 53 files 一致、三 suite ok、HASH `3e5e074479192100`、三輪 review 全部 findings 修完（fix1–fix11）並由 Hermes probe 重驗。
 
 **驗收數字**：`pytest tests/ -q` = **532 passed / 0 failed**；`eval_gate --lock` = 一致（**53** test files）；`eval_gate --all` = 三 suite ok；HASH `3e5e074479192100`。
 

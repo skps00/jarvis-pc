@@ -58,7 +58,7 @@ producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
 
 **⚠️ 未啟用**：`alert_policy_mode` 默認 `off`（settings.json 亦未寫入新 keys）——要 restart sidecar，再以 `shadow` 收 ≥48 小時樣本（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）才上 `enforce`。
 
-## 2026-09-13 修復輪（fix1–fix9，全部由 Hermes 親跑收貨）
+## 2026-09-13 修復輪（fix1–fix11，全部由 Hermes 親跑收貨）
 
 | 修咗咩 | 實錘 |
 |---|---|
@@ -79,6 +79,13 @@ producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
 | MCP `peek_alert` lease 仍 30s（可重讀同一句） | 300s |
 | `default_store()` fallback 冇 policy | fallback 都注入 |
 | `gpu_hard` producer 傳 **空 phrase** → `enqueue()` raise → **critical alert 靜默消失**（fix8 引入、fix9 修） | producer 傳 `alert_phrase_for(kind)`；`shape()` delegate 同一函數（單一來源）＋ 空 phrase 防守 |
+| **release 收斂失效**（fix7 只拖慢，冇 reset `quiet_since` → 每個 tick 再放一條） | 成功 release 後 `quiet_since = t`；probe 連續 5 tick `[3,1,1,1,1]` → `[3,0,0,0,0]` |
+| **出聲成功冇 `spoken` ledger**（`mode=off`／shadow 路徑）→ 「what did I miss」報大數 | claim 階段寫 `speak_claim`、**成功之後**才寫 `spoken`、失敗寫 `speak_fail` ＋真 reason |
+| digest 句含 4+ 位數字 → `is_speakable=False` 且冇 fallback（永遠講唔出＋每秒刷 log） | label 去數字 ＋ `is_speakable` fallback 句 ＋ fail log 60s 限流 |
+| `clear_digest` 永遠清唔到（先 `mark_spoken` 已非 `digest` state） | 改按 id 刪；只刪自己 claim 咗嘅行 |
+| `jarvis_speak` 用弱 validator 做 pre-check 但 mouth 用 strict（回 `ok:true` 冇聲） | 兩邊共用 `strict_ok`，mouth 用 `guard=lenient`（口徑只得一個） |
+| `release_held` 空轉都重寫全檔｜dedupe key 用 built-in `hash()`（跨進程唔穩）｜digest 行無上限｜死碼 | n=0 唔寫檔；改 `sha1[:16]`；加 `digest_cap`；抽 `_flush_digest_common`、清死碼 |
+| （fix11，test-only）`test_digest_cap_drops_oldest` 用假 epoch 被 wall-clock GC 反噬 | test 改用真時間偏移；**唔准改 production 遷就 test** |
 | release 收斂**失效**（release 後冇 reset `quiet_since` → 每 tick 再放一條） | release 成功即 `quiet_since=t`；連續 tick 實測 `[3,0,0,0,0]` |
 | mode=off／shadow **出聲成功唔寫 `spoken` ledger** →「what did I miss」報大數 | `enforce` 出聲成功**無條件**寫 `spoken`；claim 階段改用 `speak_claim`；失敗寫真 reason |
 | digest 句含 4+ 位數字（`extra:app1234`）→ 唔 speakable、永遠講唔出 | `label_for` 去數字 ＋ `is_speakable` fallback 句；失敗 log 60s rate-limit |
