@@ -11,6 +11,30 @@
 
 ---
 
+## 2026-09-12 09:0x（SK 問「why jarvis said some random words?」）—— 答案：**self-monitor 嘅 raw metric 字串被 alert poller 照讀**（numbers + `=`）
+
+**1. 症狀**：SK 聽到 JARVIS 唸「一堆數字同 = 號」。
+
+**2. 根因（實錘，trace 到 code）**
+- `shell_app.py:559 _ensure_self_monitor()`：serve 起 ~600s（catch-up）＋每日 09:00 跑 `self_monitor.run_once()`；`notable` 就 `_enqueue_alert("self-monitor", summary, …)`（`shell_app.py:577`）。
+- `summary` = **原始 metric 行**（`self_monitor.py:271-280`）：`2026-09-12 09:00:00 | fires=5 fp=0 stt_miss=0 avg_best=0.00 avg_peak=0.04 agc=6.0x agc_boost_pct=99% aec=on stt_rtf=… repair=0 tts_ok=… resp_lat=… err=N vram=… thr=0.65->0.65`
+- `scripts/hermes_alert_poll_loop.py`（pythonw）：`peek()` → **`_speak_hermes(row.phrase)` 原句照讀**（冇英文句子 shaping）→ ack；`settings.json alert_tts="hermes"`。
+- 實錘：`serve.log:2039 [ok] self-monitor notable: 2026-09-12 09:00:00 | fires=5 …`；`alerts/queue.jsonl` mtime **09:02**、size 0（= 已 peek→speak→ack）。今日 two notables：**06:27:04**（catch-up）＋**09:00:00**（daily）。
+- ⚠️ **AlertStore.peek 冇 gaming gate**：`jarvis_speak` MCP 打機時回 `{"ok":false,"reason":"gaming"}`，但 poller 呢條路**照出聲**（09:0x CS2 開住都讀咗）。
+
+**3. 同時段另一獨立事件（08:50，唔關上面事但 SK 可能都聽到）**
+- `wake_debug.log 08:50:11 oww_fire best=0.568 thr=0.45 hey=0.078 jarvis=0.568` → 收 1.8s 命令音（`[ear] agc_gain=24.00 rms=0.004` ≈ 靜音）→ sensevoice **幻聽**出「就是这样一个船。」→ route unknown → Hermes → 唸 "Sorry sir, that message came through garbled…"。今日同類 wake＋garbage ASR 共 12 次（`serve.log` 全部 `[ear] raw=` 亂碼）→ 屬 pending「本地 ASR 品質」線（SK 未揀）。
+
+**4. 未拍板（已 root-cause，等 SK 揀修法）**
+| # | 方案 | 說明 |
+|---|---|---|
+| A | self-monitor alert 改**英文人話短句** | raw metric 只留 `self_monitor.log`；出聲用 sentence |
+| B | **所有 alert 加 sentence-shaping 層** | 任何 kind 都唔會原句照讀（WhatsApp toast 中文亦唔會照讀） |
+| C | alert `peek()` 加 **gaming gate** | 同 `jarvis_speak` 一致，打機 defer 唔出聲 |
+| D | A+B+C 一齊 | 建議 |
+
+---
+
 ## 2026-09-12 06:15 開機後核對（SK 講「any task that request restart is done」）—— LHM autostart **驗收 PASS**，順手捉到 HWiNFO 同 LHM 並行
 
 **1. 唯一「等真 reboot」pending → 收口**
