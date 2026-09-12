@@ -118,8 +118,16 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 | 白名單／黑名單 override | `settings.py:80` 已有 `custom_models: list[str]`（list 欄位先例）＋ sidecar 單一 writer `POST /settings` | 加 2 個 list 欄位 + `_clamp` |
 | Ledger ＋「what did I miss」 | `router.py:179` 已有 `Intent("query", …)` 類型；`alert_store.ack()` 會刪行（`:185-186`）→ 要新 append-only ledger 檔 | 新 ledger + 1 個 query handler |
 | LLM 排序／中譯英 | `brain.py:103/114` 已有 direct DeepSeek chat（`deepseek-chat`）＋`translate_to_english_short()`（`:477`）——**唔使 Hermes API** | reuse，加一個 ranking prompt |
-| 重複 sender 15 分鐘升級 | `alert_store` 已有 `dedupe_key` 位 | 小 |
-| Shaping（raw 永不出聲） | 新 `alert_policy.py` 純函數 | 中 |
+| 重複 sender 15 分鐘升級 | ⚠️ **修正（cursor review-only 捉到）**：`StoredAlert` **冇** `dedupe_key`（我原本講「已有」係錯）→ Task 1 要新加 | 中 |
+| Shaping（raw 永不出聲） | 新 `alert_policy.py` 純函數，但 **必須 extend 現有 `alerts.alert_phrase_for(kind)`（`alerts.py:218-238`），唔可以另開平行表** | 中 |
+
+**Round-2 cursor review-only 額外修正（2026-09-12，VERDICT: NEEDS-FIX，2 blockers）**
+- **B1（MED）**：Task 1 嘅 voice-call gate 唔可以讀 `voice_call_state.json`（嗰個係 activity_monitor 內部 debounce，`activity_monitor.py:380-393`）→ 要用 `sk_activity.json` 嘅 `voice_call` ／ `activity.voice_call()`。
+- **B2（MED）**：「what did I miss」唔可以假設 `Intent("query")` 就夠：`_QUERY_MARKERS`（`router.py:263-276`）冇 miss 類字眼，而且 `hermes_enabled` 時 query 會 short-circuit 去 Hermes（`engine.py:127-136`）→ 要加明確 phrase match ＋ local handler（signature `(utterance, registry) -> str`，出英文句）＋ bypass Hermes。
+- **LOW**：MCP 工具名係 `list_alerts`（`mcp_alerts_http.py:357`），唔係 `list_open`；加 `state` 欄要同步更新 `list_alerts`／`stats` 嘅 filter，否則 held/digest 會被當 open。
+- **FACT**：`apps[]` 有 180 秒 flap-guard（`activity_monitor.py:614-620`）→ 遊戲退出後 3 分鐘內仲算「有 game」＝ process-based gate 嘅已知 false positive 窗。
+- **FACT**：`shell_app._handle_alert`（`shell_app.py:1369-1425`）已經會 prefer watcher phrase／`alert_phrase_for` 並**擋 raw CJK toast body**；`jarvis_speak`（`mcp_alerts_http.py:368-377`）本來就有 gaming/voice_call gate —— **漏 gate 嘅係 poll_loop／`_speak_hermes` 呢條路**（即係修一條路，唔係重建）。
+- **Ledger 位置（cursor 建議）**：`%APPDATA%\Jarvis\alerts\miss_ledger.jsonl`（queue.jsonl 同層），append-only、>2MB 輪替、讀時只取 24h；**唔可以混入 `queue.jsonl`**（ack 會刪行、有 max_depth/TTL GC）。
 
 **⚠️ 真 blocker（唔改就一定唔 work）—— gaming gate 訊號係錯嘅**
 - `activity.py:29 gaming()` 定義 = `sk_activity.json.state == "playing"`；而 `activity_monitor.py:335 classify()` **只喺「前景視窗 = 遊戲」先算 playing**。
