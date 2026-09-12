@@ -196,6 +196,43 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 - **只做**：新建 `src/jarvis/alert_policy.py` **純函數**（`shape()`＝ASCII 保證 wrapper，delegate `alert_phrase_for`）＋ 測試；Task 7 settings key 定義（`alert_policy_mode` 默認 **off**）＋ `_clamp` ＋ **eval_gate golden 同步**。
 - **唔做（推去 P2，要有 shadow 數據先）**：改 `alerts.alert_phrase_for()` 現有句子（會即時改口風，而且撞 `tests/test_alerts.py:60/73-74` 字眼斷言）；`alert_policy_mode` 轉 `enforce`。
 
+## Review Round 4 — 中立裁判裁決（2026-09-12 14:2x）+ v5 修正
+
+**比數：反方贏 8:2**（8:2 → 6:4 → 7:3 → 8:2）。今輪捉到嘅係**設計盲點**，唔係規格細節：
+
+**🔴 CRITICAL-1：`shape()` 冇 caller ＝ 死碼，而且照 v4 落會把「噪音」變成「靜默」**
+- 全 plan grep：`shape()` 只出現喺定義同 review 記錄，**冇任何 task 負責叫佢**；Task 5 出口只做 `is_speakable()`「唔過 → 拒講」。
+- 實況 `shell_app.py:576-578` 直接 enqueue `self_monitor` 條 metrics line（含 `=`）→ 照 v4 落：P2 enforce 後嗰條**唔過 ASCII → 被 drop**，而你最關心嘅 `fp>=3`（wake 誤觸）同 serve error **從此冇通道到 SK**（digest flush 只讀 `state=='digest'`，唔 cover drop）＝**旗艦 case 冇修好，只係由噪音變黑洞**。
+- **修正（v5）**：① choke point 由「拒講」改成 **「先 `shape()` 成英文句 → 再 assert speakable」**，未知內容 → generic 英文句（`"Sir, you have a new alert from <app>."`），**永不消失**；② Task 0 要**明文接線**：`shell_app._enqueue_alert` 及所有 enqueue caller 出聲句經 `shape()`；③ validator 定義改成「輸出一定係 shape 白名單 template」，而唔係「唔准某幾個字元」（`=` 誤殺 + digits／`|`／`->` 照樣漏殺 = brittle proxy）。
+
+**🔴 CRITICAL-2：Task 5 「唯一出口」唔止一條 TTS 路**
+- `mcp_alerts_http.jarvis_speak`（`:368-393`）**直接 `mouth.speak`**（只擋 CJK，唔擋 `=`／URL／digits）；`shell_app.py:1437-1445` 嘅 `alert_tts=piper` 分支亦係直入 `mouth.speak`。
+- **修正（v5）**：validator 擺喺**真正唯一出口 `mouth.speak()`**（或明文列 4 條 TTS 路逐條驗：poll_loop／speak_once／shell_app piper／jarvis_speak）。另外：**`speak_once.py` 今日冇任何 cron 跑**（8 個 Hermes cron job 冇 alert/speak；live 出聲路 = `shell_app.py:540-547` spawn poll_loop）→ Task 9 唔應該當佢係並存風險，真正 live 嘅第二條路係 `jarvis_speak`。
+
+**🔴 CRITICAL-3：桌面 Settings UI 會靜默還原新欄位（＝連 SK 現有設定都中招）**
+- `settings_ui.py:1501-1580 _save()` **由零建構 `Settings(...)`**，只填 UI widget 有嘅欄位；`settings.py:556-578` `save_settings` 用 `merged = {**existing, **asdict(s)}` → **新欄位一律變 dataclass 預設**。
+- **實證現有 bug**：UI constructor 完全冇 `stt_preload / tts_ack / vc_fail_closed / mage_* / alert_gpu_poll_s / alerts_mcp_port / alerts_mcp_token / discord_voice_out`（grep = 0），而 live `settings.json` 明明 `stt_preload=true` → **你一按「儲存」就靜默回落 false**。
+- **修正（v5）**：`_save()` 由 `load_settings()` 起手、只覆寫 UI-bound 欄位（replace-on-existing）＋加 test（UI save 後新舊非 UI 欄位不變）＋為新開關加正確 UI 控件（P0 只加喺既有「提醒」tab，**唔加新 tab**：`test_settings_ui_smoke.py:22-57` 斷言 5 個 tab）。
+
+**🟠 HIGH 修正（v5）**
+4. **`gpu_hard` flag 到唔到 store**：`alerts.py:735-743` 用 `hit.kind` 轉發，Task 3 Files 冇列 `alerts.py` → 要一齊改（`kind = "gpu_hard" if hit.is_hard else "gpu_health"`）＋**由 monitor 到 enqueue 嘅 end-to-end 測試**（唔止測 monitor 內部 flag）；Task 0 要補 `gpu_hard` template。
+5. **P1 gate M1 係循環依賴**：「打機時 soft ≤2 次/小時」要靠 P2 enforce 才做到（今日 soft 83°C＋120s cooldown ≈ 30 次/小時）→ P1 **永遠達唔到**。修正：M1 降為**診斷輸入**；P1 通關改「**shadow ledger 覆蓋 ≥6 個 game-active 小時** ＋ hard 事件 0 次 ＋ soft 完整分類」；「≤2 次/小時」搬去 **P2 驗收**。
+6. **M3 同 Q2／v2 規則矛盾**：v2 寫「前景=game OR fullscreen OR idle<120」 vs Q2「要有輸入活動」→ 排隊／menu／launcher 前景 = 判 gaming（違反 Q2）。→ **要 SK 裁決：launcher／排隊／menu 算唔算打機**；量測分開報「launcher 前景」同「真 playing」兩類。
+7. **Shadow ledger 結構上量唔到 M3**（冇 alert = 冇行，FP 分母 0）→ 加 **heartbeat sampler**（同 process，每 30–60s append `shadow_heartbeat.jsonl`：raw activity + `is_gaming_v2()` + v1 `gaming()` + foreground／fullscreen／idle）→ M2/M3 由心跳計，M1 由 ledger 計。
+8. **唔使等 wall-clock 48h**：用現成 `serve.log`（**268 條 `[alert]`、122 unique**）**重播 decision table** → 即刻有 kind 分佈；gate 改用 **game-active 小時**。
+9. **State/priority 遷移要覆蓋全部 enqueue call site**（`alerts.py:781,797,879,916,1094`、`shell_app.py:554`、`mcp_alerts_http.py:423`、`cursor_hook_alert.py:151`）＋舊 queue row（`from_dict` 默認 `state="pending"`、`priority="normal"`）→ 漏一個 = `TypeError` 被 `except Exception` 吞 = alert 靜默消失；改 frozen golden test（`test_alert_store.py:61-67`）要寫明係「擴大斷言」。
+10. **GC 做狀態轉換會令 `list_open()/stats()` 語義分裂**（MCP 會見到永不出聲嘅 digest 當 open）→ `stats()` 回分佈 `{pending, held, digest, dropped, spoken}`、`list_alerts` 只回 pending（或加 `include=`）、GC 只做單向且唔喺讀路徑寫檔。
+12. **serve.log 每條 alert 寫兩次**（`alerts.py:766` ＋ `shell_app.py:1407`）→ **頻率指標一律由 ledger 計**，唔好數 serve.log（否則 M1 假番一倍）。
+14. **P0「零改動」要收窄定義**：`settings.json` 一定會新增 key、`--hash` 會變（但 `tests/test_eval_gate.py` 冇斷言舊 hash、repo 又冇 CI → 唔會紅）；真紅線 = **`--lock` doc↔mapping 一致**（`eval_gate.py:296-322`）＋ **5-tab 斷言**（`test_settings_ui_smoke.py:22-57`）。
+
+**🟡 正方唯一殘留矛盾（必修）**：plan L16／L22 仲寫「priority 可由 L4 LLM 提升／L4 輸出 priority tag」→ 同 Task 10「只做 digest polish」矛盾，而且係 **LLM 影響講/唔講嘅後門**。→ **v5 明刪**，改成 invariant：**「L4 永不改 priority」＋測試斷言**。
+
+**✅ v5 定案：P0 / P1 重新定義**
+- **P0（即刻，有真價值）**：Task 0（`alert_policy.py` 純函數 ＋ `gpu_hard`/self-monitor/test/extra template）＋ Task 1（settings keys 默認 off ＋ UI 只加喺既有 tab）＋ **接線 self-monitor 出聲句**（＝**今日之後唔再聽到「數字＋=」**，而且唔會變靜默：shape 出英文句）＋ **`mouth.speak()` 出口 validator**（shape→assert，覆蓋全部 4 條 TTS 路）
+- **P1（shadow，有證據力）**：Task 3（＋`alerts.py` emit 改動）＋ Task 4（只 v2）＋ Task 6（shadow ledger **＋ heartbeat sampler**）→ 通關 = **≥6 game-active 小時樣本**、hard 事件 0、FP 由心跳計
+- **P2（enforce）**：Task 2＋4＋5＋7＋8＋9（+ 前置 #3 settings UI 修好、#9 call site 清單）
+- **P3/P4**：LLM（只 digest）／sender 抽取
+
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 
 | 系統 | 做法（重點） | 對我哋嘅意義 |
