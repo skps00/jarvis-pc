@@ -45,70 +45,99 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 
 ---
 
-## Task 1 — AlertStore 狀態機（v3：held 唔准 GC ＋ 保護 eviction ＋ **唔喺 store 做 gate**）
+## Task 0（P0）— `alert_policy.py` 純函數（**零接線**）
+**Files:** Create `src/jarvis/alert_policy.py`；Create `tests/test_alert_policy.py`
+- `shape(kind, phrase, app_label="") -> str`：**delegate** `alerts.alert_phrase_for()`（已知 kind）＋ self-monitor／test／bare `extra` 三個**新增** template；**永不回傳 raw**
+- `is_speakable(text) -> bool` / `sanitize(text) -> str`：純 ASCII 保證（**禁** `=`、URL、CJK、非 ASCII）；唔過 → caller 拒講
+- **唔改任何現有句子**、唔 import store／唔讀 settings（純函數，可即測）
+**驗證**：`pytest tests/test_alert_policy.py -q`：全 kind × 有／無 detail → ASCII、零 `=`、零 URL、零 CJK。
+
+## Task 1（P0）— Settings keys ＋ clamp ＋ golden 同步
+**Files:** Modify `src/jarvis/settings.py`、`src/jarvis/settings_ui.py`、`src/jarvis/eval_gate.py`、`.hermes/plans/self-evol-golden-set.md`
+- **`alert_policy_mode = "off" | "shadow" | "enforce"`（默認 `off`）**、`alert_gaming="hold"`、`alert_hold_ttl_s=900`（clamp 30–3600）、`alert_held_cap=64`（clamp 8–256）、`alert_digest_interval_s=1800`（clamp 300–7200）、`alert_digest_ttl_s=86400`、`alert_dedupe_window_s=300`、`alert_llm_polish="off"`、`alert_llm_timeout_s=3.0`
+- 新 test 檔要同步 `GOLDEN_SUITES` ＋ golden-set doc（`eval_gate.py:296-322`），跑 `--lock` 再 `--all`
+- **默認全部保守（off）** → 零行為改動
+**驗證**：`tests/test_settings_alert_keys.py`（亂值 clamp；`alert_policy_mode` 非法值 → fallback `off`）。
+
+## Task 2（P2）— AlertStore 狀態機（**store 純資料，唔讀 settings**）
 **Files:** Modify `src/jarvis/alert_store.py`、`tests/test_alert_store.py`
-- `StoredAlert` 加 `state: str = "pending"`、`hold_until: float = 0.0`、`priority: str = "normal"`、`dedupe_key: str = ""`（⚠️ 現時**冇** `sender`／`dedupe_key` 欄，全部新加）
-- `expired()`：`state in ("held","digest")` → `False`（唔准逾時蒸發）；**但 `hold_until` 已過就要轉 `digest`/`drop`**，唔可以永久豁免
-- **`peek()` 保持中性（唔加 gate）** — gate 擺 speaker 出口（Task 4），保住 MCP `peek_alert`/`list_alerts` 查詢通道
-- 新 `hold()` / `release_held()` / `mark_spoken()` / `mark_digest()` / `drop(reason)`：**全部行同一 `_DirLock`**（`alert_store.py:63-94`）
-- `enqueue()` eviction 保護：超 `max_depth=32` 時**只可剔 `state=='pending' and priority=='normal'`**（held/critical 唔可以被丟）
-- **明文 caller**：`poll_loop` 每輪讀 activity → `gaming=False` → `release_held()`
-- `list_open()`／`stats()` 要識新 state，`test_alert_store.py:61-67 test_stats` 同步更新
-**驗證（新）**：`tests/test_alert_store_gate.py`：held 唔會 GC；hold_until 過期→digest；32 條以上含 held/critical 時 eviction 唔可以剔佢哋；兩個 process 同時 hold+enqueue 唔會丟更新。
+- `StoredAlert` 加 `state`（`pending|held|digest|spoken|dropped`）、`hold_until`、`priority`、`dedupe_key`
+- **`peek()` 只回 `state=='pending'`**（中性，唔做 gate）；`hold(row_id)` **必須即時釋放 lease**（否則最舊 held 每 1s 被 re-lease → critical 飢餓）
+- `hold()` / `release_held()` / `mark_spoken()` / `mark_digest()` / `drop(reason)`：全部行同一 `_DirLock`；**ledger append 一定 fail-open**（try/except + rate-limited `[warn]`，絕不影響 queue）
+- `expired()`：`held`／`digest` 唔准逾時蒸發，但 **`hold_until` 過期 → 轉 digest**；**digest TTL 24h → `drop(reason='digest_expired')`**
+- **eviction**：只剔 `state=='pending' and priority=='normal'`；**要有 escape 唔可以揸住鎖空轉**；**held 硬上限 64**（同 `kind+app` 只留最新；normal 超額即轉 digest）
+- `enqueue(..., priority=...)` 由 **caller 傳**；**policy 以參數注入**（`AlertStore(policy=...)`）→ 測試唔會跟你當日 settings 漂移
+- `dedupe_key` **要真 enforce**（`kind+dedupe_key+window` 重複 → digest／`drop(reason='dedupe')`），唔可以留死欄位
+- `list_open()`／`stats()` 要識新 state；`test_alert_store.py:61-67` 同步
+**驗證**：`tests/test_alert_store_gate.py`：held 唔會再被 peek；hold 唔會 ack；critical 唔排喺 held 後；32+ 條含 held/critical 時 eviction 唔剔佢哋；打機 3 小時模擬後 **queue 長度有界**；ledger 不可寫時 enqueue/peek 照常；dedupe 生效。
 
-## Task 2 — Shaping（A）＋ self-monitor 講人話（v3：**唔開第三個表**）
-**Files:** Create `src/jarvis/alert_policy.py`；Modify `src/jarvis/alerts.py:218-238`、`src/jarvis/self_monitor.py:223/296-300`、`src/jarvis/shell_app.py:550-580`
-- `shape(kind, phrase, detail) -> str` **delegate 去現有** `alerts.alert_phrase_for()`／`sensors.gpu_health.gpu_health_phrase()`；`alert_policy` 只加：① self-monitor 專用英文 template ② 「純 ASCII 保證」wrapper（raw/metrics/URL/CJK 一律唔會出聲）
-- self-monitor：`run_once()` 回 `MonitorResult(NamedTuple)`（`summary, notable, spoken`）＋改 `main()`（現時 `summary, notable = run_once()`）
-- `shell_app._enqueue_alert` 簽名加 `detail`（現時 `(kind, phrase, *, app, log_prefix)` 冇 detail）→ passthrough 落 `AlertStore.enqueue`
-**驗證**：`tests/test_alert_policy.py`：全 kind × 有／冇 detail → 出句必 ASCII、零 `=`、零 URL、零 CJK、以 `Sir,` 或大寫開頭。
+## Task 3（P1）— Policy table ＋ CRITICAL（＋ `gpu_hard` 結構化 flag）
+**Files:** Modify `src/jarvis/sensors/gpu_health.py`（加 explicit hard flag／kind）、`src/jarvis/alert_policy.py`、`src/jarvis/settings.py`
+- **先決條件**：`GpuHealthHit.kind` 今日永遠係 `"gpu_health"`（`gpu_health.py:114-131,173-184`），hard/soft 只藏喺 `detail` → **要加結構化 flag**（例如 `hit.is_hard` 或 `kind="gpu_hard"`），否則「只有 hard 穿透」做唔到
+- POLICY 由現有 settings 布林 derive（`alert_voice/discord/cursor/whatsapp`，`settings.py:112-121`）
+- `CRITICAL = {"gpu_hard", "sidecar_down", "cursor_approve"}`；**soft 83 唔穿透**（打機時入 digest）
+- 測試斷言：**digest kind 唔可以出現喺 CRITICAL 集合**
+**驗證**：`tests/test_alert_policy.py` ＋ `tests/test_gpu_health.py`（hard/soft flag 分流）。
 
-## Task 3 — Policy table（由 settings derive）＋ critical class（v3：只用 code hard 門檻）
-**Files:** Create（同一 `alert_policy.py`）；Modify `src/jarvis/settings.py`
-- POLICY 由**現有 settings 布林** derive（`alert_voice`/`alert_discord`/`alert_cursor`/`alert_whatsapp`）→ `{speak_now | digest | drop}`；**唔另開人手維護清單**
-- `CRITICAL = frozenset({"gpu_hard", "sidecar_down", "cursor_approve"})` — **只認 code hard 門檻**（`gpu_health.py:60-62` hard_temp_c=90 / mem_temp_warn_c=95）；**soft 83 唔算 critical**（打機時 GPU 長期 83-88°C，soft 每 120s fire → 只可入 digest）
-- 單元測試斷言：**任何被標為 digest 嘅 kind 都唔可以出現喺 CRITICAL 集合**（config 打錯 = fail-closed，唔會靜靜降級致命警報）
-**驗證**：`tests/test_alert_policy.py`（同上）＋ critical/digest 互斥斷言。
+## Task 4（P1 shadow／P2 enforce）— Speak gate ＋ `is_gaming_v2()`
+**Files:** Create `src/jarvis/speak_gate.py`；Modify `scripts/hermes_alert_poll_loop.py`、`scripts/hermes_alert_speak_once.py`
+- `should_speak(row, activity) -> SpeakPlan(action, reason)`：`speak | hold | digest | drop`；**兩條出聲路共用**
+- **另開 `is_gaming_v2()`**（**唔改** `activity.gaming()` — 佢同時餵 `ear.py:36-38 should_stt_use_gpu()` 同 `mcp_alerts_http.py:374 jarvis_speak` gate；P1 只 v2 寫 shadow，P2 才逐個 consumer 切換＋驗）
+- v2 規則：**有 game process AND（前景=game OR fullscreen OR idle<120）**；**freshness 窗 180s**（cron 係 1 分鐘寫一次）；**release 要連續 non-gaming ≥180s**（防 flap）
+- `voice_call` hold **要有自己 release 條件**（`not gaming AND not voice_call`）
+- **hold verdict 一定要 `hold(row.id)` + 釋放 lease + continue**（唔可以就地 ack，否則 critical 被靜音）
+**驗證**：`tests/test_speak_gate.py`：今日真實 fixture（CS2+MC 行緊、前景=Discord → hold）；`voice_call=True, gaming=False → 唔 release`；flap 窗；gamepad 實測（見下）。
 
-## Task 4 — Speaker 出口 gate（v3：**唔擺 store**）＋ 統一 gaming 訊號
-**Files:** Create `src/jarvis/speak_gate.py`；Modify `scripts/hermes_alert_poll_loop.py:37-49`、`scripts/hermes_alert_speak_once.py:221-233`、`src/jarvis/activity.py:29-36`、`src/jarvis/gpu_policy.py:14-16`
-- `should_speak(row, activity) -> SpeakPlan(action, reason)`：`speak | hold | digest | drop`；兩條出聲路徑**共用**
-- 統一 `is_gaming()`：讀 `sk_activity.json` `apps[].category == "game"` ＋ **freshness（timestamp ≤ 60s）** ＋ **`idle_seconds < 120`**（SK 定案：Prism 開住唔玩 = 唔算打機）→ 同時餵 `gpu_policy.gaming_now()`（今日兩處都中同一個 foreground bug）
-- `voice_call` 要用 `activity.voice_call()`（**唔可以**讀 `voice_call_state.json` — 嗰個係 monitor 內部 debounce）
-- **唔加 Hermes cron**（AGENTS.md）
-**驗證**：`tests/test_speak_gate.py`：用今日真實現場做 fixture（CS2+MC 行緊但前景=Discord → hold）；game 退出後 180 秒 flap 窗要有 freshness 保護。
+## Task 5（P2）— **Speaker choke point（raw 字串真正封死）**
+**Files:** Modify `scripts/hermes_alert_poll_loop.py:41`、`scripts/hermes_alert_speak_once.py:228`
+- `_speak_hermes()` 之前**必經** `alert_policy.is_speakable()`；唔過 → **拒講** ＋ ledger `drop(reason='non_ascii')`
+- 理由：舊 queue 行、MCP `jarvis_alert(phrase)`（Hermes 自由填字）、`cursor_hook_alert.py:151` 直入 store 嘅字，全部會原句出聲，而 `alert_tts='hermes'` 路徑**冇 CJK 檢查**（只有 `mouth.py:304` Piper 有）
+**驗證**：`tests/test_alert_speaker_choke.py`：直接 enqueue CJK／URL／`=` 行 → 斷言唔會到 TTS 且 ledger 有 drop 記錄。
 
-## Task 5 — 修 lease／雙重出聲（B4）
+## Task 6（P1）— Shadow mode（量數據，零執行改動）
+**Files:** Modify `src/jarvis/speak_gate.py`；Create `tests/test_alert_shadow.py`
+- `alert_policy_mode=="shadow"`：speak_gate 計完 SpeakPlan → append **`%APPDATA%\Jarvis\alerts\shadow_ledger.jsonl`**（`row.id / decision / would_be_action / reason / ts`）→ **照用今日行為出聲**（enforce 唔生效）
+- 量度：**M1** 打機時 GPU soft 警報頻率（目標 ≤2 次/小時）；**M2/M3** `is_gaming_v2()` FP 率（Prism 開住唔玩 30 分鐘，目標 <5%）
+**驗證**：測試斷言 shadow 期間執行路徑不變；shadow ledger 有行；`mode` 非法 → `off`。
+
+## Task 7（P2）— Ledger ＋「what did I miss」
+**Files:** Modify `src/jarvis/alert_store.py`（append）、`src/jarvis/router.py:263-276`、`src/jarvis/engine.py`（**hook 喺 `execute_utterance` line 121-126 之間，即 Hermes short-circuit `:127` 之前**，唔係 `_dispatch_intent:271`）
+- Ledger：`%APPDATA%\Jarvis\alerts\miss_ledger.jsonl`（queue 同層）由 AlertStore **內部**喺每次狀態轉變 append（enqueue／spoken／held／digest／dropped + reason code）；>2MB rotate `.1`；讀只取 24h；**fail-open**
+- Router：加明確 phrase match（`what did i miss` / `miss咗啲咩`）＋ local handler（讀 ledger）＋ **bypass Hermes**；**輸出前強制 ASCII**
+**驗證**：`tests/test_miss_ledger.py`：每次狀態轉變都有行；rotate；route 命中；輸出 ASCII。
+
+## Task 8（P2）— Digest flush（**明文 owner**，消滅黑洞）
+**Files:** Modify `scripts/hermes_alert_poll_loop.py`、Create `tests/test_alert_digest_flush.py`
+- **owner = poll_loop**：每 `alert_digest_interval_s`（默認 1800s）**或** gaming→idle 轉換時：讀 `state=='digest'` 行 → **一句英文（唔靠 LLM）**＝每 kind 一句 template ＋ 總數（例：`"Sir, 3 messages and 2 GPU notices while you were away."`）→ `mark_spoken` ＋ ack **全部**
+- **release 收斂**：每次只放 critical ＋ **最新一條** normal，其餘交 digest flush（唔可以 20+ 條連續講 40–120 秒）
+- `last_digest_ts` **持久化落 state 檔**（同一 `_DirLock`；sidecar restart ~90s 唔會重覆／漏）
+**驗證**：`tests/test_alert_digest_flush.py`：打機 3 小時模擬 → queue 有界、digest 一行出、無 zombie；restart 後唔會重覆 digest。
+
+## Task 9（P2）— Lease／雙重出聲
 **Files:** Modify `scripts/hermes_alert_poll_loop.py:37-49`、`scripts/hermes_alert_speak_once.py:221-233`
-- `peek(lease_s=300)` → `mark_spoken(atomic)` → TTS → ack；TTS 失敗 → 釋放 lease 留待下輪
-**驗證**：`tests/test_alert_poll_race.py`（mock store：慢 speak 期間再 peek → 唔會攞到同一行）。
+- `peek(lease_s=300)` → `mark_spoken`（原子）→ TTS → ack；TTS 失敗 → 釋放 lease 留待下輪
+**驗證**：`tests/test_alert_poll_race.py`（慢 speak 期間再 peek → 唔會攞到同一行）。
 
-## Task 6 — Ledger ＋「what did I miss」（v3：store 內部寫，唔做第三個 source of truth）
-**Files:** Modify `src/jarvis/alert_store.py`（append）、`src/jarvis/router.py:263-276`、`src/jarvis/engine.py:271-283`
-- Ledger：`%APPDATA%\Jarvis\alerts\miss_ledger.jsonl`（queue 同層、**唔可以混入 queue.jsonl**）— 由 AlertStore **內部**喺每次狀態轉變 append（enqueue/spoken/held/digest/dropped + reason code）；>2MB rotate `.1`；讀只取 24h；行同一 `_DirLock`
-- Router 加明確 phrase match（`what did i miss` / `miss咗啲咩`）＋ local handler（讀 ledger）＋ **bypass Hermes**（`hermes_enabled` 時 query 會 short-circuit，`engine.py:127-136`）；**輸出前強制 ASCII**（`mouth.speak` 會靜默跳過 CJK）
-**驗證**：`tests/test_miss_ledger.py`：狀態轉變都有 ledger 行；rotate；route 命中；輸出 ASCII。
-
-## Task 7 — Settings keys ＋ clamp ＋ CI／eval_gate 同步
-**Files:** Modify `src/jarvis/settings.py`（`_clamp` 一齊）、`src/jarvis/settings_ui.py`、`src/jarvis/eval_gate.py`、`.hermes/plans/self-evol-golden-set.md`
-- Keys：`alert_policy_enabled="on"`、`alert_gaming="hold"`、`alert_hold_ttl_s=900`（clamp 30–3600）、`alert_digest_interval_s=1800`（clamp 300–7200）、`alert_llm_polish="off"`（Phase 3 才開）、`alert_llm_timeout_s=3.0`（clamp 1–10）
-- **新 test 檔要同步 `GOLDEN_SUITES` mapping ＋ golden-set.md**，跑 `eval_gate --lock` 再 `--all`（`eval_gate.py:296-322` 會逐 basename 比對）
-- CI：`py_compile src/jarvis/*.py scripts/*.py` ＋ `pytest tests/ -q`（baseline **379 passed**）＋ `eval_gate --lock`／`--all`（baseline HASH `0b88e6f6bab43269`）
-
-## Task 8 — L4 離線 LLM（**暫緩**，等 benchmark）
-- 實測 5.86s > timebox 3s → **只做 digest 總結**（刪「即時 polish」幻覺）；ranking prompt benchmark p95 ≤3s 才開工
-- Fail-open：LLM 死／垃圾 JSON → template 照講（唔會靜音）；寫 `alerts\triage.jsonl`（>2MB rotate）
+## Task 10（P3，暫緩）— L4 LLM（只做 digest polish）
+- 實測 5.86s > timebox 3s → **只做 digest 句子潤飾**（唔做即時）；ranking prompt benchmark **p95 ≤3s** 才開工
+- Fail-open：LLM 死／垃圾 JSON → template 照講；寫 `alerts\triage.jsonl`（>2MB rotate）
 **驗證**：`tests/test_alert_llm.py`：正常／timeout／垃圾 JSON → 三種都必須有聲。
+
+## Task 11 — Docs ＋ baseline
+- `docs/hermes_alerts_mcp.md` 加 pipeline 圖＋「raw 字串幾時都唔准出聲」；AGENTS.md 一句；handoff 更新
+- Baseline：改完後 **新 pytest 總數（>379）** ＋ **新 eval_gate hash**（`0b88e6f6bab43269` 失效）＋ `--lock` 一致 → 三者全綠
+- Repo root 殘留（`_staging/`、`_tmp_test_write.txt`、`nonexistent/`、`_compile_check2.py`、`_apply_and_compile.bat`）→ **問 SK 先清**
 
 ---
 
-## 開工編排（v3，SK 2026-09-12 Q1／Q2 已定案）
-| 階段 | 內容 | 前提 |
+## 開工編排（v4，SK 2026-09-12 Q1／Q2 已定案）
+| 階段 | 內容 | 通關條件 |
 |---|---|---|
-| **P0（即刻）** | Task 2（shaping）＋ Task 7（settings keys） — 零風險、唔掂 store、即時可測 | 無 |
-| **P1（shadow 48h）** | Task 3＋4＋6 **只寫 ledger 唔出聲**；量：① 打機時 GPU **soft** 警報頻率（反方反轉條件 ≤2 次/小時）② process-based 訊號 FP 率（Prism 開住唔玩 30 分鐘，FP<5%） | P0 完成 |
-| **P2（enforce）** | Task 1＋4＋5 正式 gate（講/唔講＋hold＋lease） | P1 數據達標 |
-| **P3（LLM）** | Task 8（只做 digest） | ranking benchmark p95 ≤3s |
+| **P0（即刻）** | Task 0（純函數）＋ Task 1（settings keys 默認 **off** ＋ golden 同步） — **唔接線、唔改任何現有句子** | 新 test 綠；379 baseline 零 regression；`--lock` 一致 |
+| **P1（shadow）** | Task 3（＋`gpu_hard` flag）＋ Task 4（**只 v2 寫 shadow**）＋ Task 6（shadow ledger，零執行改動） | **shadow ledger ≥48h 樣本**；**M1** 打機時 GPU soft ≤2 次/小時；**M3** Prism 開住唔玩 30 分鐘 FP <5%；SK 手制實測 idle |
+| **P2（enforce）** | Task 2＋4（enforce）＋5（choke point）＋7＋8＋9 | P1 全達標；enforce 後真機驗（打機／通話／idle 三情境） |
+| **P3（LLM）** | Task 10（只做 digest polish） | ranking benchmark p95 ≤3s |
+| **P4（future）** | WinRT toast sender 抽取 ＋ per-sender 白名單（＝真正做到「按邊個發」嘅重要性） | 未排 |
 
 **SK 定案（2026-09-12）**
 - **Q1**：digest ＝ **唔即時講**；累積，最多 **30 分鐘一句英文**；**打機一律 hold 到 idle 才講**
