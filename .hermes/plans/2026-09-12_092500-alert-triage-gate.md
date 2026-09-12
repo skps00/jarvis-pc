@@ -233,6 +233,41 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 - **P2（enforce）**：Task 2＋4＋5＋7＋8＋9（+ 前置 #3 settings UI 修好、#9 call site 清單）
 - **P3/P4**：LLM（只 digest）／sender 抽取
 
+## Review Round 4 — cursor review-only 裁決（2026-09-12 14:2x）+ v5.1 最終明確化
+
+**VERDICT: NEEDS-FIX（2 blockers）** — 兩者都係「實作 agent 會自己發明」嘅位，所以**要在 plan 寫死**：
+
+**🔴 B1：Task 0 冇寫死新增 template 嘅**exact English**（會變成 agent 自創 = 唔 deterministic）→ 以下為定稿（純 ASCII、零 `=`、零 URL、零 CJK）：
+- `self-monitor`（notable）：`"Sir, self monitor: {N} wake events, {F}, {E} errors, threshold {T}."`
+  - `{F}` ＝ `"no false positives"`（fp==0）／`"{n} false positives"`；`{T}` ∈ `{"unchanged","raised","lowered"}`（由 run_once 提供嘅 enum，唔准自由文字）；`{N}`／`{E}` 為整數
+- `gpu_hard`：`"Sir, GPU critical limit reached."`（**唔加數字**，避免單位／`=` 污染）
+- `test`：`"Sir, this is a test alert."`
+- bare `extra`：`"Sir, you have a notification."`；`extra:<label>`：`"Sir, {label} has a notification."`（label 先過 ASCII sanitize）
+- 未知 kind：`"Sir, you have a new alert from {app}."`（app 空 → `"Sir, you have a new alert."`）
+- 已知 kind：**一律 delegate** `alerts.alert_phrase_for()`／`gpu_health_phrase()`（唔改佢哋原文）
+
+**🔴 B2：Task 1 clamp／enum 未寫齊** → 定稿：
+| key | 規則 |
+|---|---|
+| `alert_policy_mode` | enum `off｜shadow｜enforce`，非法 → `off` |
+| `alert_gaming` | enum `hold｜drop`，非法 → `hold` |
+| `alert_hold_ttl_s` | int 30–3600（默認 900） |
+| `alert_held_cap` | int 8–256（默認 64） |
+| `alert_digest_interval_s` | int 300–7200（默認 1800） |
+| `alert_digest_ttl_s` | int 3600–604800（默認 86400） |
+| `alert_dedupe_window_s` | int 0–3600（默認 300；**0 = 停用**） |
+| `alert_llm_polish` | enum `off｜on`，非法 → `off` |
+| `alert_llm_timeout_s` | float 1.0–10.0（默認 3.0） |
+
+**🟠 其餘（v5.1）**
+- **唔改 Electron HUD**（`hud/settings.html` 係主要 UI，但**改 hud/ 係反方嘅停手紅線**）→ P0/P1 用 **CLI 切換**：
+  `env -u PYTHONPATH python -c "from jarvis.settings import save_settings_patch; save_settings_patch({'alert_policy_mode':'shadow'})"`（`save_settings_patch` 已有 `:644-649`）；**HUD 控件列入 P2 可選**（要改 hud 就另開任務＋先問 SK）
+- **test 檔改名**：`tests/test_speak_gate.py` → **`tests/test_alert_speak_gate.py`**（避免同現有 `test_speaker_gate.py` 撞名混淆）
+- **`eval_gate.py`**：除 GOLDEN_SUITES mapping，**`py_compile` 清單要加 `src/jarvis/alert_policy.py`**（plan 原本冇寫）
+- **確認 FACT**：`alert_store.py` 今日唔 import settings（policy 注入＝真新工作）；`last_digest_ts` 冇現成 state 檔（新 artifact）；poll_loop 由 `shell_app.py:513-537` spawn（pythonw），Electron restart 會 ~90s 後重起 → **必須持久化 digest timer**
+- **清理**：Round-3 段遺留嘅「P0b」「Task 6 hook」字眼係歷史記錄，**以 Task 0-11 為準**（避免實作 agent 跟錯）
+- **未決（等 SK）**：`is_gaming_v2` 規則 (b)「前景=game」同 Q2「要有輸入活動」衝突 → 要 SK 裁決 launcher／排隊／menu
+
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 
 | 系統 | 做法（重點） | 對我哋嘅意義 |
