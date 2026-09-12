@@ -93,6 +93,21 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 3. L4 用邊條 key：**現有 DeepSeek（平、快）**定 Hermes API（我本人、但慢＋貴＋approval 風險）？→ 建議 DeepSeek，Hermes API 留做 idle digest 嗰層。
 4. 要唔要而家就開 cursor-agent 落 Task 1-2（deterministic 部分），L4 之後再落？
 
+## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
+
+| 系統 | 做法（重點） | 對我哋嘅意義 |
+|---|---|---|
+| **Apple iOS**（Focus／DND ＋ Announce Notifications） | ① 允許通知 = **你揀嘅人或 app 白名單** ＋ 定時排程；② iOS 18.2「**智能打斷與靜音**」用 Apple Intelligence 讀通知內容，只放**重要**嘅打斷——但**你明確允許／靜音嘅通知照跟用戶決定** | LLM 判斷重要係可以做，但業界做法係 **LLM 只喺「你嘅規則之內」排序**，唔可以推翻你嘅白名單 |
+| **Amazon Alexa** | ① 通知 = **黃圈 + 提示音**，內容**要你問**（"Alexa, what did I miss?"）→ 讀完即存 24h；② **DND 阻通知／訊息／通話，但 alarms/timers 照響**；③ 播放音樂時**唔出提示音**（只留視覺）；④ 主動通知 **22:00–07:00 一定唔播**；⑤ DND 期間累積，關咗之後一次過補 | 「出聲」係稀有事件；**其餘靠視覺＋on-demand 查**；critical 類（alarm）永遠穿透 DND |
+| **Android / Google** | Priority-only 模式：可按「人／app／alarms」過濾；**critical（系統安全）一律照出，唔可以 block**；**同一個人 15 分鐘內打第二次 → 放行**；"read notifications aloud" 會暫停於 media playback | 兩條黃金規則：**critical class 唔可以被靜音** ＋ **重複次數 = deterministic 升級訊號** |
+| **小米小愛／華為音箱** | 勿擾模式 ＋ 定時開關（同 Alexa 同型） | quiet hours 係標配 |
+| **Iron Man（JARVIS canon）** | ① 講嘅時機 = **你問**、**致命／安全**（"Sir, there is a potentially fatal buildup of ice occurring."）、**任務狀態**（"Test complete. Preparing to power down…"）、**來電**（"Incoming call with a blocked number, sir."）；② 其餘（Pepper 打電話／訊息）= **HUD 顯示**，或者**等到對話空檔一句過講返**（"Also, Miss Potts called. She wished to know…"）；③ 永遠簡短、"sir" 開頭；④ 你叫停就停（hold calls／mute） | JARVIS 之所以「唔煩」係因為：**佢唔會 narrate 每條通知**，只有 critical／你問／狀態先出聲；其餘入 HUD＋可以問返 |
+
+**結論（三條設計規則，直接落地到 v2）**
+1. **Critical class 永遠即時講，連打機／DND 都穿透**（= Alexa alarm／Android critical）：`gpu_temp>80`、`sidecar down`、`game crash`、`cursor needs approval`（blocking 類）。
+2. **你嘅規則 override LLM**（= Apple 智能打斷與靜音）：sender／app 白名單（一定講）、黑名單（一定唔講）＝ deterministic；**LLM 只喺白名單內排先後同改寫句子**，唔可以靜音白名單嘅嘢。
+3. **其餘全部入 ledger ＋ 可以問返**（= Alexa "what did I miss?" ／ JARVIS HUD）：`now / idle / log` 三條線 ＋「Jarvis, what did I miss?」英文摘要（呢個就係「想你判斷」但又唔會即時打擾嘅出口）；再加 **同一 sender 15 分鐘第 2 條 → 升級出聲**（Android repeat-caller 規則）。
+
 ## Review Round 1 — 完整記錄（三階段）
 - **Stage 1 反方（最強反）**：否決 v1 Task 5／Task 2 實作；8 條 HIGH（B1-B8 上表）全部有 file:line。
 - **Stage 2 正方（最強支持）**：認為 v1 嘅方向係結構性（刪通道，唔係叫模型自律）＋同 `clarify_gate`、`jarvis_speak` 既有 gate 一致；但**同意 v1 嘅 Hermes API 前提要驗**。
