@@ -264,3 +264,15 @@
 - **抖音線**：09-11 全量 deep-read 收尾 **325/327 已轉錄**（有內容 297／純音樂 28／封鎖 0，總 293,150 字；報告 `docs\plans\2026-09-11-douyin-full-deepread.md`、分類 `dy_classified.json`）。**skill 真坑已修 2 個**：① 抖音 caption anchor 位置已變（舊 `span[class*='#']` 完全失效，509/509 desc 全空 → 改用 card 內 `img[alt]`，之後 509/509 有 desc）；② batch-ASR 進度 watchdog 三坑（`Get-Process python` 判斷永遠 true→改 `Get-CimInstance` + CommandLine 過濾；`subprocess.run(timeout=)` 唔殺子進程；DONE marker 自靜音）＋ Hermes cron `script` 欄唔支援參數。
 - **語音線（優先度升）**：本地 ASR（sensevoice）短句粵語 **09-11 全日 6 句 garble**（serve.log `[ear] raw=` 實錘：07:40／20:01／22:27／22:52／23:36／09-12 00:38；另 2 次空／單字誤觸）——同日英文句轉得準 → 係短句粵語系統性弱，唔係環境噪音。三選一（①打字重講 ②MiMo 雲端 ASR，key 已配 ③本地 Fun-ASR-Nano）**等 SK 揀**。其餘 mic 相關（headset wake／Tier 1／聲紋／AEC）照舊等新 mic。
 - **仍然等 SK**：① push 兩個 repo ② MC raw-reply log ＋ DSML fix commit ③ 語音 ASR 方向 ④ AI_Studio Phase 1 spike 時段 ⑤ `self-evol-SUGGESTIONS.md` commit；另 LHM autostart 等真 reboot、stt_stats・clarify_stats ≥7 日數據、GPU TDR 決定唔郁（反轉條件見 HANDOFF 頂部）。
+
+---
+
+## 現況 sync（2026-09-13 06:00 cron 核實）
+
+- ✅ **Alert pipeline v5.1 落地**（09-12 plan → 09-13 收貨）：`be099a7 feat(alerts): alert pipeline v5.1 — deterministic policy, single speaker, ledger`（21 modified ＋ 25 新檔）；**三輪獨立 review** 全部 findings 修完（fix1–fix11，Hermes 親手 probe 重驗）；最終驗收：`pytest` **532 passed / 0 failed**、`eval_gate --lock` 53 files 一致、三 suite ok、HASH `3e5e074479192100`。docs：`docs/hermes_alerts_mcp.md`（修復輪表＋baseline）、plan 尾「收貨記錄」＋10 條規格偏離、`jarvis-pc\AGENTS.md` 坑 section 一句（`8cff405`）。
+- ✅ **Runtime 已生效（shadow）**：09-13 03:06 restart sidecar（`python.exe` pid **38860**）＋ poll loop（`pythonw.exe` 45964）；`settings.json` `alert_policy_mode="shadow"`；`shadow_heartbeat.jsonl`／`shadow_ledger.jsonl` 持續寫（05:45 仍在寫）。P1 通關條件：**M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%**；每 6 小時 cron `jarvis-alert-shadow-report`（job `3dbaff9ace81`，`no_agent`）自動報，窗口內冇 decision 就完全靜音。
+- ⏳ **真機驗收未做**（SK 選 **4b＝下次 session**；打機／通話／idle 三情境，過關才 `enforce`）；**Task 10（LLM digest 潤飾）暫緩**（要先 benchmark ranking prompt p95 ≤3s）。
+- ✅ **Git／PR**：feature 分支 `feature/hermes-alerts-mcp` 已 push ＋ **PR #12**（base `main`＝`ca463a3`，**未 merge**）；`origin/main..HEAD` ＝ **89 commit**（含 2026-08-10 之後所有未推工作）；殘留暫存檔已清（`7d19ccf`）。
+- 🆕 **未修新問題（09-13 05:4x cron 實錘）**：`tests/test_alert_piper_gate.py` 冇 APPDATA 隔離（`tests/` 亦冇 `conftest.py`）→ 跑 `pytest tests/` 會寫真檔 `%APPDATA%\Jarvis\voice_status.json`（`wake_on:false`／`status:"ready"`），HUD／MCP 顯示「聽候＝關」直到 sidecar 再寫；亦令 sidecar-health cron 00:51 誤報 fingerprint 變動。建議一行級 fix：`tests/conftest.py` autouse fixture 隔離 APPDATA（等 SK go）。
+- ⚠️ **等 SK**：① 真機驗收（4b，下次 session）② PR #12 merge 與否 ③ `.hermes/plans/self-evol-SUGGESTIONS.md` 3 行 commit ④ `detect_trend` sustained-high 規則（低優先）⑤ 語音 ASR 線＝**d（唔理住）**；另：新 mic（G 人手實測）、LHM autostart（等真 reboot）、stt_stats／clarify_stats ≥7 日數據、MC 兜底 FACT 測試（等 SK 關 game）、AI_Studio Phase 1 spike 時段。
+- 📌 **觀察（等 SK 判斷）**：窗口內（09-12 06:00–09-13 05:45）有 **75 個**語音 session 同一條問題「開啟 Chrome 瀏覽器」；每次 JARVIS 都因前景＝遊戲／使用中而只教 SK 自己開、冇代開 → 係唔係要支援「背景代開（唔搶焦點）」？

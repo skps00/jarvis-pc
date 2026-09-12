@@ -4,12 +4,36 @@
 >
 > **排序規則（2026-09-10 起）**：新 session 一律**加喺最頂**（時間倒序）；唔好 append 落尾。更新完先 commit（`docs(handoff): ...`，唔 push）。
 >
-> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc：feature 分支 `feature/hermes-alerts-mcp` 已 push ＋ 開咗 PR #12（<https://github.com/skps00/jarvis-pc/pull/12>，base `main`＝`ca463a3`，**未 merge**；2026-09-13 03:3x `git rev-list --count origin/main..HEAD` = **87** 實測——包含 08-10 之後所有未推工作，唔止 alert pipeline）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
+> 下次 session 起點：**JARVIS ONE 0.4.10 跑緊；`1bdac68`（alerts ctypes fix）已 push 且 09-10 23:4x 重啟 sidecar 後已生效（ctypes flood 清零、serve.log 已 truncate）；**jarvis-pc：feature 分支 `feature/hermes-alerts-mcp` 已 push ＋ 開咗 PR #12（<https://github.com/skps00/jarvis-pc/pull/12>，base `main`＝`ca463a3`，**未 merge**；2026-09-13 03:3x `git rev-list --count origin/main..HEAD` = **87**，**09-13 05:4x cron 再測 ＝ 89**（再加 `e55f1ea`／`ed4d3cf` 兩個 docs commit，已 push 上 feature 分支）實測——包含 08-10 之後所有未推工作，唔止 alert pipeline）；**MC 線 09-11 早：Arch-3/3a `1ba048f` 已 push ✅（真機驗收 PASS）；DSML scrub fix 已改／已驗／review SHIP 但**未 commit**；新 jar `012da9cc` 已 deploy（09-12 01:59 SK 真機跑：**DSML fix 生效 ✅**，但兜底路徑漏內部 FACT——見最頂 09-12 section）；OpenClaw/Hermes 架構比較已寫入 → 建議 A/B/C 未拍板**；09-11 凌晨診斷過 GPU driver TDR（SK 決定唔郁）**。讀呢份之前先讀：
 > 1. `jarvis-pc\AGENTS.md`（專案 context——**自動載入規則已寫入主契約，唔使 SK 叫**）
 > 2. `C:\Users\skps9\AGENTS.md`（主契約——Code Review 兩次規則已升格入契約）
 > 3. `REMAINING_WORK.md` + `2026-08-29_self-evol.md`（計畫書，R1-R20b 齊全）
 
 ---
+
+## 2026-09-13 05:4x（jarvis-session-handoff cron 核實）—— 窗口內工作已全部入檔；補記 cron 00:51 捉到嘅 **test 污染 live `voice_status.json`**（仍未修）＋ 實況／數字更正
+
+> 窗口 = 2026-09-12 06:00 → 09-13 05:45。逐個 session 對（`state.db` 實查，唔靠記憶）：`20260912_061810_9678a999`（discord 06:18–21:0x，294 msgs ＝ 09-12 alert pipeline 全程）／`20260912_233912_482dc384`（discord 23:39–03:39，142 msgs ＝ 已對應最頂 09-13 section）／`cron_7b4af62c87c3_20260912_061713`（09-12 handoff cron）／`cron_6a98a79be95f_20260913_005101` ＋ `_030807`（sidecar-health）／13 個 subagent（plan review ×10、alert pipeline review ×3）／76 個 `jarvis-*` api_server 語音 session（其中 **75 個**標題＝「開啟 Chrome 瀏覽器」）。**除下面第 1 項，其餘已有對應 section。**
+
+**1. 🆕 未入檔、仍未修：`pytest tests/` 會蓋掉 live `voice_status.json`**
+
+| 項 | 實錘 |
+|---|---|
+| 來源 | `cron_6a98a79be95f_20260913_005101`（00:51 sidecar-health 報 fingerprint 變動）——查實**唔係 sidecar DOWN**，係 live 狀態檔被寫花 |
+| 機制 | `tests/test_alert_piper_gate.py`（`be099a7` 新加）→ `_mini_shell()` → `shell._handle_alert()` → `shell_app._write_voice_status()`（`shell_app.py:1071` ＝ `os.environ["APPDATA"]/Jarvis/voice_status.json`）；test 冇 monkeypatch APPDATA，`tests/` 亦冇 `conftest.py` → **直接寫真檔**（`wake_on:false`、`status:"ready"`） |
+| 我今日 safe 重現（05:46） | `APPDATA=<temp>` ＋ `pytest tests/test_alert_piper_gate.py -q` → **3 passed**，temp 目錄即刻出現 `voice_status.json` ＝ `{"wake_on": false, …, "status": "ready"}`；真檔 mtime／內容不變（今次有隔離）→ 機制確認 |
+| 後果 | 每次跑 `pytest tests/` → HUD／MCP 顯示「聽候＝關」，直到 sidecar 下次寫入；sidecar-health cron 亦會誤報 fingerprint 變動（00:51 就係咁） |
+| 現狀 | **未修**（`git log` 未見隔離 fix、`tests/conftest.py` 不存在）。建議（00:51 cron 原提，SK 未答）：加 `tests/conftest.py` autouse fixture 隔離 APPDATA（一行級） |
+
+**2. 實況核對（05:4x 親查——舊 section 嘅 claims 全部成立）**
+- sidecar `python.exe` pid **38860** LISTEN 8765（同 03:06 restart 記錄一致）；`settings.json` `alert_policy_mode="shadow"` ✓
+- shadow 仍在收：`shadow_heartbeat.jsonl` 最後一行 **05:45:56**、`shadow_ledger.jsonl` 11 行。快照（`scripts/alert_shadow_report.py --hours 3 --json`）：`decisions speak=0 hold=1 digest=0 drop=0`、`reasons gaming=1`、`kinds self-monitor=1`、heartbeat 214 行、`gaming_v1_true=160 / v2_true=35 / v1_only=141 / **v2_only=16**`（03:2x 首批係 `18/5/13/0`）→ **`v2_only` 由 0 變 16**，即新 detector 亦有「v2 話打機、v1 唔話」情況，睇 48h 分佈時要一齊睇
+- PR #12：`origin/main..HEAD` ＝ **89 commit**（03:3x 記錄 87，加咗 `e55f1ea`／`ed4d3cf` 兩個 docs commit，已 push 上 feature 分支）→ 檔頭數字已更正
+- 語音：`serve.log` 自 truncate 至今共 10 條 `[ear] raw=`，窗口內最後一條 ＝ 09-12 08:50（已入 09-12 section）；窗口內**無新 garble 個案**
+
+**3. 觀察（非工作，等 SK 一句）**：窗口內 **75 個**語音 session 標題都係「開啟 Chrome 瀏覽器」（09-12 13:0x／16:0x／17:0x×23／18:0x／23:0x、09-13 00:0x×14／01:0x×12），每個 session JARVIS 都因前景＝遊戲／使用中而**只教 SK 自己開、冇代開**。按 SK「同一問題重複 2–3 次就查根因」規則：係唔係想 JARVIS 背景代開（唔搶焦點）？定係 gating 太緊？
+
+**4. 未 commit／等 SK（不變）**：`.hermes/plans/self-evol-SUGGESTIONS.md` 3 行仍未 commit（等 SK；本 cron 冇 touch）；真機驗收 ＝ 下次 session（4b）；Task 10 等 ranking benchmark；語音 ASR ＝ d（唔理住）；PR #12 merge 與否等 SK。
 
 ## 2026-09-13 00:0x–03:3x（Discord session）—— Alert pipeline 收尾：Task 7 收貨、**三輪獨立 review**、fix1–fix11 全部收貨、code 已 commit（`be099a7`）＋ PR #12、shadow 已生效收樣本
 
