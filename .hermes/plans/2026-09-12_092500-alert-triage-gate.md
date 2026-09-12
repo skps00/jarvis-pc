@@ -108,6 +108,35 @@ producer → AlertStore.enqueue(struct: kind, phrase, detail, dedupe_key)
 2. **你嘅規則 override LLM**（= Apple 智能打斷與靜音）：sender／app 白名單（一定講）、黑名單（一定唔講）＝ deterministic；**LLM 只喺白名單內排先後同改寫句子**，唔可以靜音白名單嘅嘢。
 3. **其餘全部入 ledger ＋ 可以問返**（= Alexa "what did I miss?" ／ JARVIS HUD）：`now / idle / log` 三條線 ＋「Jarvis, what did I miss?」英文摘要（呢個就係「想你判斷」但又唔會即時打擾嘅出口）；再加 **同一 sender 15 分鐘第 2 條 → 升級出聲**（Android repeat-caller 規則）。
 
+## 可行性實測（2026-09-12，SK：「check can those idea work or not?」）
+
+**✅ 可行（有現成基礎，逐項附證據）**
+
+| 想法 | 現成基礎 | 工作量 |
+|---|---|---|
+| Critical class 穿透 | `sensors/gpu_health.py` 已有 soft 83 / hard 90 / mem 95°C 門檻＋NVML 輪詢；`cursor_approve` 已經係 alert kind（`alerts.py:226`） | 只需 policy table 標記 |
+| 白名單／黑名單 override | `settings.py:80` 已有 `custom_models: list[str]`（list 欄位先例）＋ sidecar 單一 writer `POST /settings` | 加 2 個 list 欄位 + `_clamp` |
+| Ledger ＋「what did I miss」 | `router.py:179` 已有 `Intent("query", …)` 類型；`alert_store.ack()` 會刪行（`:185-186`）→ 要新 append-only ledger 檔 | 新 ledger + 1 個 query handler |
+| LLM 排序／中譯英 | `brain.py:103/114` 已有 direct DeepSeek chat（`deepseek-chat`）＋`translate_to_english_short()`（`:477`）——**唔使 Hermes API** | reuse，加一個 ranking prompt |
+| 重複 sender 15 分鐘升級 | `alert_store` 已有 `dedupe_key` 位 | 小 |
+| Shaping（raw 永不出聲） | 新 `alert_policy.py` 純函數 | 中 |
+
+**⚠️ 真 blocker（唔改就一定唔 work）—— gaming gate 訊號係錯嘅**
+- `activity.py:29 gaming()` 定義 = `sk_activity.json.state == "playing"`；而 `activity_monitor.py:335 classify()` **只喺「前景視窗 = 遊戲」先算 playing**。
+- **2026-09-12 10:35 實測**：CS2 ＋ MC 兩個都行緊，但前景係 Discord → json = `state:"using"`, `game:"counter-strike 2"`, `apps:[{cs2,game},{minecraft,game}]` → **`gaming()` 回 False**。
+- 後果：① 打機唔講呢條規則**間歇失效**；② 亦解釋咗「打機都聽到 JARVIS 講嘢」（poller 本身冇 gate，加 gate 都要個 signal 啱先得）。
+- **修法（可行，訊號已存在）**：gate 改用 process-based 訊號 — `apps[].category == "game"`（或 `game` 欄位非空）＋ freshness；唔用 foreground state。
+- ⚠️ 要 SK 定義：**開住 Prism／MC 但唔玩**算唔算「打機」（影響誤判）。
+
+**⚠️ LLM 實測 5.86s → 唔可以放喺即時出聲路徑**
+- `translate_to_english_short("<真實 whatsapp alert>")` 實測 **5.86s**（deepseek-chat，已含 import），輸出正常英文句。
+- → 印證 Round-1 反方：LLM 只可以做 **async 加分**（改寫／排序／digest），即時出聲要靠 template；`alert_llm_timeout_s=3.0` timebox 內唔回就用 template 照講。
+
+**🟡 未證（要再實測）**
+1. Ranking prompt（而唔係 translation）嘅實際 latency／成本 → 開工前跑 10 條 batched benchmark。
+2. 「what did I miss」經 router → 摘要 → TTS 嘅完整鏈路（query intent 類型存在，handler 要新寫）。
+3. Process-based gaming 訊號嘅誤判率（SK 開 Prism 但唔玩）→ 要 SK 定門檻。
+
 ## Review Round 1 — 完整記錄（三階段）
 - **Stage 1 反方（最強反）**：否決 v1 Task 5／Task 2 實作；8 條 HIGH（B1-B8 上表）全部有 file:line。
 - **Stage 2 正方（最強支持）**：認為 v1 嘅方向係結構性（刪通道，唔係叫模型自律）＋同 `clarify_gate`、`jarvis_speak` 既有 gate 一致；但**同意 v1 嘅 Hermes API 前提要驗**。
