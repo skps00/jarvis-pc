@@ -26,6 +26,16 @@
 - **Shadow 已開始收樣本**：`alerts/shadow_heartbeat.jsonl` 03:06:23 寫入，`mode:"shadow"`；`shadow_ledger.jsonl` 會隨每次決策 append。第一個心跳已經有價值訊號：`game_process=true, fg_is_game=true, state=playing, idle_seconds=2370` → **`v1_gaming=true` 但 `is_gaming_v2=false`**（AFK／menu）＝正是 P1 要量嘅 v1 vs v2 落差。
 - 睇樣本：`python scripts/alert_shadow_report.py`（read-only，`--json` 出 JSON）。
 
+**1c. 收工動作（SK 2026-09-13 03:2x「23go / hand off first」）**
+- ✅ **Code commit**：`be099a7 feat(alerts): alert pipeline v5.1 — deterministic policy, single speaker, ledger`（21 modified ＋ 25 新檔，正式 changelog message）。
+- ✅ **清殘留**：`7d19ccf chore:`——3 個 tracked 暫存檔（`_apply_and_compile.bat`／`_compile_check2.py`／`_tmp_test_write.txt`）已刪；2 個 untracked folder（`_staging/`、`nonexistent/`）搬去 `%TEMP%\jarvis_pc_debris_backup_20260913\`（可還原）。`self-evol-golden-set.md` 同步 commit。
+- ✅ **Push ＋ PR（SK 選 2a：開 PR、唔動 main）**：`git push origin feature/hermes-alerts-mcp`（`8e97a9b..7d19ccf`）→ **PR #12** <https://github.com/skps00/jarvis-pc/pull/12>（base `main` ← head `feature/hermes-alerts-mcp`，**未 merge**）。⚠️ PR 相對 `origin/main` 有 **87 commit／189 檔**（含 08-10 之後所有未推工作），PR body 已註明重點範圍。
+- ✅ **Cron**：`jarvis-alert-shadow-report`（job `3dbaff9ace81`）——每 6 小時（`0 */6 * * *`，下次 06:00），`no_agent` 跑 `~/AppData/Local/hermes/scripts/jarvis_shadow_report.py` → 印 shadow 摘要（decisions／reasons／v1-vs-v2 落差），**窗口內冇任何 decision 就完全唔出聲**（watchdog 式）。
+- ✅ **Decision 記錄**：真機驗收 = **4b（下次 session）**；語音 ASR 線 = **d（唔理住）**。
+
+**1d. Shadow 首批數據（03:2x，`alert_shadow_report.py --hours 6`）**
+`decisions: hold=1, speak=0, digest=0, drop=0`｜`reasons: gaming=1`｜`heartbeat lines=18, game_active_hours=0.06`｜**`gaming_v1_true=18 / v2_true=5 / v1_only=13 / v2_only=0`** → 現行前景制 gate 有 **13 次**把「game 開住但冇輸入」當成打機（FP），新 process+輸入制 0 次漏判——正正係 M3 要量嘅數字（未達 48h 樣本，未可定論）。
+
 **2. 而家喺邊（唔可以當完成嘅嘢）**
 - **所有 code 未 commit**（`git status` 見 18 modified ＋ 25 untracked）；
 - **pipeline 未生效**：`alert_policy_mode` 仍 `off`、`%APPDATA%\Jarvis\settings.json` 未有新 keys → 要 restart sidecar；
@@ -36,7 +46,7 @@
 1. ✅ **已做（09-13 03:06）** restart ＋ shadow 生效 → 等 ≥48h 樣本，用 `scripts/alert_shadow_report.py` 睇分佈（M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）。
 2. 等 SK go → **commit code**（建議拆 2-3 個 commit：pipeline 新模組／store 狀態機／docs）。
 3. 真機驗收（SK 選 **4b＝下次 session**，唔急）→ 過關才 `enforce`。
-4. repo root 殘留檔（`_staging/`、`_tmp_test_write.txt`、`_compile_check2.py`、`_apply_and_compile.bat`、`nonexistent/`）→ 要 SK 批准才清。
+4. ✅ 殘留檔已清（3 個 tracked 已 commit 刪除；2 個 folder 已搬去 %TEMP% 備份）。
 5. Task 10 要跑 ranking prompt benchmark（p95 ≤3s）先開工。
 
 **4. 順帶（side topic）**
