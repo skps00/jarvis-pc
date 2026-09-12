@@ -11,6 +11,39 @@
 
 ---
 
+## 2026-09-12 09:0x–23:5x（同一個 Discord session，中途 auto-reset）—— Alert pipeline 大重整：plan v5.1 定案 ＋ 15 個 task 落咗 13 個（**全部 code 未 commit**）
+
+**1. 呢個 session 做咗咩（一條龍）**
+- 09:00 SK 聽到 JARVIS 唸「數字 + `=`」→ root-cause = self-monitor raw metric 行經 `hermes_alert_poll_loop._speak_hermes()` 原句照讀（詳見下面 09:0x section）。
+- 09:08 SK 定案 **D**（shape ＋ speaker gate ＋ 所有 alert 唔准照讀）＋ 要求「所有 alert 先經我判斷重要性」→ 最終設計落點 = **deterministic policy**（LLM **永不可以 suppress**）。
+- 09:1x 上網查業界（Apple Focus／Alexa「what did I miss」／Android priority／小米）＋ Iron Man canon → 三條設計規則（critical 永遠穿透；SK 規則 override LLM；其餘入 ledger ＋ 可以問返）。
+- 09:1x–14:2x **Plan 4 輪 review**（反方 8:2 → 6:4 → 7:3 → 8:2）＋ cursor review-only 2 輪 → `plans/2026-09-12_092500-alert-triage-gate.md`（v5.1，392 行：15 個 task spec、每 task 收貨閘、P0→P4 分階段、開工編排）。
+- 14:59 SK 開工令：**Task 0-11 全做；每完成一個 task 自我 review，冇 bug 才落下一個；有 bug 修到清。**
+- 15:0x–18:2x 連續 15 個 cursor dispatch（含 5 輪 fix：task0fix／task1fix／task2fix×2／task4efix×2）。
+
+**2. 實作狀態（2026-09-12 23:4x 由 Hermes 逐項實查，唔係照抄對話）**
+
+| 狀態 | Task |
+|---|---|
+| ✅ 13 個 | 0（`alert_policy.shape()` 純函數 ＋ ASCII 保證）、1（settings keys ＋ `_clamp` ＋ eval_gate golden 同步）、1b（`settings_ui._save()` 靜默還原欄位 bug）、1c（self-monitor 出聲改走 `shape()`＋`MonitorResult` NamedTuple）、5a（`mouth.speak()` 出口 validator）、3（`gpu_hard` flag 貫穿 `gpu_health → alerts → store`）、4（`speak_gate.should_speak()`＋`is_gaming_v2()`）、6（shadow mode ＋ `shadow_ledger.jsonl`＋heartbeat）、2（AlertStore 狀態機：hold／held cap／dedupe／eviction 保護／ledger fail-open／`_DirLock`）、4e+5b（enforce choke point 生效）、8（digest flush ＋ release 收斂）、9（lease 300s ＋ `mark_spoken` 原子 claim） |
+| 🔄 1 個 | **Task 7**「what did I miss」——ledger 寫入／rotate **已喺**；**缺** reader ＋ router `alert_miss` ＋ engine 本地 handler（繞 Hermes short-circuit）＋ `tests/test_miss_ledger.py` → 2026-09-12 23:5x 已 dispatch cursor（instructions `%TEMP%\cursor_task7_instructions.md`） |
+| ⏸ 1 個 | Task 10（L4 LLM digest polish）——按 plan 暫緩，要先跑 ranking benchmark p95 ≤3s |
+| ⏳ 1 個 | Task 11（docs：`docs/hermes_alerts_mcp.md` pipeline 圖＋AGENTS.md 一句；baseline：新 pytest 總數 ＋ 新 eval_gate HASH） |
+
+**3. 本 session 親跑嘅實錘**
+- `pytest tests/ -q` = **464 passed / 0 failed**（baseline 379 → +85；新 test 檔 10 個：alert_policy／poll_race／shadow／speak_gate／speaker_choke／store_gate／gpu_hard_e2e／self_monitor_result／settings_alert_keys／settings_ui_preserve）
+- `eval_gate --lock` 一致（43 files）；`eval_gate --all` 三 suite `ok=True`；HASH **`0d3619650adb805b`**（舊 `0b88e6f6bab43269` 已失效）
+- 新增 src：`alert_policy.py`／`alert_shadow.py`／`speak_gate.py`
+
+**4. ⚠️ 未生效／未做**
+- **新 pipeline 未生效**：`alert_policy_mode` 默認 `off`、`%APPDATA%\Jarvis\settings.json` 仲係舊 keys（未經 sidecar `POST /settings` 寫入）；SK 揀 **B** = 全部 task 完成後才 restart sidecar **一次**。
+- **Shadow 樣本未開始收**（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）——呢個係 P2 enforce 嘅通關條件。
+- **13/15 個 task 嘅 code 改動全部未 commit**（21 modified ＋ 14 新檔）；SK 指示 **「test it first」** → 未驗收完唔 commit code（docs／handoff 例外）。
+
+**5. 下次 session 起點**：等 Task 7 cursor 完 → 逐項收貨（`py_compile` → `tests/test_miss_ledger.py` → 全量 pytest → `eval_gate --lock/--all` → 邊界 probe：fire 數／CJK／空 ledger）→ Task 11 → restart sidecar（B）→ 真機驗收（打機／通話／idle 三情境）→ 問 SK 才 commit code。
+
+---
+
 ## 2026-09-12 09:0x（SK 問「why jarvis said some random words?」）—— 答案：**self-monitor 嘅 raw metric 字串被 alert poller 照讀**（numbers + `=`）
 
 **1. 症狀**：SK 聽到 JARVIS 唸「一堆數字同 = 號」。
