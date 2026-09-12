@@ -268,6 +268,40 @@ v3 令 `expired()` 對 `digest` 回 False、`hold_until` 過期又轉 digest，*
 - **清理**：Round-3 段遺留嘅「P0b」「Task 6 hook」字眼係歷史記錄，**以 Task 0-11 為準**（避免實作 agent 跟錯）
 - **未決（等 SK）**：`is_gaming_v2` 規則 (b)「前景=game」同 Q2「要有輸入活動」衝突 → 要 SK 裁決 launcher／排隊／menu
 
+## 執行記錄 — SK 開工令（2026-09-12 14:5x）
+
+**SK 決定**
+- **Q5（最終）**：**Prism／MC launcher 開住、CS2 排隊／menu = 唔算打機** → `is_gaming_v2()` 規則定稿：**有 game process AND `idle_seconds < 120`**（唔用 foreground 做條件）；同時**記錄** `foreground==game`／`fullscreen` 兩欄落 heartbeat（日後若發現手制問題可以即刻改規則，唔使重新量）
+- **Go：Task 0 → 11 全部做**（唔分階段停手）
+- **Review 協議（SK 定）**：**每完成一個 task → 我自己 review**（跑 test／grep／睇 diff／風險 task 加一個反方 subagent）。**冇 bug → 落下一個；有 bug → 修完再 review，直到清**。
+
+**執行順序（依賴鏈）**
+1. Task 0 — `alert_policy.py` 純函數 ＋ 測試
+2. Task 1 — settings keys ＋ clamp ＋ `settings_ui` ＋ eval_gate mapping／doc ＋ py_compile 清單
+3. Task 1b — **修 `settings_ui._save()` 靜默還原欄位**（load→只覆寫 UI-bound）＋ test
+4. Task 1c（P0 價值位）— 接線 `shell_app._enqueue_alert`（＋`detail` 參數）令 self-monitor 出聲句走 `shape()`；`self_monitor.run_once()` → `MonitorResult` NamedTuple
+5. Task 5a — `mouth.speak()` 出口 validator（shape→assert）＋ 覆蓋 `jarvis_speak`／piper 分支
+6. Task 3 — `gpu_hard` flag 貫穿 `gpu_health.py` → `alerts.py:735-743` → store；policy table ＋ CRITICAL
+7. Task 4 — `speak_gate.should_speak()` ＋ `is_gaming_v2()`（另開，唔郁舊 `gaming()`）
+8. Task 6 — shadow mode（`alert_policy_mode=shadow` 經 `save_settings_patch` CLI）＋ `shadow_ledger.jsonl` ＋ **heartbeat sampler**（`shadow_heartbeat.jsonl`）
+9. Task 2 — AlertStore 狀態機（state／hold／held cap／dedupe／eviction 保護／policy 注入／ledger fail-open）
+10. Task 4-enforce ＋ Task 5b — speaker 出口正式 gate ＋ choke point 生效
+11. Task 7 — miss ledger ＋「what did I miss」（`execute_utterance` 121-126 之前 hook）
+12. Task 8 — digest flush（poll_loop owner ＋ `last_digest_ts` 持久化 ＋ release 收斂）
+13. Task 9 — lease／雙重出聲
+14. Task 10 — L4 LLM（只 digest polish；先跑 ranking benchmark，p95 >3s 就保持 `alert_llm_polish=off`）
+15. Task 11 — docs ＋ baseline（新 pytest 總數／新 eval_gate hash／`--lock` 一致／`--all` 綠）
+
+**每個 task 嘅 review checklist（我逐項跑）**
+- `py_compile` 全綠；該 task 新增／相關 `pytest` 綠；最後全量 `pytest tests/ -q`（baseline 379 → 只可增不可減）
+- diff 逐行睇（有冇改到唔應該改嘅檔／有冇 hardcode／有冇 secrets）
+- 只改 plan 講嘅檔案（超出範圍 = 停）
+- 高風險 task（store／gate／speaker）另出一個反方 subagent 審 diff，有 finding 就修到清
+- 每完成一個 task 更新本節「進度」一行（file evidence）
+
+**進度（cron／session 交接用）**
+- [ ] 1 Task 0　- [ ] 2 Task 1　- [ ] 3 Task 1b　- [ ] 4 Task 1c　- [ ] 5 Task 5a　- [ ] 6 Task 3　- [ ] 7 Task 4　- [ ] 8 Task 6　- [ ] 9 Task 2　- [ ] 10 Task 4e/5b　- [ ] 11 Task 7　- [ ] 12 Task 8　- [ ] 13 Task 9　- [ ] 14 Task 10　- [ ] 15 Task 11
+
 ## 業界 + Iron Man canon 參考（2026-09-12 SK 要求上網查；全部有來源）
 
 | 系統 | 做法（重點） | 對我哋嘅意義 |
