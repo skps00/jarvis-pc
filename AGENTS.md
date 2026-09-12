@@ -85,6 +85,7 @@ env -u PYTHONPATH python -m jarvis.eval_gate --all    # golden + regression + st
 
 - 音訊：Arctis Nova 7 mic（wake_mic=麥克風 (2- Arctis Nova 7) 44.1k）；TTS 輸出=G27Q 螢幕喇叭；AEC reference=Sonar Media+Sonar Chat（**唔可用 Arctis loopback**）；Arctis 週期性 rms=0.000（headset 休眠，叫唔醒先睇 wake_debug.log）
 - 語音一律英文（AGENTS.md 語音規則）
+- **Alert pipeline（v5.1, 2026-09-12）**：raw 字串（metrics／URL／CJK toast body）**永遠唔准去 TTS**——出口係 `mouth.speak()` validator ＋ `speak_gate.should_speak()`；講／唔講 100% deterministic（`alert_policy.policy_for`，**LLM 唔可以 suppress**）；唯一 speaker 係 `scripts/hermes_alert_poll_loop.py`（唔好加第二條路／唔好加 Hermes cron poll）。`alert_policy_mode` 默認 `off`（未啟用）；詳見 `docs/hermes_alerts_mcp.md`。
 - `jarvis serve` 由 Electron spawn（JARVIS_ELECTRON_HOST=1 headless）；唔好手動起第二個
 - asar 驗證：`npx --yes @electron/asar list "hud/dist/win-unpacked/resources/app.asar"`（唔好 extract 入 repo，會 overwrite source）
 - Windows MSYS：`taskkill /F` 用單斜線；native tool 用 `C:/...` forward-slash path
