@@ -20,6 +20,12 @@
 - **最終驗收（親跑，2026-09-13 01:2x）**：`pytest tests/ -q` = **532 passed / 0 failed**；`eval_gate --lock` = 一致（**53** files）；`eval_gate --all` = 三 suite ok；HASH `3e5e074479192100`；自寫 probe（fix6 9 項、fix7 9 項）全 PASS。
 - docs 已更新：`docs/hermes_alerts_mcp.md`（新增「2026-09-13 修復輪」表 ＋ 新 baseline；`alert_llm_*` 標明未接線）；plan 尾加「2026-09-13 收貨記錄」＋ 8 條規格偏離；`AGENTS.md` 坑 section 已有 alert pipeline 一句（commit `8cff405`）——**舊稿寫「AGENTS.md 做唔到」係過時，已更正**。
 
+**1b. Runtime 動作（SK 2026-09-13 03:0x「1a」批准，已執行並驗證）**
+- **Restart sidecar**：kill 舊 `python -m jarvis serve`（pid 39420）→ Electron 自動 respawn。新 process：sidecar `python.exe` pid **38860**（03:06:06 起，LISTEN 8765）、poll loop `pythonw.exe` pid **45964**（03:06:09 起）→ **兩個都係新 code**。
+- **開 shadow**：`POST /settings {"alert_policy_mode":"shadow"}` → 回 `200 {"ok":true,"keys":["alert_policy_mode"]}`；`GET /settings` 同 `settings.json` 都確認 `alert_policy_mode = "shadow"`（其餘新 key 走 code default：`alert_gaming=hold`、`hold_ttl=900`、`held_cap=64`、`digest_interval=1800`、`digest_ttl=86400`、`dedupe_window=300`、`llm_polish=off`、`llm_timeout=3.0`）。
+- **Shadow 已開始收樣本**：`alerts/shadow_heartbeat.jsonl` 03:06:23 寫入，`mode:"shadow"`；`shadow_ledger.jsonl` 會隨每次決策 append。第一個心跳已經有價值訊號：`game_process=true, fg_is_game=true, state=playing, idle_seconds=2370` → **`v1_gaming=true` 但 `is_gaming_v2=false`**（AFK／menu）＝正是 P1 要量嘅 v1 vs v2 落差。
+- 睇樣本：`python scripts/alert_shadow_report.py`（read-only，`--json` 出 JSON）。
+
 **2. 而家喺邊（唔可以當完成嘅嘢）**
 - **所有 code 未 commit**（`git status` 見 18 modified ＋ 25 untracked）；
 - **pipeline 未生效**：`alert_policy_mode` 仍 `off`、`%APPDATA%\Jarvis\settings.json` 未有新 keys → 要 restart sidecar；
@@ -27,9 +33,9 @@
 - **真機驗收未做**（打機／通話／idle 三情境）；Task 10（LLM digest 潤飾）仍暫緩（要 benchmark p95 ≤3s）。
 
 **3. 下次做咩（優先序）**
-1. 等 SK go → **restart sidecar 一次** ＋ 寫 `alert_policy_mode=shadow` → 收 ≥48h 樣本（用 `scripts/alert_shadow_report.py` 每小時睇分佈）。
+1. ✅ **已做（09-13 03:06）** restart ＋ shadow 生效 → 等 ≥48h 樣本，用 `scripts/alert_shadow_report.py` 睇分佈（M1 打機時 GPU soft ≤2/hr、M3 Prism 開住唔玩 FP <5%）。
 2. 等 SK go → **commit code**（建議拆 2-3 個 commit：pipeline 新模組／store 狀態機／docs）。
-3. 真機驗收（SK idle 時）→ 過關才 `enforce`。
+3. 真機驗收（SK 選 **4b＝下次 session**，唔急）→ 過關才 `enforce`。
 4. repo root 殘留檔（`_staging/`、`_tmp_test_write.txt`、`_compile_check2.py`、`_apply_and_compile.bat`、`nonexistent/`）→ 要 SK 批准才清。
 5. Task 10 要跑 ranking prompt benchmark（p95 ≤3s）先開工。
 
