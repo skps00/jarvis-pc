@@ -1,3 +1,25 @@
+## 2026-09-13 12:4x — 契約規則 ×2、Chrome 零搶焦點實測、packai DSML 修復（P1/P2/P5）
+
+**SK 今日新增嘅契約規則（已寫入 `C:\Users\skps9\AGENTS.md` ＋源頭 copy，md5 一致；兩次改動都先備份 `.bak-<ts>`）**：
+1. **第一規則**（置頂）：做事前 → 風險評估 → 最壞情況 → 確認可用現有資源／工具還原（**資料零損失、指名 backup**）→ 才動手；還原唔到／有損失風險唔准做；重大決策先得 SK 批准。
+2. **Plan／Idea Review 上限 3–4 輪**：到第 3–4 輪仍未達 8:2 → **停手、問 SK**（報告要齊：逐輪比分／卡死決定／最貴未知／建議）；每輪之間必須有實質修改。
+
+**Chrome 代開（1c 定案）**：
+- 實測 6 種開法（`bg_launch_focus_probe.py`，數字喺 `state\bg_launch_focus_probe.json`）：**只有「最小化開」零搶焦點**；任何「顯示出嚟」Chrome 都會自己 `SetForegroundWindow`（`LockSetForegroundWindow` 由背景 process 叫係無效，實測 return False）。
+- 已改 `bg_launch.py` 加 `--minimized`（`SW_SHOWMINNOACTIVE`＋移窗唔用 `SWP_SHOWWINDOW`），默認行為不變；改前備份 `bg_launch.py.bak-20260913-105323`。**SK 定：佢叫 → 顯示；JARVIS 主動 → 最小化**（AGENTS.md 條款待 SK go 才更新）。
+- 教訓已寫入 skill `windows-app-launch-focus`。
+
+**packai DSML 修復（見該 repo `.hermes\plans\HANDOFF.md` 同 `docs\plans\`）**：plan v1→v3 經 R1（反方 7:3）／R2（正方 8:2）兩輪 review；T6（P1 有界 grammar／P2 canonical args＋跨路徑去重／P5 真 bytes 驗收）完成並由 Hermes 親驗（偵測 false→true、解析 0→2、主路徑唔再吐垃圾、病態效能 4134ms→25.5ms、全量 96 PASS／5 FAIL＝baseline、雙樹對稱）。commits：`db245f5`（T1–T4）、`e85c4a5`（P1/P2/P5）。
+**未做**：`AskToolLoopCheck` K30–K34 未跑（要 gradle classpath）、mod 全量 compile、**T5 真機煙測（要 SK 熄 MC）**；hop-limit 出口仍漏（P3 等 T5 數據）。
+
+**其他**：`docs/plans/` 現有兩份新報告（DSML 業界研究、fork vs 輕量評估）；PR #12 merge 早已完成（`96be515`）。
+
+**下次（優先序）**：
+1. **T5 真機煙測**（SK 熄 MC → build jar → 備份舊 jar → 部署 → 15 題 → 跑真 log 檢查＋`check_jar_contains_fix.py`＋gradle 跑 `AskToolLoopCheck`）→ 出報告。
+2. 用 T5 數據決定 **P3**（hop-limit 出口 recovery）。
+3. AGENTS.md 加「主動開 → `--minimized`」條款（等 SK go）。
+4. 待 SK 決定：真機驗收清單（alert enforce）、AI_Studio Phase 1（4b 排後）、A/B/C 架構（5a 已解釋）。
+
 # HANDOFF — JARVIS 交接（固定檔）
 
 > **呢個係固定 handoff 檔**（2026-08-30 起）：每次 session 結束**更新呢份**，唔好開新日期檔；舊交接版本移入 `plans/archive/`。
