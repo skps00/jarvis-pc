@@ -1,80 +1,113 @@
-# Plan — packai 答案版面修正（模組化工具卡片／標題去重／物品名行位）
+# Plan v2 — packai 答案版面修正（模組化工具卡片歸屬／標題去重／物品名行位）
 
-- 建立：2026-09-14（Discord session）
-- 狀態：**PLAN（等 SK 批准才實作）**；其中 K1–K3 已按 SK 2026-09-14 決定「b」先行派工（實作中），R1–R2 為本 plan 新增項
-- Repo：`super_minecraft_AI_player`（雙樹 `forge/1.19.2` ＋ `neoforge/1.21.1`，Java 兩樹字面必須相同）
+- 建立：2026-09-14（Discord session）；v2：2026-09-14 加入 SK 決定（R4-b）＋新需求（R5 直接合成）＋反方 review R1（7:3, PLAN-FIX）全部 must-do
+- 狀態：**PLAN（等 SK go 才實作）**。Task K（舊版本）已**停**、未寫任何檔（repo clean），因為其 K1 規則同 R5 衝突，需用本 v2 規格重派
+- Repo：`super_minecraft_AI_player`（雙樹 `forge/1.19.2` ＋ `neoforge/1.21.1`）
+- ⚠️ 部分檔兩樹有 MC API shim（`Registry`→`BuiltInRegistries`、`Forge`→`NeoForge`）→ **行號有偏差**（例：`ModularToolScan.purposeLines` forge:33 / neo:36；`PackAiConfig.setShowHiddenQuests` forge:548 / neo:560）；唔可以純靠行號同步，要逐字檢查
 
 ## 1. 目標（一句）
-令答案版面（尤其 Tetra／模組化工具）**卡喺正確位置、標題齊全、每件物品各自成段**，唔會出現「錯卡／標題消失／物品名貼錯行」。
+令答案（尤其 Tetra 模組化工具）**每張卡都屬該行講嘅物品、標題齊全、物品各自成段**；同時唔會剷走真·直接合成／任務獎勵等**真取得途徑**。
 
-## 2. 問題與證據（全部真機）
+## 2. 問題與證據（全部真機，MC 實例 log）
 
 | ID | 問題 | 證據 | 影響 |
 |---|---|---|---|
-| K1 | 多選 Tetra 工具時，**空框架合成卡**（輸出＝焦點 id）被貼喺「到 Tetra 工作台…」之後 | 截圖 `配方：Crafting [鐵錠＋木棍→劍]`；log `renderCards item=tetra:modular_sword … foundOutput=4 afterFilter=4` | 同「不是普通合成」自相矛盾；大格卡撐爛版面 |
-| K2 | 卡貼位唔一定跟提及行 | 同上（卡落喺冇提及該物品嘅行） | 版面亂 |
-| K3 | 多選時模組化工具一次答多件 | 同一答案含 `tetra:modular_sword` ＋ `tetra:modular_single` | 卡片／段落交錯 |
-| R1 | **第 2 件物品嘅「怎么用」標題被剷走** | raw reply 有「怎么用」×2；最終 display body 只有 ×1（`stripDuplicateSectionHeaders` 全篇去重） | 使用清單冇標題、好似接住上一段 |
-| R2 | 物品名 widget 貼喺上一行右邊 | 截圖 `3. 自帶耐久 VII…　　賢者杖` | 兩件物品分界唔清 |
-| K1b | **該段 3 張卡全部係「焦點工具自己」嘅取得卡**（唔止任務獎勵）| SK 截圖 ×3 ＋ log：`renderCards item=tetra:modular_sword role=output scannedCats=4 foundOutput=4 afterFilter=4` → **4 張卡全部屬這把劍**（Crafting 空框架／任務獎勵×2／自動攪拌），`recipe cards focus=… count=0`；卡按行數派落 1/2/3/4 步 | 材料行（劍刃／劍柄／護手）顯示嘅卡同該材料**完全無關**（SK 2026-09-14 指正：第 2 步嗰張都係錯）|
-| R3 | 卡嘅物品**全篇冇被提及**時仍會出卡 | 同上（任務獎勵卡輸出＝焦點劍，但被貼去材料行） | 版面雜訊 |
+| K1b | 組成段 1/2/3/4 步嘅卡**全部屬焦點這把劍**（Crafting 空框架／任務獎勵×2／自動攪拌），按行數派落 | 截圖 ×3 ＋ log `renderCards item=tetra:modular_sword role=output scannedCats=4 foundOutput=4 afterFilter=4`；`recipe cards focus=… count=0` | 材料行顯示完全無關嘅卡（SK 指正：第 2 步都錯）|
+| R1 | 多件答案第 2 件嘅「怎么用」標題被剷 | raw reply「怎么用」×2 → display body ×1 | 使用清單冇標題、似接住上一段 |
+| R2 | 物品名 widget 貼喺上一行右邊 | 截圖 `3. 自帶耐久 VII…　賢者之杖` | 兩件物品分界唔清 |
+| R3 | 卡嘅物品全篇冇被提及仍然出卡 | 同上 | 版面雜訊 |
 
-## 3. 方案
+Log 原文路徑：`…\instances\AI_test_NFWC_DIM\minecraft\logs\latest.log`（cp950，需逐行解碼；`display body ver=`、`LLM raw reply chars=`、`renderCards item=`、`ask reply before ensureCards` 為關鍵 marker）。
 
-### K 組（SK 已批「b」；實作中，Task K）
-- K3：新 config `modularToolSingleItem`（**default true**）＋ Settings toggle；焦點 `ModularToolScan.purposeLines` 非空 → 忽略 `alsoSelected`，只答焦點一件；log `modularToolSingleItem applied focus=… dropped=…`
-- K1：單件模式生效時，**排除輸出 id == 焦點 id 嘅配方卡**；材料卡保留；log `frameCardsSuppressed item=… n=…`
-- K2：卡只可以插喺**正文有提及該卡物品（或其材料）**嘅行之後；搵唔到 → 段尾（**唔准**段首）
+## 3. 方案（v2）
 
-### R 組（本 plan 新增，等批准）
-- R1：`AskReplyScrub.stripDuplicateSectionHeaders` 去重**收窄為「同一件物品區塊內」或「緊接重複」**：
-  - 見到新嘅 `[[item:…]]` 標記後，**標題去重狀態要重置**（每件物品可以各自有「怎么来／怎么用」）
-  - 只剷真正緊接重複（相鄰非空行同標題）嘅情況
-  - 加回歸案例：多件回答，兩個「怎么用」都要留；單件回答重複標題仍要剷
-- R2：物品名 widget（`[[item:id]] 名稱`）強制**獨立一行**：保證前面有空行、後面接內容；若模型冇寫空行，由 renderer／scrubber 補（唔准改物品名本身）
-- R3（新增，證據＝SK 3 張截圖）：卡如果**全篇都冇提及該卡輸出物**（或冇被任何行指名）→ **丟棄**（唔准堆段尾），log `cardsDroppedUnmentioned n=…`；理由：堆段尾只會製造雜訊（K1b 就係咁出現）
-  - 注意：K1 已覆蓋「輸出 id == 焦點 id」嘅卡（截圖嗰兩張任務獎勵卡正是此類）；R3 覆蓋其餘「有卡但無行對應」情況
+### K3 — 模組化工具單件模式（config，預設 ON）
+- 新 config `modularToolSingleItem`（default **true**）＋ Settings toggle。
+- **判定**：用 `ToolBuildFacts.Scan` **非空**（真有零件）；**唔准**用 `ModularToolScan.purposeLines` 非空 —— 後者喺解析失敗時回 `unparsedBlock()`（`ToolBuildFacts.java:200-202`），連空框架都會被當模組化工具。
+- **一次過 gate 三條通道**（唔准只 gate prompt）：prompt 段（`AskService.java:683`／`:731`／`:791`）、catalog cards（`:1972-1974`）、JEI（`:2006`）→ 被 drop 嘅 extras **一張卡都唔准出**。
+- Single choke point：`extrasFor` / `collectAskRecipeCards` 入口（`AskService.java:1954`／`:1972-1974`）。
+- log：`Pack AI modularToolSingleItem applied focus=<id> dropped=<n>`。
 
-### R4（未定，等 SK 揀）
-組成段嘅卡應該係邊種？
-- **R4-a**：組成段**唔出任何卡**（Tetra 零件冇普通合成；只留文字＋物品連結）
-- **R4-b**：出**材料物品自己**嘅卡（要新 collector：掃正文 `{{item:…}}` 提到嘅材料，逐件收卡；而唔係只掃焦點）→ SK 要有心理準備：多數 Tetra 材料係刷怪／掉落，可能冇配方卡
-- **R4-c**：保留但**標明係「空白模組合成」**（唔建議，仍然誤導）
+### K1 — 卡歸屬（**取代舊 id-equality 規則**）
+每張卡計出「歸屬物品」= 卡輸出 id（quest 卡＝獎勵物 id；`RecipeCard.promptRole()=="quest"`）。
+1. 卡歸屬 == **焦點** → 只可以放焦點**自己嘅取得（怎么来）段**；**唔准**貼任何材料步驟行。
+2. 卡歸屬 == 正文提到嘅**材料** → 貼該材料行（見 R4-b）。
+3. **空框架判定**（要唔要出焦點自己嘅 output 卡）：
+   - 用配方輸出 stack 嘅 **NBT／名**：有非空 NBT 或名 → **真·直接合成** → 保留；
+   - 輸入包含組成段提到嘅零件材料（≥1）→ 視為真合成 → 保留；
+   - NBT 空＋無名＋輸入只係基礎框架材料（如石切器＋木棍）→ **空白框架** → 唔出（rule 23 精神）；
+   - ⚠️ **實作前必先驗**：`RecipeCard` 現時只有 `primaryOutputId()`（`RecipeCard.java:434-445`），未見 NBT／名欄位 → 若拎唔到輸出 stack／NBT，就要**退回「輸入相關性」判定**，並喺報告寫明能力上限。
+4. **任務獎勵卡**（`promptRole()=="quest"`）＝真取得途徑 → **保留**，只放焦點取得段。
+5. 覆蓋 fallback 通道：`autoEmitCatalogCards`（`AskService.java:1239-1325`，由 `:296-302`／`:2063-2067` 叫）。
+6. **負面測試**：普通物品（非模組化）問「怎么来」→ 自有 output 卡**必須保留**。
 
-## 4. 驗收標準（做完點算完成）
+### R4-b — 材料自己嘅卡（SK 揀 b）
+- 新 collector：掃正文 `{{item:id}}` 提到嘅物品（最低限度：組成段）→ 逐件用現有卡通道收卡（受 `recipeCardsPerItem` 上限）→ 標記歸屬物品＝該 id。
+- 冇配方（Tetra 材料多數係刷怪／掉落）→ 唔出卡，**唔准**用其他卡頂替。
+
+### K2 — 貼位（修訂）
+- 卡只可以貼喺**提到其歸屬物品**嘅行之後；焦點卡只可以貼焦點段。
+- 搵唔到行 → 所屬段**段尾**；段尾都對唔上（R3）→ **丟棄**，log `cardsDroppedUnmentioned n=…`。
+- **入口要分路徑寫清楚**（預設 `recipeCardsMode="ai"` → `AskService.java:288-331` 完全唔行 `ensureCards`）：
+  - AI 路徑：`RenderRecipeCardsAskTool.java:87-118`（收集）＋`RecipeEmbed.java:1051-1097`／`1132-1187`（貼位）＋`RenderRecipeCardsAskTool.filterRole`（`:290`）
+  - KEYWORDS 路徑：`AskCardFallback.ensureCards`（`:78-188`）＋`appendAtEnd`（`:663-673`）
+- **唔准**只收緊 `CRAFT_STEP_ALIASES`（`RecipeEmbed.java:1147-1151`／`:1200-1209`）就當修好：普通答案步驟只寫「去工作台合成」→ 會冇 anchor；要保留 generic craft anchor 作**次級** fallback。
+- **卡 index 重編**：任何删卡／改序都要 renumber；SoT＝`RecipeCardsMode.java:108-121`（歷史錯位 bug 見 `code_change_log.md:4081`）→ plan 指定由該路徑統一 renumber。
+
+### R1 — 標題去重收窄（多件答案每件可各自有 heading）
+- discriminator：見到 `[[item:` 開頭行 → `seen.clear()`（約 3 行，唔改 signature）。
+- **另一個 collapser 都要處理**：`collapseDuplicateHowToGet`（`AskReplyScrub.java:1159-1189`，經 `ensureHowToGetBody:968`／`AskEngine.java:862-868`）會全篇只留一個「怎么来」區塊 → 否則多件答案第 2 件嘅取得內容會被整段刪。
+- `[[item:]]` 標記唔保證存在（`AskService.java:1622-1625` 只係 repair prompt）→ 要加「無標記」退化路徑（例如用 `{{item:}}` 或空行＋heading 序列做次級邊界）。
+- **要同步改嘅既有 pin（唯一允許改 assert 嘅情況，要逐條列出）**：`AskReplyScrubCheck.java:442-458`、`tests/check_reply_structure_scrub.py:166-213`
+- 兩樹 `AskReplyScrub.java` 必須逐字節相同（`check_reply_structure_scrub.py:1004-1006`）。
+
+### R2 — 物品名獨立一行（SK 揀 a）
+- 落點：`AskReplyScrub` 喺 marker repair 之後、render 之前做 **marker newline 正規化**（任何唔喺行首嘅 `[[item:`／`{{item:` 前面插新行）→ 一條路覆蓋兩個 render 路徑。
+- 唔准破壞既有 no-glue invariant：`check_recipe_embed.py:527-539`、`check_card_tool_emission.py:118-135`、mirror `check_recipe_embed.py:544-555`。
+
+### Config plumbing（寫齊先好開工）
+- `PackAiConfig.java`：field＋`define`＋getter＋setter（forge `:268-272`／`:544-551`；neo `:272`／`:556`／`:560`）
+- `PackAiSettingsScreen.java`：CycleButton（forge `:378-391`；neo `:392`）
+- lang：3 檔 × 4 key（label／on／off／tooltip）× 2 樹 ＝ 24 key
+- 測試釘 `default == true`（pattern：`tests/check_recipe_card_role_budget.py:121-122`）
+
+## 4. 驗收標準
 
 **自動（我跑）**
-1. Java：`AskReplyScrubCheck`、`AskToolLoopCheck`、`JeiInfoFactsCheck` 全綠；新增 card placement／frame-card／heading-scope 案例全綠
-2. Python：`tests/check_*.py` 全量（期望 100+ PASS、只餘 3 個既有 stale FAIL：`check_ask_tool_context`／`check_heavy_script_corpus`／`check_recipe_io_and_consume_use`）
-3. 雙樹 added-lines 對稱 OK；`gradlew jar` BUILD SUCCESSFUL
-4. `PackAiConfig.modularToolSingleItem` default == true（測試釘死）
+1. Java：`AskReplyScrubCheck`、`AskToolLoopCheck`、`JeiInfoFactsCheck` 全綠＋新案例（卡歸屬／空框架／負面測試／heading scope／marker newline）
+2. Python：全量 `tests/check_*.py`（今日基線 103 個 → 100 PASS、3 個既有 FAIL：`check_ask_tool_context`／`check_heavy_script_corpus`／`check_recipe_io_and_consume_use`）
+3. 雙樹對稱 OK（`tests/check_dual_tree_sync.py`）；`gradlew jar` BUILD SUCCESSFUL
+4. `modularToolSingleItem` default == true（測試釘死）
 
-- **驗收（用 SK 2026-09-14 三張截圖做案例，必須逐張對）**
-- 組成段（1/2/3/4 步）**一律唔准**出現「輸出==焦點劍」嘅卡（Crafting 空框架／任務獎勵×2／自動攪拌）
-- 第 2 步（劍刃「適應之劍」）**都係錯**（SK 指正）→ 唔准再見「自動攪拌·動力攪拌器」
-- 全篇唔准出現「卡嘅輸出物冇被任何行提及」嘅孤兒卡
-- **未定（等 SK 揀）**：組成段**應否**顯示「材料物品自己」嘅卡（例如異類心臟點整）→ 見 §3 R4
+**真機（SK 問 3 題，我讀 log 核）**
+1. 單件 Tetra 工具：組成段**只**見材料卡（R4-b）或無卡；**唔准**見焦點自己嘅空框架卡；真·直接合成／任務獎勵卡只出現喺焦點取得段
+2. 多選 Tetra：只答焦點 1 件（log `modularToolSingleItem applied`），且冇孤兒卡
+3. 普通物品多選：兩件都各自有「怎么来／怎么用」標題（R1）；物品名各自獨立一行（R2）
 
-**真機（SK 一句話問 3 題，我讀 log 核）**
-1. 單件 Tetra 工具 → 版面：組成段只得**材料卡**（冇 Crafting 空框架卡）；卡貼喺對應材料行後面
-2. 一次勾 2 件 Tetra 工具 → 只答**焦點 1 件**（log 有 `modularToolSingleItem applied`）
-3. 一件普通物品（非模組化）多選 → 照舊答多件，且**每件各自有「怎么来／怎么用」標題**（R1）；物品名各自獨立一行（R2）
+**SK 三張截圖逐張對（驗收案例）**
+- 組成段 1/2/3/4 步：**唔准**再見「任務獎勵：感謝安裝黃金年代」／「任務獎勵：龍曾在這裡」／「自動攪拌·動力攪拌器」呢類屬焦點劍嘅卡
+- 全篇唔准有孤兒卡
 
 ## 5. 風險與緩解
 
 | 風險 | 緩解 |
 |---|---|
-| 去重收窄後，模型真係重複寫標題 → 版面返到「重複標題」老問題 | R1 只放寬「跨物品區塊」，區塊內緊接重複仍剷；加兩邊測試 |
-| 單件模式令 SK 少咗資訊（多選被忽略） | 預設 ON 但可 Settings 關；log 可審計；必要時答案頂加一行提示（本 plan **暫不加**，等 SK 睇真機再定） |
-| 唔係 Tetra 嘅模組化工具（將來 Tinkers 類）漏判 | 判定用「組成非空」而非 namespace 白名單；殘餘風險記 skill |
-| 卡貼位新規則令部分卡「搵唔到行」→ 全堆段尾 | 保留段尾 fallback；驗收第 1 點會用真機答案檢查唔會退化 |
+| 拎唔到配方輸出 NBT → 冇法完美分「真合成 vs 空框架」| 退回「輸入相關性」判定；喺報告寫明能力上限；必要時問 SK 要唔要保守（一律唔出焦點自有卡）|
+| R1 收窄令真重複標題回歸 | 只放寬「跨物品區塊」；區塊內緊接重複仍剷；兩邊測試都有 |
+| K2 收緊令卡全堆段尾 | 保留 section-tail fallback＋R3 丢棄孤兒卡；真機驗收第 1／2 點必然檢查 |
+| 標記 `[[item:]]` 唔存在 | R1 加退化邊界規則；缺標記時仍要保住兩件各自 heading |
+| 卡 index 重編漏做 | 指定 `RecipeCardsMode.java:108-121` 統一 renumber＋加測試 |
+| 兩樹行號偏差 | 逐字檢查、`check_dual_tree_sync` 把關 |
 
-## 6. 唔做（本 plan 界外）
-- 唔改 Tetra 結構分流（`withToolBuildHowToGet`）、JEI 全 id 修復、footer 標籤翻譯（已完成並 commit）
-- 唔改卡內容／卡數上限（`recipeCardsPerItem` 等既有 config 唔郁）
-- 唔加「模組化工具只答 1 件」提示字（等真機再決定）
+## 6. 唔做（界外）
+- 唔改 TEtra 結構分流（`withToolBuildHowToGet`）、JEI 全 id 修復、footer 標籤翻譯（已完成、已 commit `8d25433`／`9f9baaf`）
+- 唔改卡內容／卡數上限既有 config（`recipeCardsPerItem` 等）
+- 唔加「只答 1 件」提示字（等真機再定）
 
-## 7. Review 記錄
-- R1（cursor review-only）：
-- R2（如需，adversarial）：
-（上限 3–4 輪，未達 8:2 即停手問 SK）
+## 7. Fixtures（review 要求）
+今日證據只喺 MC 實例 log（repo 內冇）→ 實作前存 `tests/fixtures/`：① raw reply（`LLM raw reply chars=1128`）② `ask reply before ensureCards` 片段 ③ display body 片段。
+
+## 8. Review 記錄
+- R1（反方，subagent review-only）：**7:3 / PLAN-FIX**（2026-09-14）。主要 hole：R1 令既有 pin 回歸、第二個 collapser、K2 入口揀錯（default 係 AI 路徑）、K1 未收窄會剷主卡、K3 判定錯（要 ToolBuildFacts.Scan）、config／lang 冇寫齊、卡 index 未提、證據未入庫。**全部已吸收落 v2**。
+- R2（如需）：
+（上限 3–4 輪；未達 8:2 即停手問 SK）
