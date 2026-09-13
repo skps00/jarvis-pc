@@ -16,13 +16,18 @@
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
  - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`
-- **未解（等 SK 決）**：① **T5 真機 15 題**（MC 已載新 jar，等 SK 問完）② 架構 fork-vs-light A/B/C（押後）③ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**（09-13 明示）；packai assert fix 已 commit `f0ac745`
+- **未解（等 SK 決）**：① **T5 真機題目**：已問 20 題、T0 洩漏確認修好；**Tetra 結構分流未 smoke**（jar `ee34bbe6` 等 MC 熄自動部署，要問單件＋多選 Tetra 題）② **packai 改動未 commit**（13 檔×2 樹＋4 測試檔）等 SK 指示② 架構 fork-vs-light A/B/C（押後）③ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**（09-13 明示）；packai assert fix 已 commit `f0ac745`
 - **下一步（優先序）**：T5 真機 15 題（jar 已部署就緒）→ ASR T1／T2 → 用 T5 數據決定 P3（hop-limit 出口仍漏）→ alert `enforce`（09-15 樣本齊＋三情境驗收）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
+
+- 2026-09-13 16:0x–16:5x：**真機 T5 #2 輪**（jar `551136fb`）20 題：`check_ask_display_leak` rc=0（4 條新答案零 `role=`／零 `PURPOSE`）＝T0 修復真機確認。
+- 2026-09-13 16:2x：**JEI 張冠李戴**（SK 問 `golden_age:infinity_wand` 但答咗 Construction Wand 建築手杖）——根因 `JeiInfoFacts.sameItem():413` **只比 path 唔比 namespace**（`constructionwand:infinity_wand` 撞名）；修法＝id 對 id 用**全 id**、文字提及保留 token 邊界 path、新 `shouldAttachForFocus`（頁面有 id 就唔准靠純文字搭上）；`JeiInfoFactsCheck` 加真機原文回歸案例；我獨立驗：Java check OK、雙樹 md5 一致、4 條 python rc=0。
+- 2026-09-13 16:0x–16:3x：**Tetra 結構分流落地**（`[TOOL_BUILD]` 由「怎麼用」→「怎麼來」）＋兩輪 code review（首輪 FIX-FIRST → 修 D1/D2/D3）→ 全量 99 PASS／3 既有 stale FAIL、`JeiInfoFactsCheck`＋`AskToolLoopCheck` OK、build OK、雙樹 added-lines 對稱 OK；多選合併 `mergeExtrasToolBuild`、offline 支路、prompt 措辭（3 語言×2 樹）、內部 token 單一來源、`role=` 大小寫、新 heading 對齊 check。
+- 2026-09-13 16:0x：**未 commit**：packai 全部改動（T0＋JEI＋Tetra＋review 修復，13 個檔 ×2 樹＋4 個測試檔）仍喺工作區；等 SK 指示。部署武裝：MC 熄 → 自動部署 `ee34bbe6`（含以上全部）。
 
 - 2026-09-13 15:0x：**T0 修復部署**（真實洩漏：答案【來源】行寫 `role=output／input`＋`PURPOSE`）——根因 `PLAYER_UNSAFE_MARKERS` 只過濾 FACT fallback、模型正文路徑冇剝；改 `AskReplyScrub.scrubInternalFieldEcho`＋`ReplySources` 髒 footer 換 canonical＋6 lang；我獨立 Java harness 實測真機字串通過；jar `551136fb` 部署（三邊 sha256 一致、舊 `450c3a76` 已備份）。
 - 2026-09-13 15:0x：**Tetra 計劃** R1 4:6→R2 4:6→R3 6:4 未達 8:2 → 依契約停手報 SK；SK 揀 **a（結構性分流）**；已派 cursor 將 `[TOOL_BUILD]` 由 `AskService:449-452` prepend 抽出、改掛 `AskEngine:508-518` `sectionHowToGet` 之下（兩樹）。
