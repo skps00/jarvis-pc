@@ -27,6 +27,7 @@ if _SRC.is_dir() and str(_SRC) not in sys.path:
 
 from jarvis.cursor_hooks import (  # noqa: E402
     clear_waiting,
+    mark_hook_fired,
     mark_waiting,
     waiting_active,
 )
@@ -142,17 +143,18 @@ def main() -> int:
         return 0
     phrase, detail = pair
     try:
-        from jarvis.alert_store import AlertStore
+        from jarvis.alert_store import default_store
 
         conv = str(data.get("conversation_id") or "")[:12]
         if conv:
             detail = f"{detail} conv={conv}"
-        AlertStore().enqueue(
+        default_store().enqueue(
             kind="cursor",
             phrase=phrase,
             app="Cursor",
             detail=detail[:200],
         )
+        mark_hook_fired()
     except Exception as exc:  # noqa: BLE001
         sys.stderr.write(f"[jarvis-hook] enqueue fail: {exc}\n")
     sys.stdout.write(json.dumps(out))

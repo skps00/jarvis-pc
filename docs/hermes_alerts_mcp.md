@@ -8,17 +8,115 @@ Watcher (`jarvis serve`) enqueues short English pings; Hermes TTS speaks them.
 jarvis serve
   → AlertStore JSONL
   → HTTP MCP 127.0.0.1:8765/mcp   (Hermes tools / debug)
-  → poller ~2s (scripts/hermes_alert_poll_loop.py) → Hermes Edge TTS → ack
+  → poller ~1s (scripts/hermes_alert_poll_loop.py) → Hermes TTS (alert_tts=hermes) → ack
 
 Hermes cron (backup, ≥1m): jarvis-alerts-speak --no-agent
   → scripts under %LOCALAPPDATA%\hermes\scripts\jarvis_alert_speak_once.py
   needs: hermes gateway running
 ```
 
-## FACT — cron cannot do 2s
+## FACT — cron cannot do 1s
 
 Hermes schedule units are **minutes+** (`every 1m` min for intervals). Gateway ticks ~**60s**.  
-Eng plan 「~2s poll」→ use **`hermes_alert_poll_loop.py`** (started by `jarvis serve` when `alert_tts=hermes`). Cron = slow backup only.
+Eng plan 「≤1s poll」→ use **`hermes_alert_poll_loop.py`** (started by `jarvis serve` when `alert_tts=hermes`). Cron = slow backup only.
+
+## Alert pipeline (v5.1, 2026-09-12) — raw 字串永遠唔准出聲
+
+```text
+producer → AlertStore.enqueue(kind, phrase, detail, dedupe_key)
+   ↓ L1 shape   alert_policy.shape()        raw metrics / URL / CJK → deterministic English template
+   ↓ L2 policy  alert_policy.policy_for()   kind × settings → speak_now | digest | drop（CRITICAL 唔可降級）
+   ↓ L3 gate    speak_gate.should_speak()   gaming / voice_call → hold（critical 穿透）
+   ↓ speaker    scripts/hermes_alert_poll_loop.py（唯一出路）→ mark_spoken → TTS → ack → miss_ledger
+```
+
+**硬規則**：任何 raw 字串（`fires=…`、URL、中文 toast body）**永遠冇通道去到 TTS**；`mouth.speak()` 出口有 validator（fail-closed）。講／唔講 **100% deterministic**（`alert_policy.policy_for` ＋ `speak_gate.should_speak`）；LLM（L4）只可以做 digest 潤飾，**永遠唔可以 suppress／降級**，默認 `off`。
+
+| 模組 | 責任 |
+|---|---|
+| `src/jarvis/alert_policy.py` | 純函數：`shape()`（template）／`policy_for()`／`priority_for()`／`sanitize()`／`is_speakable()`／`CRITICAL` |
+| `src/jarvis/speak_gate.py` | `should_speak(row) -> SpeakPlan`（`speak`／`hold`／`digest`／`drop`）＋ `is_gaming_v2()`（process-based，唔靠 foreground） |
+| `src/jarvis/alert_shadow.py` | shadow mode：只寫 `%APPDATA%\Jarvis\alerts\shadow_ledger.jsonl`（＋heartbeat），零執行改動 |
+| `src/jarvis/alert_store.py` | 狀態機 pending／held／digest／spoken／dropped；`miss_ledger.jsonl` append-only（每次狀態轉變 ＋ reason，>2MB rotate `.1`，fail-open） |
+| `scripts/hermes_alert_poll_loop.py` | 唯一 speaker：release held → digest flush（30 分鐘 或 gaming→idle 一句）→ `peek(lease_s ≥ 300)` → `mark_spoken` → TTS |
+
+**新 settings keys**（`src/jarvis/settings.py`；全部默認 = 今日行為）：
+
+| Key | Default | 意思 |
+|---|---|---|
+| `alert_policy_mode` | `off` | `off`／`shadow`（只寫 ledger）／`enforce` |
+| `alert_gaming` | `hold` | 打機時 `hold`／`drop` |
+| `alert_hold_ttl_s` | `900` | hold 最長幾久（過期轉 digest） |
+| `alert_held_cap` | `64` | held 行上限（防黑洞） |
+| `alert_digest_interval_s` | `1800` | digest 一句嘅間隔 |
+| `alert_digest_ttl_s` | `86400` | digest 行 TTL |
+| `alert_dedupe_window_s` | `300` | 同 kind 去重（0 = 停用） |
+| `alert_llm_polish` | `off` | ⚠️ **未接線**（Task 10 暫緩：冇 runtime reader、冇 UI 控件） |
+| `alert_llm_timeout_s` | `3.0` | ⚠️ **未接線**（同上；預留畀 Task 10） |
+
+**「what did I miss」**：講 `"what did i miss"`（或 `did i miss anything`／`miss咗啲咩`…）→ router `alert_miss` intent → **本機處理**（唔經 Hermes，即使 `hermes_enabled`）→ 讀 24 小時 `miss_ledger.jsonl` → 一句 ASCII 英文（例：`"Sir, 3 alerts went unanswered while you were away: whatsapp x2, gpu health x1."`；冇嘢 = `"Sir, nothing missed."`）。
+
+**⚠️ 未啟用**：`alert_policy_mode` 默認 `off`（settings.json 亦未寫入新 keys）——要 restart sidecar，再以 `shadow` 收 ≥48 小時樣本（M1 打機時 GPU soft ≤2 次/小時、M3 Prism 開住唔玩 FP <5%）才上 `enforce`。
+
+## 2026-09-13 修復輪（fix1–fix11，全部由 Hermes 親跑收貨）
+
+| 修咗咩 | 實錘 |
+|---|---|
+| 「what did I miss」**報大數**（把 ledger 事件行當未答 alert） | 按 id 去重、只計未 `spoken`；`over 999` 句法；label 消毒次序修好 |
+| `release_held()` 之後行即刻 `ttl_expired` **靜默消失** | release 時 refresh `ts` → 仍可講／入 digest |
+| release 窗寫 180s、實際 3 秒 | 改純時間窗 `RELEASE_QUIET_S = 180` |
+| 生產 `AlertStore()` **冇注入 policy**（critical 變 normal） | 新 `default_store()` 工廠，生產點全部走佢 |
+| settings key **寫得入冇人讀** | 真接線（held cap／dedupe window／digest TTL）；未接線 LLM key 由 UI 拆走 |
+| digest flush **先講後 clear** → 撞鎖會重講 | 先 `mark_spoken` claim → 講 → 失敗還原、`clear` 包 try |
+| `alert_tts=piper` 係**第二條 speaker**（繞過 gate） | piper 分支改走 `should_speak` ＋ `alert_dispatch.enforce` |
+| release **一次過放晒**（打機完連珠炮發） | 只放 critical ＋最新一條 normal，其餘留 held → digest 一句講完 |
+| `[warn] release_held noop` 每秒印（~86k 行/日） | 60 秒 rate-limit |
+| **dedupe key 用常數**（吞真事件） | 改 `hash(summary)`（同內容才 dedupe） |
+| **`guard` 冇傳落 TTS 子進程**（聊天回覆被 strict 吞） | `guard` 傳落 subprocess |
+| `should_speak` **忽略 `row.priority`** | `priority == "critical"` 第一短路口；critical 由 `priority_for` 單一來源 |
+| `sidecar_down` **冇 producer**（假安全感） | 明文移除（要真 watchdog 才加返） |
+| mode 切 `off` 之後 held／digest **變殭屍** | off 模式照 gc ＋ 講一次 digest ＋ 放 held |
+| MCP `peek_alert` lease 仍 30s（可重讀同一句） | 300s |
+| `default_store()` fallback 冇 policy | fallback 都注入 |
+| `gpu_hard` producer 傳 **空 phrase** → `enqueue()` raise → **critical alert 靜默消失**（fix8 引入、fix9 修） | producer 傳 `alert_phrase_for(kind)`；`shape()` delegate 同一函數（單一來源）＋ 空 phrase 防守 |
+| **release 收斂失效**（fix7 只拖慢，冇 reset `quiet_since` → 每個 tick 再放一條） | 成功 release 後 `quiet_since = t`；probe 連續 5 tick `[3,1,1,1,1]` → `[3,0,0,0,0]` |
+| **出聲成功冇 `spoken` ledger**（`mode=off`／shadow 路徑）→ 「what did I miss」報大數 | claim 階段寫 `speak_claim`、**成功之後**才寫 `spoken`、失敗寫 `speak_fail` ＋真 reason |
+| digest 句含 4+ 位數字 → `is_speakable=False` 且冇 fallback（永遠講唔出＋每秒刷 log） | label 去數字 ＋ `is_speakable` fallback 句 ＋ fail log 60s 限流 |
+| `clear_digest` 永遠清唔到（先 `mark_spoken` 已非 `digest` state） | 改按 id 刪；只刪自己 claim 咗嘅行 |
+| `jarvis_speak` 用弱 validator 做 pre-check 但 mouth 用 strict（回 `ok:true` 冇聲） | 兩邊共用 `strict_ok`，mouth 用 `guard=lenient`（口徑只得一個） |
+| `release_held` 空轉都重寫全檔｜dedupe key 用 built-in `hash()`（跨進程唔穩）｜digest 行無上限｜死碼 | n=0 唔寫檔；改 `sha1[:16]`；加 `digest_cap`；抽 `_flush_digest_common`、清死碼 |
+| （fix11，test-only）`test_digest_cap_drops_oldest` 用假 epoch 被 wall-clock GC 反噬 | test 改用真時間偏移；**唔准改 production 遷就 test** |
+| release 收斂**失效**（release 後冇 reset `quiet_since` → 每 tick 再放一條） | release 成功即 `quiet_since=t`；連續 tick 實測 `[3,0,0,0,0]` |
+| mode=off／shadow **出聲成功唔寫 `spoken` ledger** →「what did I miss」報大數 | `enforce` 出聲成功**無條件**寫 `spoken`；claim 階段改用 `speak_claim`；失敗寫真 reason |
+| digest 句含 4+ 位數字（`extra:app1234`）→ 唔 speakable、永遠講唔出 | `label_for` 去數字 ＋ `is_speakable` fallback 句；失敗 log 60s rate-limit |
+| `clear_digest` 永遠清唔到（`mark_spoken` 後已非 digest） | 改為**按 id** 刪（同 `drop()` 一致） |
+| `jarvis_speak` pre-check 口徑同 mouth 唔同（回 `ok:true` 但冇聲） | 改用同一 `strict_ok`，mouth 用 `guard="lenient"` |
+| `release_held` 空轉都重寫全檔（mode=off 1 Hz） | 冇改動唔寫檔 |
+| `dedupe_key` 用 built-in `hash()`（跨進程唔穩） | 改 `hashlib.sha1(...).hexdigest()[:16]` |
+| digest 行**無上限**（打機幾小時可累積過千行） | 加 `digest_cap`（最舊先 drop，ledger `digest_cap`） |
+| 死碼／重複 | 刪 `plan_for("off")` 不可達分支、`strict_ok` 改 alias、兩段 digest flush 抽 `_flush_digest_common` |
+| LOW | 刪死碼（`is_metric_noise`／`quiet_iters`／`process_row`／`_ = gaming`）｜`--json` 真生效｜`label_for` 統一｜`enforce` 重用 `effective_action`｜`HB_INTERVAL_S` 匯出｜mouth strict 同 choke 同一 validator |
+
+## Baseline（2026-09-13 01:2x，親跑）
+
+```text
+python -m pytest tests/ -q          → 532 passed / 0 failed
+python -m jarvis.eval_gate --lock   → 一致（53 test files）
+python -m jarvis.eval_gate --all    → golden / regression / stress 三 suite ok=True
+                                      HASH 3e5e074479192100
+```
+
+## TTS modes (`alert_tts`)
+
+| Value | Behavior |
+|-------|----------|
+| `hermes` (default) | Hermes TTS subprocess only (60s hard timeout + `taskkill /F /T` on hang) |
+| `piper` | In-process Jarvis Piper mouth |
+| `off` | Drain/ack without speaking |
+
+## GPU health (P0)
+
+NVML (`nvidia-ml-py`) primary → nvidia-smi CSV fallback. Dynamic clock baseline + hard temp ceiling (≥90°C). Per-reason cooldown.
 
 ## Token / MCP
 
@@ -40,8 +138,15 @@ Verify:
 ```powershell
 hermes mcp list
 hermes mcp test jarvis-alerts
-# expect 4 tools: peek_alert, ack_alert, list_alerts, alert_stats
+# expect 10 tools: peek_alert, ack_alert, list_alerts, alert_stats,
+#   jarvis_speak, jarvis_wake_status, jarvis_sensors, jarvis_alert,
+#   jarvis_clarify_gate (Self-Evol Phase E: EVPI 問唔問), jarvis_autonomy_state (Phase D: 自主度等級)
 ```
+
+Self-Evol tools（2026-08-31 wiring）:
+- `jarvis_clarify_gate(task, task_type, unknowns[], assumptions[], confidence)` → `should_ask` + 保守假設；答案一律當 untrusted（R17）
+- `jarvis_autonomy_state()` → `level`（L0/L1a/L1b/L1c）+ `sandbox_ready` + 最近 H_auth events；level 持久化喺 `%APPDATA%\Jarvis\autonomy_state.json`
+- 詳情：skill `jarvis-self-evol-ops`
 
 ## Cron (backup)
 
@@ -78,10 +183,12 @@ tts:
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `alert_cursor` | `true` | Master switch |
-| `alert_cursor_hooks` | `true` | stop / preToolUse → queue (can be flaky) |
-| `alert_cursor_toast` | `true` | Action Center toast; skips Done when hooks on (no double) |
-| `alert_cursor_uia` | `true` | Exact UIA `Waiting for approval` |
+| `alert_cursor_hooks` | `true` | stop / preToolUse → queue. **Windows:** install uses `cmd /c … python -u` ([forum](https://forum.cursor.com/t/hooks-not-working-on-windows/149509)). |
+| `alert_cursor_toast` | `true` | Action Center; skips Done only if a hook fired in last ~30s |
+| `alert_cursor_uia` | `true` | Exact UIA `Waiting for approval` — keep ON if Ask/plan silent |
 | `alert_cursor_watch` | `false` | Title busy→idle + taskbar flash (noisy) |
+
+Debug hooks: Cursor **View → Output → Hooks**. Reinstall after pull: `python -m jarvis cursor-hooks install` then reload window.
 
 ```powershell
 cd C:\Users\skps9\Documents\Code_Project\jarvis-pc

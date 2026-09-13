@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -31,9 +32,12 @@ _last_error: str | None = None
 _prefer_subprocess = False
 
 
-def _has_cjk(text: str) -> bool:
+def has_cjk(text: str) -> bool:
     """True if text contains any CJK (Chinese/Japanese/Korean) character."""
     return any("\u4e00" <= ch <= "\u9fff" for ch in text)
+
+
+_has_cjk = has_cjk
 
 
 def last_speak_error() -> str | None:
@@ -112,15 +116,61 @@ def _resample(audio, orig_sr: float, target_sr: float):
     return np.interp(x_new, x_old, audio).astype(np.float32)
 
 
+def interrupt() -> None:
+    """中斷當前 TTS 播放（reply 要蓋過「Yes, Sir.」ack，避免疊聲）。"""
+    try:
+        import sounddevice as sd
+
+        sd.stop()
+    except Exception:
+        pass
+
+
+def _resolve_output_device(dev: int | str | None) -> int | None:
+    """TTS 輸出：int（舊格式）或 str（裝置名）→ 而家可用嘅 index。
+
+    Windows sounddevice 同一 device 多個變體；揀 44.1kHz entry（同 input 版
+    resolve_mic_name 一致，穩定性最好）。
+    """
+    if dev is None:
+        return None
+    if isinstance(dev, str):
+        name = dev.strip()
+        if not name:
+            return None
+        try:
+            import sounddevice as sd
+
+            best: int | None = None
+            for i, d in enumerate(sd.query_devices()):
+                if int(d.get("max_output_channels") or 0) <= 0:
+                    continue
+                if str(d.get("name") or "").strip() != name:
+                    continue
+                sr = float(d.get("default_samplerate") or 0)
+                if abs(sr - 44100.0) < 1.0:
+                    return i  # 44.1k 變體
+                if best is None:
+                    best = i
+            return best
+        except Exception:
+            return None
+    try:
+        return int(dev)
+    except (TypeError, ValueError):
+        return None
+
+
 def _play_once(a16, *, samplerate: float, device: int | None) -> None:
     import sounddevice as sd
 
     sr = float(samplerate)
     play_kw: dict[str, Any] = {"samplerate": sr}
+    device = _resolve_output_device(device)
     if device is not None:
-        play_kw["device"] = int(device)
+        play_kw["device"] = device
         try:
-            info = sd.query_devices(int(device))
+            info = sd.query_devices(device)
             target = float(info.get("default_samplerate") or sr)
             a16 = _resample(a16, sr, target)
             play_kw["samplerate"] = target
@@ -134,6 +184,41 @@ def _play_once(a16, *, samplerate: float, device: int | None) -> None:
     sd.wait()
 
 
+def _play_streaming(voice, syn, text, *, samplerate: float, device: int | None) -> None:
+    """Streaming play：Piper 逐 chunk 合成即播，唔等成句合成完。
+
+    voice.synthesize 係 generator——逐 chunk 出 audio，即合成即寫入 OutputStream，
+    令首音節快啲出聲（唔使等成句 + 整段 join）。
+    """
+    import numpy as np
+    import sounddevice as sd
+
+    sr = float(samplerate)
+    target_sr = sr
+    device = _resolve_output_device(device)
+    if device is not None:
+        try:
+            info = sd.query_devices(device)
+            target_sr = float(info.get("default_samplerate") or sr)
+        except Exception:
+            pass
+    try:
+        sd.stop()
+    except Exception:
+        pass
+    with sd.OutputStream(
+        samplerate=target_sr, channels=1, dtype="float32", device=device
+    ) as stream:
+        for chunk in voice.synthesize(text, syn_config=syn):
+            a16 = (
+                np.frombuffer(chunk.audio_int16_bytes, dtype=np.int16).astype(np.float32)
+                / 32767.0
+            )
+            if target_sr != sr:
+                a16 = _resample(a16, sr, target_sr)
+            stream.write(a16)
+
+
 def _dll_error(msg: str | None) -> bool:
     m = (msg or "").lower()
     return "dll" in m or "onnxruntime" in m
@@ -143,7 +228,17 @@ def _src_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _speak_subprocess(text: str, *, force: bool) -> bool:
+def _tts_python() -> str:
+    """Prefer pythonw so child never allocates a console even if flags fail."""
+    exe = Path(sys.executable)
+    if sys.platform == "win32" and exe.name.lower() == "python.exe":
+        pyw = exe.with_name("pythonw.exe")
+        if pyw.is_file():
+            return str(pyw)
+    return str(exe)
+
+
+def _speak_subprocess(text: str, *, force: bool, guard: str = "strict") -> bool:
     """Play in a fresh interpreter — avoids ORT DLL fights with torch/FunASR."""
     global _last_error
     env = os.environ.copy()
@@ -157,6 +252,7 @@ def _speak_subprocess(text: str, *, force: bool) -> bool:
     code = (
         "from jarvis.mouth import speak, last_speak_error; "
         f"ok=speak(\"{safe}\", blocking=True, force={force_lit}, "
+        f"guard={guard!r}, "
         f"_allow_subprocess=False); "
         "raise SystemExit(0 if ok else 1)"
     )
@@ -165,10 +261,14 @@ def _speak_subprocess(text: str, *, force: bool) -> bool:
         flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
     try:
         proc = subprocess.run(
-            [sys.executable, "-c", code],
+            [_tts_python(), "-c", code],
             env=env,
             capture_output=True,
             text=True,
+            # TTS child may emit GBK on Chinese Windows; decode errors would
+            # kill the reader thread (2026-08-31).
+            encoding="utf-8",
+            errors="replace",
             timeout=60,
             creationflags=flags,
         )
@@ -191,12 +291,16 @@ def speak(
     volume: float | None = None,
     output_device: Any = _USE_SETTINGS_DEVICE,
     force: bool = False,
+    guard: str = "strict",
     _allow_subprocess: bool = True,
 ) -> bool:
     """Synthesize and play *text* with Jarvis voice.
 
     Only ASCII/English text is spoken — CJK is skipped. Speed／volume／speaker
     from Settings unless overridden (settings preview).
+    ``guard="strict"`` = alert fail-closed (``alert_policy.strict_ok`` /
+    ``is_speakable`` — same gate as speaker choke); ``guard="lenient"`` =
+    chat/preview only (never blocks on metric-like text).
     Returns True if playback succeeded.
     """
     global _last_error, _prefer_subprocess
@@ -205,6 +309,13 @@ def speak(
     if not text.strip() or _has_cjk(text):
         _last_error = "empty or CJK text"
         return False
+    from jarvis.alert_policy import guard_for_speech, strict_ok
+
+    if str(guard or "").strip().lower() != "lenient":
+        if not strict_ok(text):
+            _guard_reason = guard_for_speech(text) or "not_speakable"
+            print(f"[mouth] skip speak reason={_guard_reason}", flush=True)
+            return False
     enabled, ls, vol, out_dev = _tts_params()
     if not enabled and not force:
         _last_error = "tts_enabled=false"
@@ -218,9 +329,9 @@ def speak(
 
     if _prefer_subprocess and _allow_subprocess:
         if blocking:
-            return _speak_subprocess(text, force=force)
+            return _speak_subprocess(text, force=force, guard=guard)
         threading.Thread(
-            target=lambda: _speak_subprocess(text, force=force),
+            target=lambda: _speak_subprocess(text, force=force, guard=guard),
             daemon=True,
         ).start()
         return True
@@ -246,6 +357,9 @@ def speak(
                 sr = float(voice.config.sample_rate)
                 try:
                     _play_once(a16, samplerate=sr, device=out_dev)
+                    _last_error = None
+                    # E3: timestamp so self_monitor can compute wake→speech latency
+                    print(f"[mouth] tts_ok {time.strftime('%H:%M:%S')}", flush=True)
                     return True
                 except Exception as exc1:
                     if out_dev is None:
@@ -260,6 +374,7 @@ def speak(
                         )
                         _last_error = note
                         print(f"[mouth] {note}", file=sys.stderr)
+                        print(f"[mouth] tts_ok {time.strftime('%H:%M:%S')}", flush=True)  # metric for self_monitor serve.log
                         return True
                     except Exception as exc2:
                         _last_error = (
@@ -271,7 +386,7 @@ def speak(
                 _last_error = f"{type(exc).__name__}: {exc}"
                 if _allow_subprocess and _dll_error(_last_error):
                     _prefer_subprocess = True
-                    return _speak_subprocess(text, force=force)
+                    return _speak_subprocess(text, force=force, guard=guard)
                 return False
 
     if blocking:

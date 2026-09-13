@@ -37,6 +37,28 @@ def wait_flag_path() -> Path:
     return alerts_dir() / "hook_wait_until.txt"
 
 
+def hook_last_fire_path() -> Path:
+    return alerts_dir() / "hook_last_fire.txt"
+
+
+def mark_hook_fired() -> None:
+    """Record that a Cursor hook actually ran (for toast Done dedupe)."""
+    path = hook_last_fire_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(time.time()), encoding="utf-8")
+
+
+def hook_fired_recently(*, within_s: float = 30.0) -> bool:
+    path = hook_last_fire_path()
+    if not path.is_file():
+        return False
+    try:
+        ts = float(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    return (time.time() - ts) <= float(within_s)
+
+
 def mark_waiting(*, seconds: float = WAIT_SUPPRESS_S) -> None:
     """Suppress stop→finished until *seconds* elapse (approval / plan card)."""
     path = wait_flag_path()
@@ -69,9 +91,14 @@ def clear_waiting() -> None:
 
 
 def _python_for_hook() -> Path:
-    """Prefer pythonw (no console flash when Cursor spawns the hook)."""
+    """Prefer ``pythonw.exe`` — no console window on Windows.
+
+    Cursor already pipes hook JSON via PowerShell ``$input | …``. Old
+    ``cmd /c`` + ``python.exe`` spawned visible CMD/conhost on every tool
+    event (WMI-confirmed 2026-08-12). ``pythonw`` accepts the same stdin pipe.
+    """
     py = Path(sys.executable).resolve()
-    if py.name.lower() == "python.exe":
+    if sys.platform == "win32" and py.name.lower() == "python.exe":
         pyw = py.with_name("pythonw.exe")
         if pyw.is_file():
             return pyw
@@ -79,11 +106,13 @@ def _python_for_hook() -> Path:
 
 
 def hook_command() -> str:
-    """Command string Cursor will spawn for ``stop``."""
+    """Command string Cursor will spawn for hooks.
+
+    Direct quoted exe — **no** ``cmd /c`` (that was the CMD flash).
+    """
     script = hook_script_src()
     py = _python_for_hook()
-    # Quoted paths for spaces; Cursor runs via process spawn on Windows.
-    return f'"{py}" "{script}"'
+    return f'"{py}" -u "{script}"'
 
 
 def _is_ours(entry: object) -> bool:
@@ -128,7 +157,7 @@ def install() -> str:
     data = load_hooks()
     hooks = data.setdefault("hooks", {})
     cmd = hook_command()
-    entry = {"command": cmd, "loop_limit": None}
+    entry = {"command": cmd, "loop_limit": None, "timeout": 15}
 
     for key in ("stop", "preToolUse"):
         items = hooks.get(key)
@@ -146,7 +175,8 @@ def install() -> str:
         f"[ok] Cursor hooks (stop + preToolUse) → {path}\n"
         f"     cmd: {cmd}\n"
         f"     Enable Hooks in Cursor Settings; reload window.\n"
-        f"     Note: AskQuestion may skip hooks (Cursor bug) — UIA wait is fallback."
+        f"     Windows: pythonw (no cmd /c — avoids CMD flash).\n"
+        f"     Debug: View → Output → Hooks. AskQuestion may still skip hooks."
     )
 
 

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S. Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="hud-theme.css">
+<style>
+  body { background: rgba(8, 12, 20, 0.95); }
+  .header .title { font-size: 16px; letter-spacing: 0.28em; }
+  .body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 20px 22px 16px;
+    overflow-y: auto;
+  }
+  .hero {
+    text-align: center;
+    padding: 12px 0 4px;
+  }
+  .hero-brand {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.32em;
+    color: var(--blue);
+    text-shadow: 0 0 18px var(--glow), 0 0 40px rgba(0, 170, 248, 0.25);
+    animation: brandPulse 3.2s ease-in-out infinite;
+  }
+  .hero-sub {
+    margin-top: 8px;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(234, 246, 255, 0.45);
+  }
+  @keyframes brandPulse {
+    0%, 100% { text-shadow: 0 0 14px var(--glow), 0 0 32px rgba(0, 170, 248, 0.2); }
+    50% { text-shadow: 0 0 22px var(--glow), 0 0 48px rgba(0, 170, 248, 0.35); }
+  }
+  .live {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .live-card {
+    padding: 10px 12px;
+    background: rgba(0, 170, 248, 0.04);
+    border: 1px solid rgba(0, 170, 248, 0.2);
+    border-radius: 4px;
+    min-height: 72px;
+  }
+  .live-card .label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--blue-dim);
+    margin-bottom: 6px;
+  }
+  .live-card .value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    color: var(--blue);
+    text-shadow: 0 0 8px var(--glow);
+  }
+  .live-card .meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: rgba(234, 246, 255, 0.65);
+    letter-spacing: 0.04em;
+  }
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    -webkit-app-region: no-drag;
+  }
+  .actions .btn {
+    padding: 12px 14px;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+  }
+  .actions-sys {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    -webkit-app-region: no-drag;
+  }
+  .actions-sys .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    opacity: 0.85;
+  }
+  .status.ready .status-dot { color: #4dff91; text-shadow: 0 0 8px rgba(77, 255, 145, 0.5); }
+  .footer {
+    padding: 8px 14px;
+    border-top: 1px solid rgba(0, 170, 248, 0.2);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: rgba(234, 246, 255, 0.45);
+    text-align: center;
+  }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(0, 170, 248, 0.04);
+    min-height: 120px;
+  }
+  .entry {
+    border-left: 2px solid rgba(234, 246, 255, 0.35);
+    padding: 6px 10px;
+    background: rgba(0, 170, 248, 0.04);
+    position: relative;
+  }
+  .entry.user { border-left-color: var(--blue); }
+  .entry.jarvis { border-left-color: #4dff91; }
+  .entry.err { border-left-color: #ff6b6b; }
+  .entry-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .entry.user .entry-label { color: var(--blue); }
+  .entry.jarvis .entry-label { color: #4dff91; }
+  .entry.err .entry-label { color: #ff6b6b; }
+  .entry.system .entry-label { color: rgba(234, 246, 255, 0.5); }
+  .entry-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--white);
+    word-break: break-word;
+  }
+  .entry-time {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    font-size: 10px;
+    color: rgba(234, 246, 255, 0.4);
+  }
+  .input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(0, 170, 248, 0.2);
+  }
+  #input {
+    flex: 1;
+    background: rgba(0, 170, 248, 0.06);
+    border: 1px solid rgba(0, 170, 248, 0.35);
+    color: var(--white);
+    padding: 8px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+    outline: none;
+  }
+  #input:focus { border-color: var(--blue); box-shadow: 0 0 8px rgba(0, 170, 248, 0.3); }
+</style>
+</head>
+<body>
+<div class="panel">
+  <header class="header">
+    <div class="title">HOME</div>
+    <div class="status ready" id="status"><span class="status-dot">●</span><span id="statusText">就緒</span></div>
+    <button class="btn-close" id="closeBtn" type="button">✕</button>
+  </header>
+  <div class="body">
+    <div class="hero">
+      <div class="hero-brand">J.A.R.V.I.S.</div>
+      <div class="hero-sub">Just A Rather Very Intelligent System</div>
+    </div>
+    <div class="live">
+      <div class="live-card">
+        <div class="label">Weather</div>
+        <div class="value" id="wxTemp">—°</div>
+        <div class="meta" id="wxMeta">—</div>
+      </div>
+      <div class="live-card">
+        <div class="label">Hardware</div>
+        <div class="value" id="hwCpu">CPU —</div>
+        <div class="meta" id="hwMeta">GPU — · RAM —</div>
+      </div>
+      <div class="live-card">
+        <div class="label">Wake</div>
+        <div class="value" id="wakeCount">—</div>
+        <div class="meta">wake_loop_start</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btnCompanion" type="button">Companion</button>
+      <button class="btn" id="btnSettings" type="button">Settings</button>
+      <button class="btn" id="btnHud" type="button">Toggle HUD</button>
+    </div>
+    <div id="log"></div>
+    <div class="input-row">
+      <input type="text" id="input" placeholder="打字指令… (Enter 送出)" autocomplete="off">
+      <button class="btn btn-primary" id="sendBtn" type="button">Send</button>
+    </div>
+    <div class="actions-sys">
+      <button class="btn" id="btnRelaunch" type="button">重新啟動</button>
+      <button class="btn" id="btnQuit" type="button">退出 JARVIS</button>
+    </div>
+  </div>
+  <footer class="footer">Ctrl+Alt+H HUD · Tray double-click = Home · ✕ = hide</footer>
+</div>
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const api = window.homeApi;
+
+  function setStatus(mode, text) {
+    statusEl.className = 'status ' + (mode || 'ready');
+    statusText.textContent = text || '就緒';
+  }
+
+  const btnHud = document.getElementById('btnHud');
+
+  document.getElementById('closeBtn').addEventListener('click', () => {
+    if (api && api.close) api.close();
+  });
+  document.getElementById('btnCompanion').addEventListener('click', () => api && api.openCompanion());
+  document.getElementById('btnSettings').addEventListener('click', () => api && api.openSettings());
+  btnHud.addEventListener('click', () => api && api.toggleHud());
+  document.getElementById('btnRelaunch').addEventListener('click', () => api && api.relaunch());
+  document.getElementById('btnQuit').addEventListener('click', () => api && api.quit());
+
+  if (!api) return;
+
+  api.onWeather((d) => {
+    if (!d) return;
+    document.getElementById('wxTemp').textContent = (d.temp != null ? d.temp : '—') + '°';
+    document.getElementById('wxMeta').textContent = [d.desc, d.city].filter(Boolean).join(' · ') || '—';
+  });
+
+  api.onHw((d) => {
+    if (!d) return;
+    const cpu = d.cpu != null ? Math.round(d.cpu) + '%' : (d.cpu_pct != null ? Math.round(d.cpu_pct) + '%' : '—');
+    const gpu = d.gpu != null ? Math.round(d.gpu) + '%' : (d.gpu_pct != null ? Math.round(d.gpu_pct) + '%' : '—');
+    const ram = d.ram != null ? Math.round(d.ram) + '%' : (d.ram_pct != null ? Math.round(d.ram_pct) + '%' : '—');
+    document.getElementById('hwCpu').textContent = 'CPU ' + cpu;
+    document.getElementById('hwMeta').textContent = 'GPU ' + gpu + ' · RAM ' + ram;
+  });
+
+  api.onStats((d) => {
+    if (!d) return;
+    document.getElementById('wakeCount').textContent = d.wakes != null ? String(d.wakes) : '—';
+  });
+
+  api.onHudVisible((d) => {
+    if (!d) return;
+    btnHud.textContent = d.visible ? 'Hide HUD' : 'Show HUD';
+  });
+
+  api.onStatus((st) => {
+    if (!st) return;
+    // Match companion: voice_status.json uses wake_on / busy / voice_call_mute / stale
+    if (st.stale) setStatus('stale', '離線');
+    else if (st.voice_call_mute) setStatus('mute', st.status || '靜音');
+    else if (st.busy || st.alert_speaking) setStatus('processing', '處理中');
+    else if (st.wake_on) setStatus('listening', st.status || '聆聽中');
+    else {
+      const mode = String(st.mode || st.state || '').toLowerCase();
+      const text = st.text || st.status || st.label || '';
+      if (mode.includes('listen')) setStatus('listening', text || '聆聽中');
+      else if (mode.includes('process') || mode === 'thinking') setStatus('processing', text || '處理中');
+      else if (mode.includes('mute')) setStatus('mute', text || '靜音');
+      else setStatus('ready', text || '就緒');
+    }
+  });
+  const log = document.getElementById('log');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  let lastLine = '';
+
+  function stamp() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  // 對話 feed entry（USER/JARVIS/SYSTEM/err）。同 companion.html appendReply 對應但多咗 kind 分類同時間戳，刻意分開兩邊（獨立 window 唔想加耦合）
+  function appendEntry(label, text, kind) {
+    const entry = document.createElement('div');
+    entry.className = 'entry' + (kind ? ' ' + kind : '');
+    const l = document.createElement('div');
+    l.className = 'entry-label';
+    l.textContent = label;
+    const t = document.createElement('div');
+    t.className = 'entry-text';
+    t.textContent = text;
+    const ts = document.createElement('span');
+    ts.className = 'entry-time';
+    ts.textContent = stamp();
+    entry.appendChild(l);
+    entry.appendChild(t);
+    entry.appendChild(ts);
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+    return entry;
+  }
+
+  function appendJarvis(text) {
+    const t = String(text || '').trim();
+    if (!t || t === lastLine) return;
+    lastLine = t;
+    appendEntry('JARVIS ▸', t, 'jarvis');
+  }
+
+  if (window.homeApi && window.homeApi.onAppend) {
+    window.homeApi.onAppend(appendJarvis);
+  }
+
+  async function send() {
+    const text = (input.value || '').trim();
+    if (!text) return;
+    appendEntry('USER ▸', text, 'user');
+    input.value = '';
+    const loading = appendEntry('SYSTEM ▸', '處理中…', 'system');
+    try {
+      const res = await window.homeApi.sendText(text);
+      if (res && res.ok && Array.isArray(res.lines)) {
+        res.lines.forEach(line => {
+          const m = (line || '').trim();
+          if (!m) return;
+          if (m.startsWith('[caption]')) appendEntry('JARVIS ▸', m.slice(9).trim(), 'jarvis');
+          else if (m.startsWith('[speak]')) appendEntry('JARVIS ▸', m.slice(7).trim(), 'jarvis');
+          else if (m.startsWith('[fail]')) appendEntry('JARVIS ▸', m.slice(6).trim(), 'err');
+          else if (m.startsWith('[route]')) appendEntry('SYSTEM ▸', m, 'system');
+          else if (m.startsWith('[')) appendEntry('SYSTEM ▸', m, 'system');
+          else appendEntry('SYSTEM ▸', m, 'system');
+        });
+      } else {
+        appendEntry('JARVIS ▸', (res && res.error) || '執行失敗', 'err');
+      }
+    } catch (e) {
+      appendEntry('JARVIS ▸', '錯誤：' + e.message, 'err');
+    } finally {
+      loading.remove();
+    }
+  }
+
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+  appendEntry('SYSTEM ▸', 'J.A.R.V.I.S. ONLINE — 打字或講 "hey jarvis"', 'system');
+})();
+</script>
+</body>
+</html>

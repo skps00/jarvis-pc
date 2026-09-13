@@ -1,0 +1,50 @@
+{
+  "name": "jarvis-hud",
+  "version": "0.4.10",
+  "description": "J.A.R.V.I.S. Iron Man HUD overlay for Windows desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.jarvis.one",
+    "productName": "JARVIS ONE",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "companion.html",
+      "companion-preload.js",
+      "home.html",
+      "home-preload.js",
+      "settings.html",
+      "settings-preload.js",
+      "preload.js",
+      "layout_check.js",
+      "hud-theme.css",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/jarvis.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "JARVIS-ONE-${version}.exe"
+    }
+  }
+}

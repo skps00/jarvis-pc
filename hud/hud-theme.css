@@ -1,0 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap');
+
+:root {
+  --blue: #00aaf8;
+  --blue-dim: #2a7fae;
+  --white: #eaf6ff;
+  --glow: rgba(0, 170, 248, 0.55);
+  --bg: rgba(8, 12, 20, 0.92);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: transparent;
+  color: var(--white);
+  font-family: 'Rajdhani', 'Consolas', monospace;
+  overflow: hidden;
+}
+
+/* Panel */
+.panel,
+.hud-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+  border: 1px solid rgba(0, 170, 248, 0.35);
+  box-shadow: 0 0 24px rgba(0, 170, 248, 0.15), inset 0 0 40px rgba(0, 170, 248, 0.04);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 170, 248, 0.25);
+  background: rgba(0, 170, 248, 0.06);
+  -webkit-app-region: drag;
+}
+
+/* Title */
+.title,
+.hud-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--blue);
+  text-shadow: 0 0 10px var(--glow);
+}
+
+/* Status */
+.status,
+.hud-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(234, 246, 255, 0.75);
+  -webkit-app-region: no-drag;
+}
+
+.status-dot {
+  color: var(--blue);
+  text-shadow: 0 0 8px var(--glow);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+.status.processing .status-dot,
+.hud-status.processing .status-dot { color: #ffb300; text-shadow: 0 0 8px rgba(255, 179, 0, 0.6); }
+.status.listening .status-dot,
+.hud-status.listening .status-dot { color: #4dff91; text-shadow: 0 0 8px rgba(77, 255, 145, 0.5); }
+.status.mute .status-dot,
+.hud-status.mute .status-dot { color: #ff4d4d; text-shadow: 0 0 8px rgba(255, 77, 77, 0.55); }
+.status.stale .status-dot,
+.hud-status.stale .status-dot { color: #8a8f98; text-shadow: none; animation: none; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* Labels */
+label,
+.hud-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue-dim);
+}
+
+/* Inputs */
+input[type="text"],
+select,
+.hud-input {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  color: var(--white);
+  background: rgba(0, 170, 248, 0.05);
+  border: 1px solid rgba(0, 170, 248, 0.25);
+  border-radius: 3px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+input[type="text"]:focus,
+select:focus,
+.hud-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 8px rgba(0, 170, 248, 0.2);
+}
+
+select option { background: #0a1018; color: var(--white); }
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue);
+}
+
+input[type="checkbox"],
+.hud-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+/* Readout */
+.readout {
+  font-size: 13px;
+  color: var(--white);
+  padding: 6px 8px;
+  background: rgba(0, 170, 248, 0.05);
+  border: 1px solid rgba(0, 170, 248, 0.2);
+  border-radius: 3px;
+}
+
+/* Buttons */
+.btn,
+.hud-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: rgba(0, 170, 248, 0.08);
+  border: 1px solid rgba(0, 170, 248, 0.35);
+  border-radius: 3px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover,
+.hud-btn:hover { background: rgba(0, 170, 248, 0.18); }
+
+.btn:disabled,
+.hud-btn:disabled { opacity: 0.45; cursor: wait; }
+
+.btn-primary {
+  background: rgba(0, 170, 248, 0.22);
+  border-color: var(--blue);
+}
+
+.btn-close {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--blue);
+  background: transparent;
+  border: 1px solid rgba(0, 170, 248, 0.35);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.btn-close:hover { background: rgba(0, 170, 248, 0.15); }
+
+/* Scrollbar (shared scroll regions) */
+#log,
+.body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 170, 248, 0.4) transparent;
+}
+
+#log::-webkit-scrollbar,
+.body::-webkit-scrollbar { width: 6px; }
+
+#log::-webkit-scrollbar-thumb,
+.body::-webkit-scrollbar-thumb {
+  background: rgba(0, 170, 248, 0.35);
+  border-radius: 3px;
+}

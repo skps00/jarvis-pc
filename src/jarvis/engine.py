@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import json
+import os
+import re
+import sys
+import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from jarvis.asr_fix import repair_asr_text
+from jarvis.asr_repair import repair_asr_text
 from jarvis.brain import (
     answer_query,
     has_clear_open_verb,
@@ -37,6 +43,52 @@ class RunResult:
     lines: list[str] = field(default_factory=list)
 
 
+# 同 stt_stats.parse_repair_pairs 一致：note 嘅第一個 'raw' → 'fixed' pair。
+# E2 (2026-08-31)：寫結構化 repair_log.jsonl 俾 stt_stats 讀（避免 parse serve.log 文字）。
+_RE_REPAIR_PAIR = re.compile(r"'([^']+)'\s*→\s*'([^']+)'")
+
+
+def _maybe_rotate_repair_log(path: Path) -> None:
+    """If repair_log grows past 20000 lines, keep only the last 10000."""
+    try:
+        if not path.is_file():
+            return
+        text = path.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
+        if len(lines) <= 20000:
+            return
+        keep = lines[-10000:]
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text("\n".join(keep) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def _log_repair_event(note: str, repair_log: Path | None = None) -> None:
+    """Append one structured repair event to the Jarvis repair_log.jsonl.
+
+    stt_stats 優先讀呢個檔；serve.log 文字 parse 只做 fallback。單 writer
+    （engine 係唯一 caller），append-only；壞行唔 crash。
+    """
+    m = _RE_REPAIR_PAIR.search(note or "")
+    if not m:
+        return
+    try:
+        path = (
+            repair_log
+            if repair_log is not None
+            else Path(os.environ.get("APPDATA", "")) / "Jarvis" / "repair_log.jsonl"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _maybe_rotate_repair_log(path)
+        row = {"ts": time.time(), "raw": m.group(1), "fixed": m.group(2)}
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"[warn] repair_log write failed: {exc}", file=sys.stderr)
+
+
 def execute_utterance(
     text: str,
     *,
@@ -56,7 +108,9 @@ def execute_utterance(
     if repair_asr:
         utterance, note = repair_asr_text(text, registry)
         if note:
-            lines.append(f"[fix] {note}")
+            lines.append(f"[repair] {note}")
+            print(f"[engine] asr_repair={note}", flush=True)
+            _log_repair_event(note)  # E2: 結構化 repair log（stt_stats 讀呢個）
 
     if not (utterance or "").strip():
         lines.append(
@@ -68,6 +122,17 @@ def execute_utterance(
     lines.append(f"[route] {intent.kind} | {intent.caption}")
 
     hermes_on = bool(load_settings().hermes_enabled)
+
+    if intent.kind == "alert_miss":
+        try:
+            from jarvis.alert_store import format_missed_sentence, read_miss_ledger
+
+            sentence = format_missed_sentence(read_miss_ledger())
+        except Exception:  # noqa: BLE001 — fail-open: 語音迴路永遠唔可以炸
+            sentence = "Sir, the alert ledger is unavailable."
+        lines.append(f"[speak] {sentence}")
+        lines.append(f"[caption] {sentence}")
+        return RunResult(True, lines)
 
     # Phase1: query/unknown → Hermes; skip dual-brain when enabled
     if hermes_on and intent.kind in ("query", "unknown"):
@@ -132,12 +197,33 @@ def _dispatch_hermes(
 ) -> RunResult:
     """query/unknown → Hermes bridge (Hands never called here)."""
     lines.append(f"[hermes] kind={intent.kind}")
+    mage_desc = None
     if image_path:
         lines.append(f"[hermes] image={image_path}")
+        try:
+            from jarvis.settings import load_settings
+            cfg = load_settings()
+            if cfg.mage_enabled:
+                from jarvis.mage_engine import get_mage_engine
+                engine = get_mage_engine()
+                prompt = str(getattr(cfg, "mage_prompt_default", "") or "Describe this image in detail.")
+                t0 = time.time()
+                mage_desc = engine.understand_image(str(image_path), prompt=prompt)
+                elapsed = time.time() - t0
+                lines.append(f"[mage] {mage_desc[:200]}")
+                lines.append(f"[mage] load+infer {elapsed:.1f}s")
+        except Exception as exc:  # noqa: BLE001 — vision must not break the reply path
+            lines.append(f"[mage] 失敗：{exc}")
+
+    # If we got a local description, send text+description to Hermes instead of the raw image
+    effective_image = None if mage_desc else image_path
+    effective_text = utterance
+    if mage_desc:
+        effective_text = f"{utterance}\n\n[image description from JARVIS local vision: {mage_desc}]"
     try:
         reply = hermes_chat(
-            utterance,
-            image_path=image_path,
+            effective_text,
+            image_path=effective_image,
             ask_approve=ask_confirm,
             dry_run=dry_run,
         )

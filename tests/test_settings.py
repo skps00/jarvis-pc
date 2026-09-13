@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
@@ -27,18 +28,29 @@ from jarvis.settings import (
     preset_from_label,
     probe_connection,
     save_settings,
+    save_settings_patch,
     uses_cloud_asr,
 )
 from jarvis.ear import transcribe_mimo, transcribe_openai_audio, transcribe_path
 
 
+@contextmanager
 def _isolated_settings(tmp: Path):
     path = tmp / "settings.json"
-    return mock.patch.multiple(
+    with mock.patch.multiple(
         settings_mod,
         SETTINGS_DIR=tmp,
         SETTINGS_PATH=path,
-    )
+    ):
+        # Invalidate any cached lock path so TemporaryDirectory teardown cannot
+        # leave a dangling .settings.lockdir for later tests in this process.
+        if hasattr(settings_mod, "_PATCH_LOCK"):
+            settings_mod._PATCH_LOCK = None
+        try:
+            yield
+        finally:
+            if hasattr(settings_mod, "_PATCH_LOCK"):
+                settings_mod._PATCH_LOCK = None
 
 
 def test_openai_chat_url():
@@ -329,8 +341,10 @@ def test_tts_settings_clamp_and_defaults():
     a2 = _clamp(Settings(alert_cd_seconds=0.1))
     assert a2.alert_cd_seconds == 0.1
     assert _clamp(Settings(alert_tts="piper")).alert_tts == "piper"
-    bad = _clamp(Settings(tts_output_device="nope"))  # type: ignore[arg-type]
-    assert bad.tts_output_device is None
+    # tts_output_device 支援存名（str = device 名，Windows index 會 reorder）；空 → None
+    named = _clamp(Settings(tts_output_device="耳機 (2- Arctis Nova 7)"))
+    assert named.tts_output_device == "耳機 (2- Arctis Nova 7)"
+    assert _clamp(Settings(tts_output_device="  ")).tts_output_device is None
     f = _clamp(Settings(asr_provider="fun_asr"))
     assert f.asr_provider == ASR_FUN_ASR
     vf = _clamp(Settings(voice_frontend="JARVIS"))
@@ -354,6 +368,19 @@ def test_uses_hermes_voice_frontend():
     )
 
 
+def test_discord_voice_out_default_and_patch():
+    assert Settings().discord_voice_out is True
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        with _isolated_settings(tmp):
+            invalidate_settings_cache()
+            save_settings(Settings())
+            save_settings_patch({"discord_voice_out": False})
+            invalidate_settings_cache()
+            loaded = load_settings(force=True)
+            assert loaded.discord_voice_out is False
+
+
 if __name__ == "__main__":
     for fn in (
         test_openai_chat_url,
@@ -372,6 +399,7 @@ if __name__ == "__main__":
         test_normalize_hotkey_human_and_pynput,
         test_tts_settings_clamp_and_defaults,
         test_uses_hermes_voice_frontend,
+        test_discord_voice_out_default_and_patch,
     ):
         fn()
         print("ok", fn.__name__)
