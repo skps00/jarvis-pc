@@ -278,6 +278,19 @@
 - 📌 **觀察（等 SK 判斷）**：窗口內（09-12 06:00–09-13 05:45）有 **75 個**語音 session 同一條問題「開啟 Chrome 瀏覽器」；每次 JARVIS 都因前景＝遊戲／使用中而只教 SK 自己開、冇代開 → 係唔係要支援「背景代開（唔搶焦點）」？
 
 
+## 現況 sync（2026-09-14 05:45 cron 核實）
+
+> 窗口 = 2026-09-13 06:00 → 09-14 05:45。逐個 session 核對：`20260913_075143_867d97`（09-13 07:51–13:0x：HANDOFF 自動化規則、Chrome 代開 6 種開法實測）、`20260913_131053_a4624cb8`（09-13 13:10 → 09-14 05:14 主 Discord session）、2 個 `jarvis-*` 語音 session（21:56／22:45 garble）、多個 review／subagent session。**JARVIS ONE 本體（sidecar／hud）本窗口零 code 改動**——工作全部喺 packai repo 同 plans docs。
+
+- ✅ **HANDOFF 自動化定案（09-13）**：頂部 STATE 五元素＋逐日 index；新 section 一定加喺 `STATE:END` **之下**；cron `jarvis-session-handoff` 每朝 05:45 跑；只准 `git add .hermes/plans/`（**禁 `-A`**）；`check_handoff_size.py` 做機械檢查。
+- **Git**：jarvis-pc `feature/hermes-alerts-mcp` tree clean、**ahead 28**（vs origin/feature）／**ahead 37**（vs origin/main）未 push；packai `main` **ahead 3**（`f0ac745`／`8d25433`／`9f9baaf`）未 push。PR #12 早前已 merge（`96be515`）。
+- **MC 線（packai）今日進度**：✅ 真機部署 jar sha256 `a4e689de…`（09-13 20:06）＋smoke **4/4**（T0 洩漏／JEI 全 id／Tetra 分流／footer 標籤）；🆕 **答案版面修正 plan v4**（`docs/plans/2026-09-14-packai-reply-layout-plan.md`）＝K1b 卡歸屬／K2 貼位／K3 單件模式（`modularToolSingleItem` 預設 ON）／R1 標題去重收窄／R2 物品名獨立行／R4-b 材料卡／R5 真 output stack 判定；兩輪反方 **R1／R2 都 7:3** → 依契約停手問 SK → SK 揀 a（先做 trace 再定 R5）；**Task S（cursor-agent）05:14 派出、05:30 仍跑緊 → 未 build／未驗**。
+- **Alert 線**：`shadow` 跑緊（8765 `/health` ok、`wake_on:true`、ctypes error 0）；一次性 cron `4695c33b8bdf` **09-15 03:15** 出三情境驗收清單；`enforce` 未做（等樣本＋真機驗收）。
+- **語音線**：ASR＝本地 Fun-ASR-Nano、**HOLD 等新 mic**（同 wake／聲紋／AEC 一齊排）；09-13 晚 2 句粵語 garble（serve.log `[ear] raw=` 實錘 21:56／22:45）＝短句粵語系統性弱，等新 mic 一齊處理。
+- ⚠️ **等 SK**：① push 兩 repo（jarvis-pc 28／packai 3 個 commit）② Task S 驗完後：SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace，才定 R5／開工版面修正 ③ alert `enforce`（09-15 樣本齊）④ AI_Studio Phase 1、架構 A/B/C＝hold。
+
+---
+
 ## 由 HANDOFF 搬入（2026-09-13）
 
 

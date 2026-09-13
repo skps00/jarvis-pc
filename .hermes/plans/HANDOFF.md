@@ -3,24 +3,36 @@
 <!-- STATE:BEGIN -->
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
-- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）DSML 修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-13 14:0x 改寫）**
- - **jarvis-pc**：branch `feature/hermes-alerts-mcp` 已 push（`14b2cc3`，ahead 0）；PR #12 已 merge（`96be515`）；AGENTS.md 加「SK 叫→顯示／JARVIS 主動→`--minimized`」（第 115 行；主契約＋源頭 copy md5 `7230bf0b`）；cron 8 enabled 全 ok；常駐＝sidecar＋alert poll loop
- - **packai T5**：**jar 已 build 並部署**（新 `450c3a76`；舊 `17ebc474` 備份 `dist/_smoke_backups/…bak-20260913_133727`）；`check_jar_contains_fix.py` **OK**；K30–K34 harness **綠**（`AskToolLoopCheck`／`AskReplyScrubCheck` OK）；全量 python **101 檔 / 4 FAIL ＝ baseline 3（worktree 對照證實）＋ `check_ask_display_leak`（等真機 log）**；過時 assert 已修（兩樹 md5 `e18f6747`，**未 commit**）→ **只欠 SK 開 MC 問 15 題**
- - **alert pipeline**：live shadow 跑緊（8765 UP、`alert_policy_mode: shadow`）；一次性 cron `4695c33b8bdf` **09-15 03:15** 出三情境驗收清單
- - **語音**：SK 揀 **③ 本地 Fun-ASR-Nano**（MiMo 已停）；模型 **08-07 已完整下載**、離線載入 15.2s／每 clip 0.6–1.2s（無「似凍」）→ **T2 錄音 HOLD：等 SK 新 mic**（09-13 明示）；計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`
- - **AI_Studio（非 JARVIS）**：Phase 1 **hold**（SK 09-13）；架構 A/B/C ＝ **押後**（SK 要細節先決定）
- - **GPU**：5090 driver T581.42 TDR 已知（SK 決定唔郁）；重服務用完即卸
+- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）答案版面／取得途徑修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
+- **現狀（2026-09-14 05:4x 改寫）**
+ - **jarvis-pc**：tree clean；branch `feature/hermes-alerts-mcp`（未 push：vs origin/feature **ahead 29**、vs origin/main **ahead 38**，未計本 cron 呢個 docs commit）；PR #12 已 merge（`96be515`）；cron 9 個（含 1 一次性）last_status 全 ok；常駐＝sidecar＋alert poll loop；`alert_policy_mode: shadow`（8765 `/health` ok、`wake_on:true`、ctypes error 0）
+ - **packai（MC）**：`main` **ahead 3**（`f0ac745`／`8d25433`／`9f9baaf`，未 push）；真機部署 forge jar sha256 `a4e689de…`（09-13 20:06）；T0 洩漏／JEI 全 id／Tetra 分流／footer 標籤全部**已真機驗**（09-14 02:3x smoke 4/4）
+ - **packai 版面修正（新，plan v4）**：`docs/plans/2026-09-14-packai-reply-layout-plan.md`；兩輪反方 R1／R2 都 **7:3** → 依契約停手問 SK → SK 揀 a；**Task S 05:14 已派（cursor-agent，零行為改動嘅全鏈路審計 trace）→ 05:30 仍跑緊、未 build／未驗、未 commit**；未動任何正式 behaviour 改動
+ - **語音（ASR）**：SK 揀本地 Fun-ASR-Nano（MiMo 已停）；**HOLD＝等新 mic**（同 wake／聲紋／AEC 一齊）；09-13 晚 2 句粵語 garble（21:56／22:45，serve.log `[ear] raw=`）
+ - **AI_Studio（非 JARVIS）**：Phase 1 hold；架構 A/B/C 押後
+ - **GPU**：5090 driver 581.42 TDR 已知（SK 決定唔郁）；重服務用完即卸
 - **唔准郁（硬限制）**
- - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
+ - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`；05:45 實況＝MC 前景 playing）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
- - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`
-- **未解（等 SK 決）**：① **push**：packai 兩個 commit（`8d25433`／`9f9baaf`）已落地未 push，等 SK 一句 ② **JEI 撞名真機未驗**（本 session 冇再問 `golden_age:infinity_wand`；只有 unit-level 證據）③ 架構 fork-vs-light A/B/C（押後）④ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**
-- **下一步（優先序）**：① 問一題 `golden_age:infinity_wand` 驗 JEI 修復（真機）② push（等 SK）③ alert `enforce`（09-15 樣本齊＋三情境驗收）④ FTB plan HOLD／ASR HOLD
+ - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`；packai repo 有未追蹤 `logs/` → **唔准 `git add -A`**
+- **未解（等 SK 決）**：① **push**：jarvis-pc 29／packai 3 個 commit（等一句）② packai 版面修正＝**等 S0 trace 真機數據**才定 R5 判定鏈、才開工 ③ alert `enforce`（一次性 cron `4695c33b8bdf` 09-15 03:15 三情境驗收清單）④ AI_Studio Phase 1（hold）／ASR（HOLD 等新 mic）⑤ Task S 跑完要**我親自驗**（自報唔可信）
+- **下一步（優先序）**：① 收 Task S（poll 背景 process）→ build＋`AskTraceCheck`＋`check_dual_tree_sync`＋逐條核報告 → 出報告 ② SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace → 定 R5 → 開工 K1／K2／K3／R1／R2／R4-b（等 go）③ push（等 SK 一句）④ alert enforce（09-15 樣本齊）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-09-14）
+
+- 09-14 02:2x–02:5x：packai jar `a4e689de` 部署＋真機 smoke 4/4；fix commits `8d25433`／`9f9baaf`（**未 push**）。
+- 09-14 02:41：SK 要求「Tetra/Tinker 類模組化工具每次只答 1 件」→ plan **K3 `modularToolSingleItem`**（預設 ON）。
+- 09-14 02:53：開 plan `docs/plans/2026-09-14-packai-reply-layout-plan.md`（`eadc008`）；SK 三張截圖列為驗收案例。
+- 09-14 02:57／03:08：兩輪反方 review（read-only subagent）**R1 7:3、R2 7:3** → 依契約停手問 SK；hole 全吸收。
+- 09-14 03:03–03:16：plan v2→v3（`75bdf86`／`94b3767`）；SK 提議經 JEI 拎 output → R5 改 `JeiRecipeCards.fromVanillaCrafting`。
+- 09-14 03:46：SK 要「log 齊送出／檢查／模型回覆」→ S0 由 3 個 log 欄升級為**全鏈路審計 trace**（v4，`7ba52a7`）。
+- 09-14 05:13：SK 定 trace 路徑＝`<instance>/packai/trace/`＋`index.jsonl`（似 KubeJS 自成一格）→ `7954e84`。
+- 09-14 05:14：派 **Task S**（cursor-agent）實作 trace（零行為改動）；05:30 實況＝`AskTrace.java`×2＋`AskTraceCheck` 已寫、11 檔改動、報告 0 byte → **未 build／未驗**。
+- 09-14 05:4x（cron 核實）：jarvis-pc tree clean／cron 9 個全 ok／8765 `/health` ok／`shadow` 模式；MC 前景 playing（全程零 GUI 動作）。
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
 
