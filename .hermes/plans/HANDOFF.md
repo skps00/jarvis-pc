@@ -11,6 +11,35 @@
 
 ---
 
+## 2026-09-13 09:1x（Discord session，SK 1A/2A/3C）— Chrome 代開工具上線、PR #12 merged、packai DSML plan v3
+
+### ① JARVIS「代開 app」上線（SK 2026-09-13 明確要求 + AGENTS.md 例外條款已批准寫入）
+- 診斷：唔係 code bug —— HUD `hands.py:_launch_chrome_restore` 一直正常；係 **Hermes 語音線**因為 `sk_activity.json` = `playing` 而拒絕（75 個 session 都係咁）。→ 修「規則 + 工具」，唔改 HUD。
+- 新工具（Hermes 側，agent 可直接用）：
+  - `%LOCALAPPDATA%\hermes\scripts\bg_launch.py` —— no-activate 開 app（`SW_SHOWNOACTIVATE`）；開完自讀 `GetForegroundWindow()` 驗、搶到即用 `AttachThreadInput` 還原；`--monitor` 預設 **secondary**（SK：真要開就開喺第二副螢幕），移窗後**第二次獨立量度**（`GetWindowRect` 中心要落喺目標螢幕）→ `monitor_verified`；`--check` 純讀取（打機中都安全）。exit 0/3/1。
+  - 3 個安全修正（cursor 原稿有洞，我改＋自己驗）：`restore_foreground` 唔再用 `SW_RESTORE`（會將全螢幕遊戲拉出全螢幕）→ 只 `IsIconic` 時 restore；`move_noactivate` un-maximize 改 `SW_SHOWNOACTIVATE`（唔 activate）；冇副螢幕時 `monitor_verified=null`（唔假報 true）。另 ctypes `IsIconic` 要 bind `argtypes`。
+  - `bg_launch_idle_test.py` + cron `jarvis-bglaunch-idle-test`（`*/5 * * * *`，`no_agent`，deliver origin）—— idle ≥120s 且冇 `fullscreen:true` game 才自動試一次（成功即停、失敗最多 3 次）；非 idle **完全零輸出**（已實測：CS2 fullscreen 期間 tick → 空輸出 rc=0）。
+- 規則：`C:\Users\skps9\AGENTS.md` §活動 Gate 加「例外」段（SK 明確要求開 app → no-activate 允許；切換／搶焦點仍要同意；fullscreen 遊戲唔准開窗；開完要實報有無搶焦點）＋源頭 copy `Code_Project\Hermes\AGENTS.md` 同步（md5 一致）。
+- skill `windows-app-launch-focus`：核對過已載入 2026-09-13 refinement（含上述 3 個修正、idle watchdog 模式、75-refusal 教訓、layer 診斷）→ 無需重複寫。
+- **狀態**：未做真機 launch（CS2 全螢幕中被 gate 擋）—— 等自動 idle 測試結果。
+
+### ② Alert pipeline 線收尾（已完成）
+- **PR #12 已 merge 落 main**（**merge commit** `96be515`，唔係 squash —— squash 正是今次 21 檔衝突嘅根源；PR #11（2026-08-10）就係 squash）。merge 前審查：cursor 自報 PARTIAL（冇真跑 diff）→ 我自寫 `audit_main_only.py` 逐檔核（24 檔只有 4 個名要人手判，全部舊版／改名）→ **(c) 真嘢被掉 = NONE**。
+- 新 skill `long-lived-branch-merge`（含可執行 `scripts/audit_main_only.py`；實測對 `ca463a3` 重現 4 名、merge 後回 0）。
+- merge 後：`pytest tests/ -q` **532 passed**、`eval_gate --lock` 一致（53 files）、`--all` 三 suite ok、HASH `3e5e074479192100`；live `voice_status.json` md5 不變（conftest APPDATA 隔離生效，`cfcb2de`）。
+
+### ③ packai：玩家見到「寫畀模型嘅字」——實錘 + plan v3（**未開工**）
+- 實錘（真機 `latest.log` 562/564-605，cp950 逐行解）：第 4 輪 `raw reply chars=604 toolCalls=0 body=<｜DSML｜calls>…`（prompt 叫 call 一個冇提供嘅工具）→ `proseOrFacts` 貼整份 facts → 玩家見到 `[RECIPE_CARDS] …`／`注意：JEI 可能混入同 id…`／`【JEI】…勿宣稱無法合成`／`role=quest …`。
+- plan：`super_minecraft_AI_player\.hermes\plans\2026-09-13_120000-dsml-fact-leak-player-safe.md`（v1→v3；R1 反方 7:3、R2 反方 8:2；R3 有界 flip-check 跑緊）。
+- 已知：`askNativeTools="auto"`；cursor 診斷 log 已 commit `d849da0`；評估報告 `2026-09-13-agent-architecture-fork-vs-light.md`（結論：唔 fork Hermes，走輕量硬化 + sidecar）。
+
+### 下次做咩（優先序）
+1. 等 R3 結果：達 8:2（計劃）→ 按 plan v3 開工（T0 baseline → T1 prompt → T2 顯示層 → T3 覆蓋 → T4 收貨工具 → T5 真機 15 問）。
+2. Chrome idle 測試結果一到 → 若 pass 即正式當 JARVIS 代開工具用；若 fail（focus stolen 還原唔到）→ 修完再試。
+3. 真機驗收（打機／通話／idle）→ alert pipeline 上 `enforce`；shadow 48h 樣本 **09-15 03:06** 齊。
+
+---
+
 ## 2026-09-13 08:3x（同一 Discord session，續）—— **PR #12 已 review 過並 merge 落 main**；新 skill；MC「showing prompts」實錘
 
 **1. PR #12 pre-merge review（SK 指示「review it before merge + 查業界做法 + 最好做成 skill」）**
