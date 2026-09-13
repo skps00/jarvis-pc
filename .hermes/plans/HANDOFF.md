@@ -4,27 +4,34 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）DSML 修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-13 13:2x 改寫；13:2x 複核）**
- - **jarvis-pc**：branch `feature/hermes-alerts-mcp`（**未 push：main 之後 7 個 commit，截至 13:3x**）；PR #12 已 merge（`96be515`）；HANDOFF 重排＋檢查腳本＋cron 修正（停 `git add -A`）＋停用 `jarvis-bglaunch-idle-test` → commits `5823ee2`…`682139f`；cron 8 個 enabled 全 ok；常駐程序＝sidecar＋`hermes_alert_poll_loop.py`（正常），無臨時測試程序
- - **packai DSML**：T1–T4（`db245f5`）＋P1/P2/P5（`e85c4a5`）完成並親驗——真 bytes 偵測 false→true、解析 0→2 call、效能 4134ms→25ms、跨路徑去重 2 次；**T5 真機煙測未做**（要 SK 熄 MC 才 build／換 jar）
- - **alert pipeline**：live shadow 跑緊（sidecar 8765 UP、`alert_policy_mode: shadow`）；未夠 48h → 未可上 `enforce`
- - **語音**：sensevoice 短句粵語 garble（09-11 全日 6 句）→ 三選一（打字／MiMo 雲端／本地 Fun-ASR-Nano）等 SK 揀
- - **AI_Studio（非 JARVIS）**：Phase 0 完成；Phase 1 spike spec staged（等 SK 揀時段）；H3 workflows＋Ref2VA checkpoint 已備
+- **現狀（2026-09-13 14:0x 改寫）**
+ - **jarvis-pc**：branch `feature/hermes-alerts-mcp` 已 push（`14b2cc3`，ahead 0）；PR #12 已 merge（`96be515`）；AGENTS.md 加「SK 叫→顯示／JARVIS 主動→`--minimized`」（第 115 行；主契約＋源頭 copy md5 `7230bf0b`）；cron 8 enabled 全 ok；常駐＝sidecar＋alert poll loop
+ - **packai T5**：**jar 已 build 並部署**（新 `450c3a76`；舊 `17ebc474` 備份 `dist/_smoke_backups/…bak-20260913_133727`）；`check_jar_contains_fix.py` **OK**；K30–K34 harness **綠**（`AskToolLoopCheck`／`AskReplyScrubCheck` OK）；全量 python **101 檔 / 4 FAIL ＝ baseline 3（worktree 對照證實）＋ `check_ask_display_leak`（等真機 log）**；過時 assert 已修（兩樹 md5 `e18f6747`，**未 commit**）→ **只欠 SK 開 MC 問 15 題**
+ - **alert pipeline**：live shadow 跑緊（8765 UP、`alert_policy_mode: shadow`）；一次性 cron `4695c33b8bdf` **09-15 03:15** 出三情境驗收清單
+ - **語音**：SK 揀 **③ 本地 Fun-ASR-Nano**（MiMo 已停）；計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（`ear.py` 早有 `transcribe_fun_asr`，08-07 只卡首次下載）→ 等 SK 批 T1 預下載＋T2 錄 5 句 A/B
+ - **AI_Studio（非 JARVIS）**：Phase 1 **hold**（SK 09-13）；架構 A/B/C ＝ **押後**（SK 要細節先決定）
  - **GPU**：5090 driver T581.42 TDR 已知（SK 決定唔郁）；重服務用完即卸
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
  - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`
-- **未解（等 SK 決）**：① 語音 ASR 三選一 ② T5 時段 ③ 架構 fork-vs-light A/B/C ④ AI_Studio Phase 1 時段
-- **下一步（優先序）**：T5 真機煙測（build→備份 jar→部署→真 log 檢查）→ 用數據決定 P3（hop-limit 出口仍漏）→ alert `enforce` 前真機驗收 → AI_Studio Phase 1
+- **未解（等 SK 決）**：① T5 真機 15 題（幾時開 MC）② ASR T1 預下載批唔批＋T2 錄 5 句 ③ packai 過時 assert fix（兩樹）要唔要 commit ④ 架構 fork-vs-light A/B/C（押後）⑤ AI_Studio Phase 1（hold）
+- **下一步（優先序）**：T5 真機 15 題（jar 已部署就緒）→ ASR T1／T2 → 用 T5 數據決定 P3（hop-limit 出口仍漏）→ alert `enforce`（09-15 樣本齊＋三情境驗收）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
 
-- 2026-09-13 13:2x（新 session，零新工作）handoff 複核：STATE 修 ahead 5→7（截至 13:3x）＋程序描述；cron 8 ok／sidecar 8765 up／shadow ledger 新鮮／兩 repo tree clean 全部核對一致（commit 見下）
+- 2026-09-13 13:3x–14:0x（Discord session，SK 逐項拍板）：T5 **jar 已 build＋部署**（`gradlew jar` 16s；新 `450c3a76`＝build/libs＝instance mods＝dist 三邊一致；舊 `17ebc474` 備份 `dist/_smoke_backups/packai-0.2.1+mc1.19.2-forge.jar.bak-20260913_133727`）
+- 2026-09-13 14:0x：`check_jar_contains_fix.py` **OK**（T2 fail-closed symbols＋lang keys）＋K30–K34 harness **綠**（`AskToolLoopCheck`／`AskReplyScrubCheck OK`）
+- 2026-09-13 14:0x：修 **pre-existing 過時 assert**（`"output"`→`"OUTPUT"`；兩樹 md5 `e18f6747`；baseline worktree `7317763` 證實執之前已壞）＋ cursor read-only 一致性分析 **VERDICT SHIP／零 FINDING**（**未 commit**，等 SK）
+- 2026-09-13 14:0x：全量 python checks **101 檔 / 4 FAIL**＝baseline 3（worktree 對照證實）＋`check_ask_display_leak.py`（等真機 log）
+- 2026-09-13 13:4x：`AGENTS.md` 加新條款（第 115 行）「**SK 叫→顯示；JARVIS 主動→`bg_launch.py --minimized`**」；主契約＋源頭 copy md5 `7230bf0b`；備份 `.bak-20260913-133850`
+- 2026-09-13 13:4x：**兩 repo 已 push**（jarvis-pc `14b2cc3`／packai `4886346`，ahead=0）；一次性 cron `4695c33b8bdf`（09-15 03:15 alert enforce 驗收清單）
+- 2026-09-13 13:4x：SK 定「**滑鼠有動＝打機**」（已入 memory；alert gaming 判定用）
+- 2026-09-13 14:0x：ASR 計劃 staged `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（發現 `ear.py` 早有 `transcribe_fun_asr`；08-07 只卡首次下載，準確度從未驗）→ 等 SK 批 T1／T2
 
 ## 2026-09-13 12:4x — 契約規則 ×2、Chrome 零搶焦點實測、packai DSML 修復（P1/P2/P5）
 
