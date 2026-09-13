@@ -8,7 +8,7 @@
  - **jarvis-pc**：branch `feature/hermes-alerts-mcp` 已 push（`14b2cc3`，ahead 0）；PR #12 已 merge（`96be515`）；AGENTS.md 加「SK 叫→顯示／JARVIS 主動→`--minimized`」（第 115 行；主契約＋源頭 copy md5 `7230bf0b`）；cron 8 enabled 全 ok；常駐＝sidecar＋alert poll loop
  - **packai T5**：**jar 已 build 並部署**（新 `450c3a76`；舊 `17ebc474` 備份 `dist/_smoke_backups/…bak-20260913_133727`）；`check_jar_contains_fix.py` **OK**；K30–K34 harness **綠**（`AskToolLoopCheck`／`AskReplyScrubCheck` OK）；全量 python **101 檔 / 4 FAIL ＝ baseline 3（worktree 對照證實）＋ `check_ask_display_leak`（等真機 log）**；過時 assert 已修（兩樹 md5 `e18f6747`，**未 commit**）→ **只欠 SK 開 MC 問 15 題**
  - **alert pipeline**：live shadow 跑緊（8765 UP、`alert_policy_mode: shadow`）；一次性 cron `4695c33b8bdf` **09-15 03:15** 出三情境驗收清單
- - **語音**：SK 揀 **③ 本地 Fun-ASR-Nano**（MiMo 已停）；計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（`ear.py` 早有 `transcribe_fun_asr`，08-07 只卡首次下載）→ 等 SK 批 T1 預下載＋T2 錄 5 句 A/B
+ - **語音**：SK 揀 **③ 本地 Fun-ASR-Nano**（MiMo 已停）；模型 **08-07 已完整下載**、離線載入 15.2s／每 clip 0.6–1.2s（無「似凍」）→ **T2 錄音 HOLD：等 SK 新 mic**（09-13 明示）；計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`
  - **AI_Studio（非 JARVIS）**：Phase 1 **hold**（SK 09-13）；架構 A/B/C ＝ **押後**（SK 要細節先決定）
  - **GPU**：5090 driver T581.42 TDR 已知（SK 決定唔郁）；重服務用完即卸
 - **唔准郁（硬限制）**
@@ -16,7 +16,7 @@
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
  - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`
-- **未解（等 SK 決）**：① T5 真機 15 題（幾時開 MC）② ASR T1 預下載批唔批＋T2 錄 5 句 ③ packai 過時 assert fix（兩樹）要唔要 commit ④ 架構 fork-vs-light A/B/C（押後）⑤ AI_Studio Phase 1（hold）
+- **未解（等 SK 決）**：① **T5 真機 15 題**（MC 已載新 jar，等 SK 問完）② 架構 fork-vs-light A/B/C（押後）③ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**（09-13 明示）；packai assert fix 已 commit `f0ac745`
 - **下一步（優先序）**：T5 真機 15 題（jar 已部署就緒）→ ASR T1／T2 → 用 T5 數據決定 P3（hop-limit 出口仍漏）→ alert `enforce`（09-15 樣本齊＋三情境驗收）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
@@ -32,7 +32,8 @@
 - 2026-09-13 13:4x：**兩 repo 已 push**（jarvis-pc `14b2cc3`／packai `4886346`，ahead=0）；一次性 cron `4695c33b8bdf`（09-15 03:15 alert enforce 驗收清單）
 - 2026-09-13 13:4x：SK 定「**滑鼠有動＝打機**」（已入 memory；alert gaming 判定用）
 - 2026-09-13 14:0x：ASR 計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（`ear.py` 早有 `transcribe_fun_asr`）；**Fun-ASR-Nano 08-07 已完整下載**（ModelScope 2.0GB）→ T1 取消
-- 2026-09-13 14:1x：ASR 離線實測（CPU）：載入 **15.2s**、每 2s clip **0.6–1.2s**（無 08-07「似凍」）；A/B 用 5 條 wake 碎片兩邊都垃圾 → **唔可判高低，要真指令句（T2）**
+- 2026-09-13 14:1x：ASR 離線實測（CPU）：載入 **15.2s**、每 2s clip **0.6–1.2s**（無 08-07「似凍」）；A/B 用 5 條 wake 碎片兩邊都垃圾 → 唔可判高低
+- 2026-09-13 14:2x：**ASR T2 錄音 HOLD**（SK 明示：等新 mic 先做，同 wake／聲紋／AEC 一齊排）；packai test fix 已 commit `f0ac745`（未 push）
 
 ## 2026-09-13 12:4x — 契約規則 ×2、Chrome 零搶焦點實測、packai DSML 修復（P1/P2/P5）
 

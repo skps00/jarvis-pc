@@ -102,7 +102,11 @@
 **判讀（老實講）**：兩邊都出垃圾，**唔可以由此判高低** —— 呢 5 條係 wake 練習用嘅 2 秒碎片（好可能係「hey jarvis」被 VAD 截到尾音），唔係完整指令；兩個 model 都聽到類似「…travis/dramas（≈ jarvis）」嘅音，即係**音素對得上、但專名唔識**（正常，訓練集冇 SK 個名）→ 正式 pipeline 有 `_hotword_string()` 補 hotwords（CS2／Cursor／Jarvis 等）。
 **結論：要判短句粵語準確度，必須用真指令句（T2）。**
 
-### 8.4 T2 待做
-- SK 講 5 句短粵語指令（例：「開 Chrome」／「而家幾點」／「Minecraft 有咩新」），同一批 wav 過兩個 model 對比。
-- 錄音方式：由 Hermes 開錄音 script（`jarvis.ear.record_wav`）→ SK 照講；或等 SK 下次正常用語音時自動存 wav。
+### 8.4 T2 —— ⏸ **HOLD（SK 2026-09-13 明示）**
+> SK：「hold it, we wait for new mic like I said before」
+
+- **唔錄住**，等 SK 買新 mic 之後才做 T2（同 wake／聲紋／AEC 實測一齊排）。
+- 理由：mic 未換之前錄嘅樣本冇代表性（現役 Arctis 週期性 rms=0.000／休眠），換 mic 後要重錄。
+- 換 mic 之後嘅做法（照舊）：SK 講 5 句短粵語指令（例：「開 Chrome」／「而家幾點」）→ 同一批 wav 過 SenseVoice vs Fun-ASR-Nano → 達標才開 `asr_provider`。
+- **今次已完成而唔會白費嘅部分**：T1（模型已存在）、離線載入／速度實測（§8.2）—— 換 mic 後可直接跳去 T2。
 
