@@ -4,8 +4,8 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）DSML 修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-13 13:2x 改寫）**
- - **jarvis-pc**：branch `feature/hermes-alerts-mcp`（**ahead 5 未 push**）；PR #12 已 merge（`96be515`）；HANDOFF 重排＋檢查腳本＋cron 修正（停 `git add -A`）＋停用 `jarvis-bglaunch-idle-test` → commits `5823ee2`…`766788b`；cron 8 個 enabled 全 ok、無背景程序
+- **現狀（2026-09-13 13:2x 改寫；13:2x 複核）**
+ - **jarvis-pc**：branch `feature/hermes-alerts-mcp`（**未 push：main 之後 7 個 commit，截至 13:3x**）；PR #12 已 merge（`96be515`）；HANDOFF 重排＋檢查腳本＋cron 修正（停 `git add -A`）＋停用 `jarvis-bglaunch-idle-test` → commits `5823ee2`…`682139f`；cron 8 個 enabled 全 ok；常駐程序＝sidecar＋`hermes_alert_poll_loop.py`（正常），無臨時測試程序
  - **packai DSML**：T1–T4（`db245f5`）＋P1/P2/P5（`e85c4a5`）完成並親驗——真 bytes 偵測 false→true、解析 0→2 call、效能 4134ms→25ms、跨路徑去重 2 次；**T5 真機煙測未做**（要 SK 熄 MC 才 build／換 jar）
  - **alert pipeline**：live shadow 跑緊（sidecar 8765 UP、`alert_policy_mode: shadow`）；未夠 48h → 未可上 `enforce`
  - **語音**：sensevoice 短句粵語 garble（09-11 全日 6 句）→ 三選一（打字／MiMo 雲端／本地 Fun-ASR-Nano）等 SK 揀
@@ -23,6 +23,8 @@
 <!-- STATE:END -->
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
+
+- 2026-09-13 13:2x（新 session，零新工作）handoff 複核：STATE 修 ahead 5→7（截至 13:3x）＋程序描述；cron 8 ok／sidecar 8765 up／shadow ledger 新鮮／兩 repo tree clean 全部核對一致（commit 見下）
 
 ## 2026-09-13 12:4x — 契約規則 ×2、Chrome 零搶焦點實測、packai DSML 修復（P1/P2/P5）
 
