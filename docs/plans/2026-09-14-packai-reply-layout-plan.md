@@ -1,6 +1,6 @@
 # Plan v2 — packai 答案版面修正（模組化工具卡片歸屬／標題去重／物品名行位）
 
-- 建立：2026-09-14（Discord session）；v2：2026-09-14 加入 SK 決定（R4-b）＋新需求（R5 直接合成）＋反方 review R1（7:3, PLAN-FIX）全部 must-do
+- 建立：2026-09-14（Discord session）；v2：加入 SK 決定（R4-b）＋新需求（R5 直接合成）＋反方 review（7:3, PLAN-FIX）全部 must-do；v3：R5 改用現成 primitive（`RecipeCard.outputs()` ＋ `JeiFocusMatch.craftingResultMatches`，SK 提議「經 JEI 拎 recipe 睇 output」）
 - 狀態：**PLAN（等 SK go 才實作）**。Task K（舊版本）已**停**、未寫任何檔（repo clean），因為其 K1 規則同 R5 衝突，需用本 v2 規格重派
 - Repo：`super_minecraft_AI_player`（雙樹 `forge/1.19.2` ＋ `neoforge/1.21.1`）
 - ⚠️ 部分檔兩樹有 MC API shim（`Registry`→`BuiltInRegistries`、`Forge`→`NeoForge`）→ **行號有偏差**（例：`ModularToolScan.purposeLines` forge:33 / neo:36；`PackAiConfig.setShowHiddenQuests` forge:548 / neo:560）；唔可以純靠行號同步，要逐字檢查
@@ -32,11 +32,18 @@ Log 原文路徑：`…\instances\AI_test_NFWC_DIM\minecraft\logs\latest.log`（
 每張卡計出「歸屬物品」= 卡輸出 id（quest 卡＝獎勵物 id；`RecipeCard.promptRole()=="quest"`）。
 1. 卡歸屬 == **焦點** → 只可以放焦點**自己嘅取得（怎么来）段**；**唔准**貼任何材料步驟行。
 2. 卡歸屬 == 正文提到嘅**材料** → 貼該材料行（見 R4-b）。
-3. **空框架判定**（要唔要出焦點自己嘅 output 卡）：
-   - 用配方輸出 stack 嘅 **NBT／名**：有非空 NBT 或名 → **真·直接合成** → 保留；
-   - 輸入包含組成段提到嘅零件材料（≥1）→ 視為真合成 → 保留；
-   - NBT 空＋無名＋輸入只係基礎框架材料（如石切器＋木棍）→ **空白框架** → 唔出（rule 23 精神）；
-   - ⚠️ **實作前必先驗**：`RecipeCard` 現時只有 `primaryOutputId()`（`RecipeCard.java:434-445`），未見 NBT／名欄位 → 若拎唔到輸出 stack／NBT，就要**退回「輸入相關性」判定**，並喺報告寫明能力上限。
+3. **空框架判定＝用「真 output ItemStack」（SK 提議：經 JEI 拎 recipe → 睇 output）**：
+   - ✅ **codebase 已經有現成 primitive，唔使由零做**：
+     - `RecipeCard.outputs()` 已帶真 `ItemStack`（`logic/RenderRecipeCardsAskTool.java:399-400`：`ItemStack o = c.outputs().get(0)`）
+     - `JeiFocusMatch.craftingResultMatches(Object recipe, ItemStack focus)`（`client/jei/JeiFocusMatch.java:231-245`）已經用 `ItemStack.isSameItemSameTags(out, focus)`（**NBT-aware**）＋名比對
+     - recipe 物件可由 JEI 側拎（`IRecipeCategory.getRecipes()`；id ↔ category 見 `JeiCategoryCatalog.java:122`／`:145-150`）
+   - 判定（由強到弱）：
+     1. `outputs().get(0)` **帶 NBT 或非通用名** → **真·直接合成**（例如 pack 用 KubeJS／datapack 直接出「砌好嘅」工具）→ 保留
+     2. `craftingResultMatches(recipe, heldTool)` == true（`isSameItemSameTags`）→ 真配得上手上呢把 → 保留
+     3. 輸出係**裸 registry 物品**（無 NBT、無名、輸出==焦點 id）＋焦點有 NBT 零件 → **空白框架** → 唔出
+     4. 輸入包含組成段提到嘅零件材料（≥1）→ 當真合成 → 保留
+   - **唔經 JEI 嘅替代**：vanilla `RecipeManager.byKey(id)`（datapack／KubeJS 合成表）；非 vanilla（Create／任務獎勵／FTB）要用 JEI 側 API 或 packai 自己 index → 建議「卡有 ItemStack 就用，唔夠才 by id resolve」
+   - 能力上限要寫落報告：若某 category 拎唔到 output stack（例如 Create 動力合成）→ 只能用類別／名稱做保守判定
 4. **任務獎勵卡**（`promptRole()=="quest"`）＝真取得途徑 → **保留**，只放焦點取得段。
 5. 覆蓋 fallback 通道：`autoEmitCatalogCards`（`AskService.java:1239-1325`，由 `:296-302`／`:2063-2067` 叫）。
 6. **負面測試**：普通物品（非模組化）問「怎么来」→ 自有 output 卡**必須保留**。
