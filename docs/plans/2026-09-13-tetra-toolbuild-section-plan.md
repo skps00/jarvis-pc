@@ -140,4 +140,6 @@
 | R1 | 正方 | 7:3（計劃贏） | 五條 LD 站得住；扣分在量度設計 | 同上 |
 | R2 | 反方 | **4:6（計劃輸）** | v2 T1b 撞 mirror exact assert＋Java↔mirror 無 cross-check（假綠）；T2a 三處硬傷（cp950 strict 失敗／字面 `\n`／簡體 heading）＋段界假陽性；統計 15/≤1 假過 54.9%；§0 又錯（實為 4 FAIL，含新 `role=` 真洩漏）；LD6 未 scope rule 12；SoT 漂移 | → **v3**（本份）：取消 T1b、harness 修正、門檻 0/29、§0 更正、T0 新增、LD6 補 rule 12、SoT 必做、實驗次序 LD10 |
 | R2 | 正方 | 8:2（計劃贏）**⚠️ 報告被 iteration cap 截斷** | 三條關鍵修正有真機／靜態證據；T2a 原型即跑出 3/15 錯位；扣分在結構成因（`AskEngine:516-518`）同量測規格 | 同上（其 `AskEngine` 發現已納入 v3 §1 根因鏈） |
-| R3 | 待跑 | — | — | — |
+| R3 | 反方 | **6:4（計劃／反方）** | T1 段界會切走尾句；有效 n 遠低於 29；V0 未覆蓋 `PURPOSE`（假綠） | 未改（觸及上限，依規則停手） |
+| R3 | 正方 | 7:3（計劃／正方） | 同上（V0／G2、T2 SoT 方向） | — |
+| **SK 決策** | — | — | 2026-09-13：揀 **a（結構性分流）**＋順手改措辭；唔採 prompt-only（要 ~29 獨立樣本） | **實作開始**：cursor Task A = 將 `[TOOL_BUILD]` 由 `AskService.purposeTooltipFor`（`:449-452` prepend）抽走，改掛 `AskEngine`（`:508-518`）嘅 `sectionHowToGet` 之下；兩樹同步；唔郁 ALLOWLIST／`[TETRA_USE]`／測試斷言 |
