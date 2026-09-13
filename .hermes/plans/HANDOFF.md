@@ -31,7 +31,8 @@
 - 2026-09-13 13:4x：`AGENTS.md` 加新條款（第 115 行）「**SK 叫→顯示；JARVIS 主動→`bg_launch.py --minimized`**」；主契約＋源頭 copy md5 `7230bf0b`；備份 `.bak-20260913-133850`
 - 2026-09-13 13:4x：**兩 repo 已 push**（jarvis-pc `14b2cc3`／packai `4886346`，ahead=0）；一次性 cron `4695c33b8bdf`（09-15 03:15 alert enforce 驗收清單）
 - 2026-09-13 13:4x：SK 定「**滑鼠有動＝打機**」（已入 memory；alert gaming 判定用）
-- 2026-09-13 14:0x：ASR 計劃 staged `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（發現 `ear.py` 早有 `transcribe_fun_asr`；08-07 只卡首次下載，準確度從未驗）→ 等 SK 批 T1／T2
+- 2026-09-13 14:0x：ASR 計劃 `docs/plans/2026-09-13-asr-fun-asr-nano-plan.md`（`ear.py` 早有 `transcribe_fun_asr`）；**Fun-ASR-Nano 08-07 已完整下載**（ModelScope 2.0GB）→ T1 取消
+- 2026-09-13 14:1x：ASR 離線實測（CPU）：載入 **15.2s**、每 2s clip **0.6–1.2s**（無 08-07「似凍」）；A/B 用 5 條 wake 碎片兩邊都垃圾 → **唔可判高低，要真指令句（T2）**
 
 ## 2026-09-13 12:4x — 契約規則 ×2、Chrome 零搶焦點實測、packai DSML 修復（P1/P2/P5）
 

@@ -72,5 +72,37 @@
 - 若 T2 顯示「GPU ＋ funasr」路線唔掂（例如 VRAM 或載入時間問題）→ 轉 GGUF 路線。
 
 ## 7. 待 SK 決定
-1. **T1 可即做？**（純下載，唔改 live 行為）
+1. **T1 可即做？**（純下載，唔改 live 行為）→ ✅ **唔使做：模型早於 2026-08-07 已完整下載**
 2. **T2 時段**：需要 SK 講 5 句短粵語（1 分鐘內完成）
+
+---
+
+## 8. 實測記錄（2026-09-13 14:0x，真跑）
+
+### 8.1 T1 改為「已存在」— 證據
+- `~/.cache/modelscope/models/FunAudioLLM--Fun-ASR-Nano-2512/snapshots/master/`：`model.pt` **2,127,426,538 bytes**（08-07 23:26）、`config.yaml`、`configuration.json`、`Qwen3-0.6B/`（tokenizer 全套）、`multilingual.tiktoken`；**冇** `.incomplete`／`.part` 殘留 → 完整。
+- 注意：`~/.cache/modelscope/hub/models` 係另一個 layout（只有 piper）→ 之前「冇下載」嘅判斷係睇錯路徑。**唔使再下載，撤回 §3 T1 嘅 3GB 下載步驟。**
+
+### 8.2 離線載入＋推理（CPU、4 threads、唔用 GPU）
+| 項 | 實測 |
+|---|---|
+| Fun-ASR-Nano 載入（CPU） | **15.2s**（ckpt `All keys matched successfully`）→ **冇再現 08-07「似凍住」**（當時係下載卡住，唔係模型問題） |
+| 每條 2 秒音檔推理 | Fun-ASR **0.60–1.17s**（rtf 0.19–0.59）；SenseVoice 0.14–0.39s |
+| 記憶體 | 全程無 crash（CPU 模式） |
+
+### 8.3 A/B 結果（現成 wake 練習樣本 5 條，2.0s each）
+| clip | SenseVoice | Fun-ASR-Nano |
+|---|---|---|
+| 0001 | `proph .` | `dramas` |
+| 0002 | `dvis .` | `DRIVERS` |
+| 0003 | `dras .` | `dramas` |
+| 0004 | `travis .` | `dramas` |
+| 0005 | `ds .` | `DROVE US` |
+
+**判讀（老實講）**：兩邊都出垃圾，**唔可以由此判高低** —— 呢 5 條係 wake 練習用嘅 2 秒碎片（好可能係「hey jarvis」被 VAD 截到尾音），唔係完整指令；兩個 model 都聽到類似「…travis/dramas（≈ jarvis）」嘅音，即係**音素對得上、但專名唔識**（正常，訓練集冇 SK 個名）→ 正式 pipeline 有 `_hotword_string()` 補 hotwords（CS2／Cursor／Jarvis 等）。
+**結論：要判短句粵語準確度，必須用真指令句（T2）。**
+
+### 8.4 T2 待做
+- SK 講 5 句短粵語指令（例：「開 Chrome」／「而家幾點」／「Minecraft 有咩新」），同一批 wav 過兩個 model 對比。
+- 錄音方式：由 Hermes 開錄音 script（`jarvis.ear.record_wav`）→ SK 照講；或等 SK 下次正常用語音時自動存 wav。
+
