@@ -68,7 +68,7 @@
 | **LD8** | 唔做玩家進度 | 保留 |
 | **LD9** | fixture 只可入 ≤3 任務樣本＋來源註明（pack 內容，唔可以整條線入 git） | 保留 |
 | **LD10** | **描述內容衛生**：剔走色碼、`{image:}`／`hover`／`click` UI 雜訊、**贊助／宣傳連結**；保留可讀文本 | **新增**（R1 反方 F10） |
-| **LD11** | **設定**：新 `questLineScope`（off／excerpt／full，預設 `excerpt`）＋沿用 `showHiddenQuests` 防劇透；GUI 加落現有 **Quests tab** | **新增**（待 SK 確認設計） |
+| **LD11** | **設定**：新 `questLineScope`（off／excerpt／full，預設 `excerpt`）＋沿用 `showHiddenQuests` 防劇透；GUI 加落現有 **Quests tab** | **✅ SK 2026-09-13 批准（B=a）** |
 | **LD12** | **機制並用**：答「用嗰陣會點」時，任務線描述同 `graphFacts`／KubeJS／tooltip／`[CONSUME_USE]`／`[TETRA_USE]`／`[SCROLL_*]` 一齊做證據，衝突時以遊戲事實（JEI／腳本／tooltip）優先 | **新增**（依 SK scope 補充） |
 
 ## 4. 執行內容（草案）
@@ -104,7 +104,7 @@
 ## 7. 待 SK 決定
 
 1. ✅ **cache 位置**：`%APPDATA%`（已答 a）
-2. ⏳ **設定設計**：a) 新 `questLineScope`（off／excerpt／full，預設 excerpt）＋沿用 `showHiddenQuests`（我建議）／b) 只加 on-off／c) 唔加設定
+2. ✅ **設定設計**：新 `questLineScope`（off／excerpt／full，預設 excerpt）＋沿用 `showHiddenQuests`（SK 2026-09-13 選 a）
 3. ⏳（原劇透問題已由 LD10＋LD11 覆蓋，等 SK 確認設定設計即可）
 
 ## 8. Review record
