@@ -16,8 +16,8 @@
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
  - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`
-- **未解（等 SK 決）**：① **T5 真機題目**：已問 20 題、T0 洩漏確認修好；**Tetra 結構分流未 smoke**（jar `ee34bbe6` 等 MC 熄自動部署，要問單件＋多選 Tetra 題）② **packai 改動未 commit**（13 檔×2 樹＋4 測試檔）等 SK 指示② 架構 fork-vs-light A/B/C（押後）③ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**（09-13 明示）；packai assert fix 已 commit `f0ac745`
-- **下一步（優先序）**：T5 真機 15 題（jar 已部署就緒）→ ASR T1／T2 → 用 T5 數據決定 P3（hop-limit 出口仍漏）→ alert `enforce`（09-15 樣本齊＋三情境驗收）
+- **未解（等 SK 決）**：① **push**：packai 兩個 commit（`8d25433`／`9f9baaf`）已落地未 push，等 SK 一句 ② **JEI 撞名真機未驗**（本 session 冇再問 `golden_age:infinity_wand`；只有 unit-level 證據）③ 架構 fork-vs-light A/B/C（押後）④ AI_Studio Phase 1（hold）；ASR＝**HOLD 等新 mic**
+- **下一步（優先序）**：① 問一題 `golden_age:infinity_wand` 驗 JEI 修復（真機）② push（等 SK）③ alert `enforce`（09-15 樣本齊＋三情境驗收）④ FTB plan HOLD／ASR HOLD
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
@@ -27,7 +27,10 @@
 - 2026-09-13 16:0x：T5 #2 輪 20 題 → `check_ask_display_leak` rc=0（4 條新答案零 `role=`／零 `PURPOSE`）＝T0 修復真機確認。
 - 2026-09-13 16:2x：JEI 張冠李戴修好 — 根因 `JeiInfoFacts.sameItem():413` 只比 path 唔比 namespace；改全 id＋新 `shouldAttachForFocus`；Java check＋雙樹 md5＋4 條 python 全過。
 - 2026-09-13 16:3x：Tetra 結構分流（`[TOOL_BUILD]` → 「怎麼來」）＋兩輪 review 修復；99 PASS／3 既有 stale FAIL、兩個 Java harness OK、build OK、雙樹對稱 OK。
-- 2026-09-13 16:5x：packai 全部改動（13 檔×2 樹＋4 測試檔）**未 commit**，等 SK；部署武裝＝MC 熄自動上 `ee34bbe6`。
+- 2026-09-13 19:0x–20:0x：review 三輪（R1/R2/R3 全部 FIX-FIRST）→ 修 D1–J：多選組成／offline 三出口／措辭／token 統一／`role=` 廣義／footer 結構性渲染。
+- 2026-09-14 02:2x：部署 `a4e689de`（MC 熄自動；舊 `551136fb` 備份落 `dist/_smoke_backups/`）；jar 開檔驗新 symbols＋3 語言 label keys 齊。
+- 2026-09-14 02:3x：**真機 smoke 4/4 過**：組成喺「怎麼來」（唔喺「怎麼用」）、多選兩件都帶組成、4 條答案零 raw token、`toolCards emission=4 cardsOut=4`；`check_ask_display_leak` rc=0。
+- 2026-09-14 02:5x：**已 commit（未 push）** `8d25433` fix(jei) 全 id 歸屬；`9f9baaf` fix(ask) 洩漏＋組成段位＋來源行標籤翻譯。
 
 
 - 2026-09-13 15:0x：**T0 修復部署**（真實洩漏：答案【來源】行寫 `role=output／input`＋`PURPOSE`）——根因 `PLAYER_UNSAFE_MARKERS` 只過濾 FACT fallback、模型正文路徑冇剝；改 `AskReplyScrub.scrubInternalFieldEcho`＋`ReplySources` 髒 footer 換 canonical＋6 lang；我獨立 Java harness 實測真機字串通過；jar `551136fb` 部署（三邊 sha256 一致、舊 `450c3a76` 已備份）。
