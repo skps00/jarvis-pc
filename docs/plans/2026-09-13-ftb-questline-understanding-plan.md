@@ -113,4 +113,8 @@
 |---|---|---|---|---|
 | R1 | 反方 | **3:7（計劃輸）** | ① `quest_fetch` 工具**已存在**（§1 gap3 錯）＋新工具名會被 ALLOWLIST 靜默丟棄（同 §6 自相矛盾）；② `:138` 500KB 靜默 skip（headroom 3.16×）；③ depth-2 爆量（樞紐 162 dependents）；④ harness 缺 6 條真陷阱；⑤ `lang/` 唔存在（§0 錯）；⑥ 描述含贊助連結 | → **v2**（本份）：LD3 改擴充、LD2 加出度 cap、LD10 加內容衛生、§0 更正、陷阱入 V1 |
 | R1 | 正方 | 6:4（計劃贏） | 7／9 條 LD 實跑站得住；同一 LD3 ALLOWLIST 阻塞；baseline 3 處錯漏（lang／／漏 `quest_fetch`／語料 byte 數） | 同上 |
-| R2 | 待跑 | — | — | — |
+| R2 | 反方 | **5:5** | cap ≤8 有效但 `lightmanscurrency:coin_gold`（錨 1,008 任務）cap 後仍 921 條／56,034 字；LD1 修法當時無驗收路徑；`braceDepthAt` 成本未量 | → v3 deltas：ranking 規則、500KB 明碼上限＋warn＋harness 測試、V5 log-dependency、語料數字更正 |
+| R2 | 正方 | 7:3 | LD3「同名擴充」係最強路徑（`LlmClient:603-635` 自動住 schema）；剩餘屬「開工前應補嘅量度」而唔係設計缺陷 | 同上 |
+| R3 | 反方 | **7:3（計劃贏）** | T3 **同 tier 冇 tie-break**（`coin_gold` task 3／reward **1,005**／text 0 → 邊兩條出嚟係 undefined）；V3 案例命名問題；plan 標題仍寫 v2＋§8 記錄漂移；LD1「4MB」tentative | → 已補：T3 deterministic tie-break（order_index→檔內次序→id 字典序）、V3 案例 id 已核實（1,010／30／16／163 次）＋加「冇關聯」案例由 harness 即場揀、標題更正 v3、§8 補完、LD1 註明 4MB 待 T1 實測寫死 |
+| R3 | 正方 | **8:2（達標）** | 三條載重（LD3 同名擴充／LD2+LD5+T3 預算組合／LD1 上限）由 code 行號＋真語料模擬直接證成：**0% 超標、cap −95%、ranking 只蝕 0.1pp、baseline 4 FAIL 完全準確** | 同上 |
+| **R3 綜合** | 中立裁判 | **達標（8:2）** | 反方明寫「唔使再 review —— B1／B2／B3 係三行文字級補丁（唔涉架構），直接補完就落 SK 批」；正方唯一扣分項（政策放寬／T6／LD12 離線證唔到）本來就要靠 SK 真機 5 題 | **等 SK 批開工** |
