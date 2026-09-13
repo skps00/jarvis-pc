@@ -9,7 +9,7 @@
 > 1. **§1 gap3 錯**：**工具已經存在** —— `logic/QuestFetchAskTool.java`（`name()` = `"quest_fetch"`），`AskToolLoop.java:37`（`FIRST_ROUND_TOOLS`）＋`:40`（`CAPABLE_TOOLS`）已含佢，`AskToolLoop.java:347/354` 仲會自動 run。⇒ **LD3 改為「擴充 `quest_fetch`」，唔新開工具**（新名會因 ALLOWLIST 閘被**靜默丟棄**：`AskToolLoop.java:137-143` `register()`、`:292` `run()`、`LlmClient.nativeToolsSchema():606`；`registerExternal` 只回 `OK_STORED_NOT_ALLOWLISTED`）。
 > 2. **§0 事實更正**：`quests/lang/` **唔存在**（唔係「空」）；語料實數 = chapters **50 檔／1,601,903 B**、tree **1,609,136 B**、最大 chapter **158,035 B**；`QuestGuide.java:138` **`Files.size(p) > 500_000` 就靜默 return**（跳過大檔、冇 log）→ headroom 只 3.16×，pack 更新即可能整章消失。
 > 3. **LD2 加 degree cap**：depth-2 會爆（實測 `cold_sweat:item_insulation` d2 = 196 任務／4,015 字；`gateways:gate_pearl` d2 = 94／4,326；樞紐任務 `3E9DD0B78886A183` 有 **162 dependents**；depth-2 closure p90 = 1.6%、max 8.9% ≈ 224 任務）⇒ 加「**每節點出度 cap ≤8**＋總預算」。
-> 4. **Harness 加 6 條真陷阱 assert**（見 §5 V1）：NBT-object item（**1,824** 處；R2 反方重數，plan v2 寫 1,665 偏低）、`itemfilters:or`／`:tag`、CRLF（66,247）、426 個轉義引號、**29 行** raw JSON component（R2 反方重數，v2 寫 14 偏低）、**48.7% 任務冇 description**。
+> 4. **Harness 加 6 條真陷阱 assert**（見 §5 V1）：NBT-object item（**1,824** 處；R2 反方重數，plan v2 寫 1,665 偏低）、`itemfilters:or`／`:tag`、CRLF（66,247）、426 個轉義引號、**29 行** raw JSON component（R2 反方重數，v2 寫 14 偏低）、**49.3% 任務冇 description**。
 > 5. **矛盾書面解決**：§7 cache 位置 vs §6「唔准郁 ALLOWLIST」；另加「描述內贊助／宣傳連結要剔走」。
 > 6. **Scope 依 SK**：目標由「點用」擴為「**用嗰件嘢（右鍵／左鍵／觸發）會發生咩事＋背後系統**」；任務線係**其中一個證據來源**，要同現有機制來源並用（`graphFacts` `on:/right_click/desc`、KubeJS 腳本片段、tooltip、`[CONSUME_USE]`／`[TETRA_USE]`／`[SCROLL_*]`）。
 
@@ -24,7 +24,7 @@
 | 呼叫點／UI | `client/chat/ChatSession.java:31/303/312`（`lastQuests`）、`client/gui/AiAssistantScreen.java:431/968/987/1314`（任務卡＋開任務書）、`client/QuestBookOpener.java` | grep |
 | 現有任務測試 | 7 個（`check_quest_*`，全 rc=0） | 全量 checks |
 | 語料實數 | `quests/chapters/*.snbt`：**50 檔／1,601,903 B**；`quests/` tree **1,609,136 B**；最大 chapter **158,035 B**；`quests/lang/` **唔存在**；子目錄只有 `chapters/` 同 `reward_tables/` | Python `os.walk`＋`os.path.getsize` |
-| 語料內容量（reviewer 量化） | **2,517 條任務**；cleaned 描述共 **114,089 字元**；**2,380 個 distinct item id** 由 tasks／rewards 錨定（總 ref 3,993）；**2,225 個只錨 1 條任務**；**91%（2,294／2,517）任務有 ≥1 dependency**；dangling dep refs 只 **1／655**；**48.7% 任務冇 description** | reviewer 實跑（同我抽樣一致） |
+| 語料內容量（reviewer 量化） | **2,517 條任務**；cleaned 描述共 **114,089 字元**；**2,380 個 distinct item id** 由 tasks／rewards 錨定（總 ref 3,993）；**2,225 個只錨 1 條任務**；**91%（2,294／2,517）任務有 ≥1 dependency**；dangling dep refs 只 **1／655**；**49.3%（1,249／2,531）任務冇 description**（R2 反方重數） | reviewer 實跑（同我抽樣一致） |
 | 現行 prompt 政策 | `fact_check`／`llm_style`／`reply_pattern`：任務只用名、唔准 hex ID；「除非 tasks／rewards 列出 heldItem.id，禁止宣稱該任務教取得／合成」；任務文字唔可以當用途證據 | grep（zh_cn.json:365/391/392） |
 | 設定基建 | `config/PackAiConfig.java`（911 行 ForgeConfigSpec）；GUI 4 tab 含 **Quests tab**；**已有防劇透開關 `showHiddenQuests`（預設 false，註釋 "anti-spoiler: match quest book visibility"）**；`attachRelatedQuests`／`questMatchHotbar`／`preferObtain`；guidebook 有 `guidebookScope`／`guidebookRelatedHop` pattern | grep |
 | 全量 checks baseline | 101 檔 / **4 FAIL**（3 pre-existing ＋ `check_ask_display_leak`） | 實跑 |
@@ -85,7 +85,7 @@
 
 | # | 驗收項 | 通過標準 |
 |---|---|---|
-| V1 | harness（真語料） | ≥5 物品命中正確；依賴鏈正確；**6 條陷阱全過**：① NBT-object item ② `itemfilters:or`／`:tag` ③ CRLF ④ 轉義引號 ⑤ raw JSON component 行 ⑥ **冇 description 嘅任務（48.7%）唔可以當空命中**；negative control 老實回空 |
+| V1 | harness（真語料） | ≥5 物品命中正確；依賴鏈正確；**6 條陷阱全過**：① NBT-object item ② `itemfilters:or`／`:tag` ③ CRLF ④ 轉義引號 ⑤ raw JSON component 行 ⑥ **冇 description 嘅任務（49.3%）唔可以當空命中**；negative control 老實回空 |
 | V2 | 工具沿用／schema | `quest_fetch` 仍喺 `FIRST_ROUND_TOOLS`／`CAPABLE_TOOLS`；新 args 合法；**冇新增工具名**；ALLOWLIST 未改 |
 | V3 | 預算（實測數字入報告） | 回傳 ≤2,000 字；命中 ≤5；每描述 ≤300；depth ≤2；出度 ≤8（用 `cold_sweat:item_insulation`／`gateways:gate_pearl`／樞紐任務 `3E9DD0B78886A183` 三個真實案例驗） |
 | V4 | 全量 checks | 唔多過 baseline（4 FAIL；T0 修好後 3 FAIL） |
