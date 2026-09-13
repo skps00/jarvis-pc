@@ -11,6 +11,30 @@
 
 ---
 
+## 2026-09-13 08:0x（Discord session；SK 問「all set? / is that all?」）—— 測試污染修好、**PR #12 衝突已解（MERGEABLE）**、docs 收尾
+
+**1. 做咗咩（全部本輪實證，唔靠記憶）**
+- **① `pytest` 污染 live `voice_status.json` 已修**（commit `cfcb2de`）：新增 `tests/conftest.py`——session-scoped autouse fixture 將 `APPDATA` 指去 tmp 沙盒。經 cursor-agent 派工（hidden dispatch、零彈窗；report 自報 PARTIAL=shell 被拒，驗證全部我自己跑）。
+  - 收貨證據：`py_compile`＋AST OK；`pytest tests/test_alert_piper_gate.py -q` = **3 passed**；**live `voice_status.json` md5 `4e1831b0…`／mtime 07:33 完全不變**；而沙盒 `%TEMP%\pytest-of-skps9\pytest-*\appdata0\Jarvis\voice_status.json` 確實出現 test 寫嘅 `wake_on:false` 檔 → **證明 test 真係有寫、只係寫入沙盒**（唔係「test 冇寫所以無污染」）。
+- **② PR #12 21 個衝突已解 → `mergeable: MERGEABLE`**（merge commit `5cdafbd`，已 push；`origin/main..HEAD` = **93**、`HEAD..origin/main` = **0**）。
+  - 做法：`git merge --no-commit --no-ff origin/main` → 逐個衝突 `checkout --ours` → **關鍵不變量檢查 `git diff --cached HEAD` 完全空**（＝merge 對內容零影響，只補拓撲連線）→ commit。
+  - **main 完全冇郁**（一個 commit 都冇加）。
+- **③ 收尾 docs**：cron 嘅 `9e3a5b4` 已 push；`.hermes/plans/self-evol-SUGGESTIONS.md` 3 行已 commit（`33f9d6f`）。
+- **④ merge 後重跑驗收**：`pytest tests/ -q` = **532 passed / 0 failed**；`eval_gate --lock` 一致（53 test files）；`eval_gate --all` 三 suite `ok=True`；HASH **`3e5e074479192100`**；**全量 suite 跑完後 live `voice_status.json` 仍然 `wake_on:true`、md5 不變**（＝污染 fix 大規模驗證通過）。
+
+**2. 而家喺邊（2026-09-13 08:1x）**
+- working tree 乾淨；feature 分支 = remote（`5cdafbd`）；**PR #12 OPEN ＋ MERGEABLE（未 merge，等 SK）**。
+- Shadow 仍在收（heartbeat 07:51；`settings.json alert_policy_mode="shadow"`）；48h 樣本要 **2026-09-15 03:06** 才夠。
+- 真機驗收（打機／通話／idle）**未做**；`enforce` 未上。
+
+**3. 下次做咩（優先序）**
+1. **真機驗收** → 過關才上 `enforce`（SK 未定：收機後做 vs 等齊 48h 一次過）。
+2. **PR #12 merge 落 main**（技術上已無阻，等 SK 一句 go）。
+3. Task 10（LLM digest 潤飾）＝要先跑 ranking prompt benchmark（p95 ≤3s）。
+4. 未答嘅觀察：75 個語音 session「開啟 Chrome 瀏覽器」；Chrome 一個 kill 唔到嘅 stuck GPU process（父 process 已死，可能同 TDR 條線有關）。
+
+---
+
 ## 2026-09-13 05:4x（jarvis-session-handoff cron 核實）—— 窗口內工作已全部入檔；補記 cron 00:51 捉到嘅 **test 污染 live `voice_status.json`**（仍未修）＋ 實況／數字更正
 
 > 窗口 = 2026-09-12 06:00 → 09-13 05:45。逐個 session 對（`state.db` 實查，唔靠記憶）：`20260912_061810_9678a999`（discord 06:18–21:0x，294 msgs ＝ 09-12 alert pipeline 全程）／`20260912_233912_482dc384`（discord 23:39–03:39，142 msgs ＝ 已對應最頂 09-13 section）／`cron_7b4af62c87c3_20260912_061713`（09-12 handoff cron）／`cron_6a98a79be95f_20260913_005101` ＋ `_030807`（sidecar-health）／13 個 subagent（plan review ×10、alert pipeline review ×3）／76 個 `jarvis-*` api_server 語音 session（其中 **75 個**標題＝「開啟 Chrome 瀏覽器」）。**除下面第 1 項，其餘已有對應 section。**
