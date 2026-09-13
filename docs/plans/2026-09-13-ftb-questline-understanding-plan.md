@@ -4,6 +4,7 @@
 > SK 補充 scope（同日）：「**I want it can know what will happen when use that item with right click and left click or the system that behind it**」
 > SK 決定：**cache 放 `%APPDATA%`／mod config（唔污染實例目錄）**（問題 3 = a）
 > Repo：`super_minecraft_AI_player`（雙樹）。**plan，未開工；要 review 過關 ＋ SK 批才實作。**
+> 🅿️ **狀態：HOLD（SK 2026-09-13）** —— 「that just plan, hold it we done it in future」：plan 已 review 達標（R3 8:2），但**暫不實作**，將來才做。
 >
 > **v2 改動（R1 反方 3:7 → 修；以下全部有 reviewer 實跑證據）**：
 > 1. **§1 gap3 錯**：**工具已經存在** —— `logic/QuestFetchAskTool.java`（`name()` = `"quest_fetch"`），`AskToolLoop.java:37`（`FIRST_ROUND_TOOLS`）＋`:40`（`CAPABLE_TOOLS`）已含佢，`AskToolLoop.java:347/354` 仲會自動 run。⇒ **LD3 改為「擴充 `quest_fetch`」，唔新開工具**（新名會因 ALLOWLIST 閘被**靜默丟棄**：`AskToolLoop.java:137-143` `register()`、`:292` `run()`、`LlmClient.nativeToolsSchema():606`；`registerExternal` 只回 `OK_STORED_NOT_ALLOWLISTED`）。
