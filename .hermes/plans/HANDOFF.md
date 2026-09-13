@@ -24,6 +24,11 @@
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
 
+- 2026-09-13 16:0x：T5 #2 輪 20 題 → `check_ask_display_leak` rc=0（4 條新答案零 `role=`／零 `PURPOSE`）＝T0 修復真機確認。
+- 2026-09-13 16:2x：JEI 張冠李戴修好 — 根因 `JeiInfoFacts.sameItem():413` 只比 path 唔比 namespace；改全 id＋新 `shouldAttachForFocus`；Java check＋雙樹 md5＋4 條 python 全過。
+- 2026-09-13 16:3x：Tetra 結構分流（`[TOOL_BUILD]` → 「怎麼來」）＋兩輪 review 修復；99 PASS／3 既有 stale FAIL、兩個 Java harness OK、build OK、雙樹對稱 OK。
+- 2026-09-13 16:5x：packai 全部改動（13 檔×2 樹＋4 測試檔）**未 commit**，等 SK；部署武裝＝MC 熄自動上 `ee34bbe6`。
+
 - 2026-09-13 16:0x–16:5x：**真機 T5 #2 輪**（jar `551136fb`）20 題：`check_ask_display_leak` rc=0（4 條新答案零 `role=`／零 `PURPOSE`）＝T0 修復真機確認。
 - 2026-09-13 16:2x：**JEI 張冠李戴**（SK 問 `golden_age:infinity_wand` 但答咗 Construction Wand 建築手杖）——根因 `JeiInfoFacts.sameItem():413` **只比 path 唔比 namespace**（`constructionwand:infinity_wand` 撞名）；修法＝id 對 id 用**全 id**、文字提及保留 token 邊界 path、新 `shouldAttachForFocus`（頁面有 id 就唔准靠純文字搭上）；`JeiInfoFactsCheck` 加真機原文回歸案例；我獨立驗：Java check OK、雙樹 md5 一致、4 條 python rc=0。
 - 2026-09-13 16:0x–16:3x：**Tetra 結構分流落地**（`[TOOL_BUILD]` 由「怎麼用」→「怎麼來」）＋兩輪 code review（首輪 FIX-FIRST → 修 D1/D2/D3）→ 全量 99 PASS／3 既有 stale FAIL、`JeiInfoFactsCheck`＋`AskToolLoopCheck` OK、build OK、雙樹 added-lines 對稱 OK；多選合併 `mergeExtrasToolBuild`、offline 支路、prompt 措辭（3 語言×2 樹）、內部 token 單一來源、`role=` 大小寫、新 heading 對齊 check。
