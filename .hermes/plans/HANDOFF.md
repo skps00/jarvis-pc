@@ -4,8 +4,8 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）DSML 修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-13 13:0x 改寫）**
- - **jarvis-pc**：branch `feature/hermes-alerts-mcp`；PR #12 已 merge（`96be515`）；HANDOFF 重排（狀態區塊＋逐日 index）＋cron 修正（停 `git add -A`）今日完成 → commit 見下
+- **現狀（2026-09-13 13:2x 改寫）**
+ - **jarvis-pc**：branch `feature/hermes-alerts-mcp`（**ahead 5 未 push**）；PR #12 已 merge（`96be515`）；HANDOFF 重排＋檢查腳本＋cron 修正（停 `git add -A`）＋停用 `jarvis-bglaunch-idle-test` → commits `5823ee2`…`766788b`；cron 8 個 enabled 全 ok、無背景程序
  - **packai DSML**：T1–T4（`db245f5`）＋P1/P2/P5（`e85c4a5`）完成並親驗——真 bytes 偵測 false→true、解析 0→2 call、效能 4134ms→25ms、跨路徑去重 2 次；**T5 真機煙測未做**（要 SK 熄 MC 才 build／換 jar）
  - **alert pipeline**：live shadow 跑緊（sidecar 8765 UP、`alert_policy_mode: shadow`）；未夠 48h → 未可上 `enforce`
  - **語音**：sensevoice 短句粵語 garble（09-11 全日 6 句）→ 三選一（打字／MiMo 雲端／本地 Fun-ASR-Nano）等 SK 揀
@@ -62,6 +62,7 @@
 - **2026-09-13 13:0x（HANDOFF 重排，SK 批准）**：新增頂部狀態區塊（五元素）＋逐日 index 規則；搬 ≤09-11 sections 入 `archive/HANDOFF-2026-09.md`；「剩低」併入 `REMAINING_WORK.md`；改 `AGENTS.md`（新 section 加喺狀態區塊之下／只讀狀態區塊＋近 3 日／HANDOFF 可公開）＋修 cron `git add -A`
 
 - **2026-09-13 13:0x**：停用 cron `jarvis-bglaunch-idle-test`（每 5 分鐘；6 種開法已測完，SK 指示 stop，**paused** 可 resume）；另：手誤刪過 sections（`86efdd9`）→ 已由 `4fdd92f` 還原
+- **2026-09-13 13:2x（session 收尾 hand off）**：cron `jarvis-bglaunch-idle-test` 停用（paused）；HANDOFF 手誤刪事件 → 已還原（`766788b`）；DSML 修復全部落地，**只欠 T5 真機煙測**（等 SK 熄 MC）；packai/jarvis 兩 repo tree clean、未 push
 ## 2026-09-13 09:1x（Discord session，SK 1A/2A/3C）— Chrome 代開工具上線、PR #12 merged、packai DSML plan v3
 
 ### ① JARVIS「代開 app」上線（SK 2026-09-13 明確要求 + AGENTS.md 例外條款已批准寫入）
