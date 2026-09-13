@@ -11,6 +11,31 @@
 
 ---
 
+## 2026-09-13 08:3x（同一 Discord session，續）—— **PR #12 已 review 過並 merge 落 main**；新 skill；MC「showing prompts」實錘
+
+**1. PR #12 pre-merge review（SK 指示「review it before merge + 查業界做法 + 最好做成 skill」）**
+- **業界查證（有 source）**：長跑分支**絕對唔可以 squash-merge** —— GitHub community #23249、StackOverflow 79825357（"never … EVER squash-merge long-running branches … unless you like going through conflict-hell"）、GitLab merge-method docs。**PR #11（8-10）就係用 squash 落 main → 正是今次 21 檔衝突根源**；正確做法 = merge commit。
+- **Review 做法**：cursor read-only（自報 PARTIAL＝shell 被拒，佢冇真跑過 diff）→ 我**自己寫驗證 script** 逐檔比對「main 有、HEAD 冇」嘅 `def/class/key` 名。全 24 隻 main-only 檔只有 **4 個名**要人手判：`_win_subprocess_text_kwargs`（main 用 tasklist＋mbcs decode；HEAD 已改用 Toolhelp，caller 消失＝過時）、`_has_cjk`（HEAD 改名 `has_cjk` 公開＋alias）、`pyw`（JARVIS.vbs 舊 var；HEAD 故意用 python.exe，因 pythonw 會令 alerts MCP 靜默死 8765）、`test_settings_window_builds_four_tabs`（HEAD 已演進成 `five_tabs`）→ **(c) GENUINELY-LOST = NONE**（另 `git diff --name-status HEAD origin/main | grep ^A` 空＝分支檔案集係超集）。
+- **Merge**：`gh pr merge 12 --merge`（**merge commit，唔 squash**）→ **PR #12 MERGED，commit `96be515`**（2026-09-13T00:31:38Z）。驗證：`git diff --stat origin/main HEAD` **空**（main == 我哋跑緊嘅樹）；`HEAD..origin/main` = 1（就係 merge commit）；`origin/main` 由 `ca463a3` → `96be515`。
+- **新 skill**：`long-lived-branch-merge`（software-development）＋可執行 script `scripts/audit_main_only.py`（實測：對 `ca463a3` 重現 4 個名、merge 後回 0）。
+
+**2. MC（packai）「showing prompts」實錘 —— 唔使 SK 再描述**
+- 部署 jar：`packai-0.2.1+mc1.19.2-forge.jar`（09-12 07:07）**已含** raw-reply 診斷 log；真機 log = `Documents/PrismLauncher-…/instances/AI_test_NFWC_DIM/minecraft/logs/latest.log`（**cp950 編碼**）。
+- SK 嗰次（07:50:52→07:51:03，問「猛者瓶怎麼用」）原文：
+  - 3 輪 `LLM raw reply chars=0 toolCalls=4`（正常用 native tool call）
+  - 第 4 輪 `LLM raw reply chars=604 toolCalls=0 body=<｜DSML｜calls>…<｜DSML｜invoke name="render_recipe_cards">…` → **模型把 DSML 標記當普通文字掟出嚟**
+  - 之後 `ask reply before ensureCards: 怎么用`、`toolCards emission=3 cardsOut=3`
+- 即係玩家睇到嘅「prompt 樣」文字 = `<｜DSML｜calls>` 洩漏；**同 09-11／09-12 兩次 DSML 修復同類，第 3 次** → 按 SK 規則（重複 2-3 次）**應開 read-only root-cause 討論，唔好再直接 patch**（等 SK 揀）。
+
+**3. Chrome 代開（SK 2026-09-13「1 u open it」）**
+- 查清：**唔係 code bug**。jarvis `hands.py:_launch_chrome_restore` 正常；75 個語音 session（例 `jarvis-fb35e32b`）全部係因為 `sk_activity.json` state=**playing** 而**拒絕代開**、只教 SK Alt+Tab。
+- 方案：**(甲)** 背景開法（`SW_SHOWNOACTIVATE`）＋開完自驗前景有冇變；**(乙)** 規則要改成「SK 明確要求開 app → no-activate 背景開＝允許；搶焦點仍要 SK 同意」（AGENTS.md 屬受保護檔，要 SK 明確 go 才改）。
+- **未做**：SK 當時已入 **CS2 獨佔全螢幕**（`fullscreen: true`）→ 任何窗口動作都可能令遊戲縮細／黑閃，**已停手唔試**，等 SK 揀測試時機。
+
+**4. 其他（同一 session 早段）**：`tests/conftest.py` 隔離 `APPDATA`（`cfcb2de`，已驗證 live `voice_status.json` 唔再被測試污染）；merge 衝突 21 檔全 `--ours` 並證內容零改動（`5cdafbd`）；docs `9e3a5b4`／`33f9d6f`／`fedb768` 已 push。全量 `pytest` 532 passed、`eval_gate --all` 三 suite ok、HASH `3e5e074479192100`。
+
+---
+
 ## 2026-09-13 08:0x（Discord session；SK 問「all set? / is that all?」）—— 測試污染修好、**PR #12 衝突已解（MERGEABLE）**、docs 收尾
 
 **1. 做咗咩（全部本輪實證，唔靠記憶）**
