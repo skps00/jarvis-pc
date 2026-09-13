@@ -1,6 +1,6 @@
 # Plan v3 — packai 答案版面修正（模組化工具卡片歸屬／標題去重／物品名行位）
 
-- 建立：2026-09-14（Discord session）；v2：加入 SK 決定（R4-b）＋新需求（R5 直接合成）＋反方 review（7:3, PLAN-FIX）全部 must-do；v3：R5 改用現成 primitive（`RecipeCard.outputs()` ＋ `JeiFocusMatch.craftingResultMatches`，SK 提議「經 JEI 拎 recipe 睇 output」）
+- 建立：2026-09-14（Discord session）；v4：S0 改成「全鏈路審計 trace（JSONL）」＋卡欄位併入；v2：加入 SK 決定（R4-b）＋新需求（R5 直接合成）＋反方 review（7:3, PLAN-FIX）全部 must-do；v3：R5 改用現成 primitive（`RecipeCard.outputs()` ＋ `JeiFocusMatch.craftingResultMatches`，SK 提議「經 JEI 拎 recipe 睇 output」）
 - 狀態：**PLAN（等 SK go 才實作）**。Task K（舊版本）已**停**、未寫任何檔（repo clean），因為其 K1 規則同 R5 衝突，需用本 v2 規格重派
 - Repo：`super_minecraft_AI_player`（雙樹 `forge/1.19.2` ＋ `neoforge/1.21.1`）
 - ⚠️ 部分檔兩樹有 MC API shim（`Registry`→`BuiltInRegistries`、`Forge`→`NeoForge`）→ **行號有偏差**（例：`ModularToolScan.purposeLines` forge:33 / neo:36；`PackAiConfig.setShowHiddenQuests` forge:548 / neo:560）；唔可以純靠行號同步，要逐字檢查
@@ -21,11 +21,22 @@ Log 原文路徑：`…\instances\AI_test_NFWC_DIM\minecraft\logs\latest.log`（
 
 ## 3. 方案（v3）
 
-### S0 — 開工第一步：1 行 log instrument（零行為改動）
-目的：解開「三張截圖嗰啲卡（quest 獎勵／Create 自動攪拌）喺 collect 時 `outputs()` 到底有冇真 ItemStack」。
-- 改 `logic/RenderRecipeCardsAskTool.java:108-110` 嗰條 log：加 `outputsSize=`、`primaryOutputId=`、`hasVariant=`（`ItemVariantKeys.hasVariantKeys`），**唔改任何行為**。
-- SK 問同一題（`tetra:modular_sword` 單件）→ 我讀 `latest.log` → 用實測數據定 R5 判定鏈。
-- 若 `outputs()` 原來係空 → R5 只可以靠 `primaryOutputId()` ＋ category／名做保守判定（唔准亂 drop）。
+### S0 — 開工前：零行為改動嘅**全鏈路審計 trace**（SK 2026-09-14 要求「log 齊我哋送咩／查咩／模型回咩」）
+**S0a（卡欄位）** 併入 S0b，唔另做。
+
+**S0b — 新 trace（JSONL，每 ask 一檔）**
+- 開關：新 config `askTraceJsonl`（default **true**）；保留數 `askTraceKeepFiles`（default **50**，範圍 1..500）
+- 路徑：`config/packai_trace/ask-<yyyyMMdd-HHmmss>-<focusId>.jsonl`（**唔入 git**；唔寫 secrets，API key 一律 mask）
+- 每個 ask 一個檔，事件（一行一個 JSON object，`event` 欄做 type）：
+  1. **送出**：`send.prompt.system`／`send.prompt.history`／`send.prompt.user`（全文；已有 `logFullPrompt` 對應 MC log 版）＋ `send.tools`（工具 schema 名單）＋ `send.facts`（tool context／grounding 區塊）
+  2. **工具**：`tool.call`（name／args／round）＋ `tool.result`（全文；過長就 `sha256`＋頭尾 2k）
+  3. **檢查**：`check.intent`、`check.jei`、`check.maint`、`check.cards`（**每張卡**：category／`primaryOutputId`／`outputsSize`／`hasVariant`／`sourceItemId`／placement 決定＋原因）、`check.scrub`（scrub 前後 body＋哪條規則改咗）
+  4. **模型**：`model.reply.round<N>`（raw reply 全文，含 tool_calls 參數）＋ `model.reply.final`
+  5. **渲染**：`render.cards`（`renderCards item=… scannedCats/foundOutput/afterFilter` ＋新欄）、`render.markers`（emission refs／`[[recipe_card:N]]` 位置）、`display.body.final`
+- 用途：一次真機問答＝一個檔，可**離線重放**做 unit test（配合 §7 fixtures）
+- 驗收：問一次 → 產生 1 個 trace 檔，內含上述全部事件；`grep '"event":"check.cards"'` 見到每張卡嘅 `outputsSize`／`hasVariant`
+- 風險：檔案大（估 40–80KB／ask；keep=50 ≈ 2–4MB）→ 有 keep 上限＋只寫本地
+- ⚠️ 若 `outputs()` 原來係空 → R5 只可以靠 `primaryOutputId()` ＋ category／名保守判定（唔准亂 drop）
 
 ### K3 — 模組化工具單件模式（config，預設 ON）
 - 新 config `modularToolSingleItem`（default **true**）＋ Settings toggle。
