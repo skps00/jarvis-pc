@@ -1,4 +1,4 @@
-# Plan v2 — FTB 任務線理解：AI 讀成條 quest line 去答「呢件嘢點用／會發生咩事」
+# Plan v3 — FTB 任務線理解：AI 讀成條 quest line 去答「呢件嘢點用／會發生咩事」
 
 > SK 原話（2026-09-13）：「add a new plan on mcmod, let AI can think or read whole FTB quest line and find how to use that item」
 > SK 補充 scope（同日）：「**I want it can know what will happen when use that item with right click and left click or the system that behind it**」
@@ -58,7 +58,7 @@
 
 | ID | 決定 | v2 立場 |
 |---|---|---|
-| **LD1** | 直接讀 `config/ftbquests/quests/**` SNBT（擴充 `QuestGuide`），唔用 FTB API | 保留；**必須處理 `:138` 500KB 靜默 skip**：① 新上限寫成**具體數字**（例如 4MB）② 超限要**出 warn log**（唔准靜默）③ harness 用 **temp 即場生成 >500KB 檔**驗「唔再靜默 skip」④ 同時量 `depth1Field:1274-1283`＋`braceDepthAt:1286-1312`（O(offset) 掃描，近 O(n²)）喺大章嘅實際耗時 |
+| **LD1** | 直接讀 `config/ftbquests/quests/**` SNBT（擴充 `QuestGuide`），唔用 FTB API | 保留；**必須處理 `:138` 500KB 靜默 skip**：① 新上限寫成**具體數字**（暫定 4MB；T1 實測後寫死）；另 `braceDepthAt`「近 O(n²)」擔心已用真語料證實**唔成立**（最大章 105,285 chars／189 quests → 總掃 163,178 chars＝1.55×，Python 0.011s）② 超限要**出 warn log**（唔准靜默）③ harness 用 **temp 即場生成 >500KB 檔**驗「唔再靜默 skip」④ 同時量 `depth1Field:1274-1283`＋`braceDepthAt:1286-1312`（O(offset) 掃描，近 O(n²)）喺大章嘅實際耗時 |
 | **LD2** | 檢索式：item → 命中任務 → 依賴鄰域 depth 1–2，**每節點出度 cap ≤8**、總回傳 ≤2,000 字、命中 ≤5 | **修正**（加 cap；用 reviewer 實測數字驗） |
 | **LD3** | **擴充現有 `quest_fetch`**（加 `depth`／`limit`／`full_desc` args），**唔新開工具名**、唔改 ALLOWLIST | **修正**（R1 反方：新名會被靜默丟棄） |
 | **LD4** | 政策放寬：可用任務描述做用途／進度證據（標來源）；保留反幻覺規則（唔捏造、唔准 hex ID、任務名≠物品證明） | 保留（改 `fact_check`／`llm_style`／`reply_pattern` 3 語言 × 2 樹；核 7 個 quest checks） |
@@ -75,7 +75,7 @@
 
 - **T1 harness 先行**：`tests/check_questline_index.py` 對真 50 章語料：索引正確性（2,380 item 錨定）、依賴鏈、去雜訊、6 條陷阱、negative control；**先鎖現狀 baseline**。
 - **T2 索引層**：擴充 `QuestGuide`（或新 `QuestLineIndex`，內部 class）：全 chapter parse（**處理 500KB skip**）、任務節點（id／chapter／order_index／title／full description／tasks／rewards item ids／dependencies／hidden）、反向索引 item→quest、依賴圖（入度／出度）。
-- **T3 檢索層**：`lookup(item|query, depth=2, limit=5, degreeCap=8)`；**明文 ranking**：task 錨定 > reward 錨定 > 文字提及；**命中 5 條出完整 desc**、依賴鄰域**只出 title**；**總字數超 2,000 硬截**；去色碼／UI 雜訊／宣傳連結；depth 1–2 鄰域＋章節順序。
+- **T3 檢索層**：`lookup(item|query, depth=2, limit=5, degreeCap=8)`；**明文 ranking**：task 錨定 > reward 錨定 > 文字提及；**同 tier 必須有 deterministic tie-break**（實測 `lightmanscurrency:coin_gold` = task 3／reward **1,005**／text 0 → 1,005 條並列，唔定 tie-break 就係 undefined）：**chapter `order_index` → 檔內出現次序 → quest id 字典序**；**命中 5 條出完整 desc**、依賴鄰域**只出 title**；**總字數超 2,000 硬截**；去色碼／UI 雜訊／宣傳連結；depth 1–2 鄰域＋章節順序。
 - **T4 暴露層**：擴充 `QuestFetchAskTool`（args：`depth`／`limit`／`full_desc`）＋回傳格式（章節→任務→描述→依賴）；`toolMissNote` 講清「任務線冇相關」。
 - **T5 設定層**：`PackAiConfig` 加 `questLineScope` ＋ GUI（Quests tab）＋ lang 鍵（3 語言 × 2 樹）。
 - **T6 政策層**：`fact_check`／`llm_style`／`reply_pattern` 政策改動（LD4／LD12）。
@@ -87,7 +87,7 @@
 |---|---|---|
 | V1 | harness（真語料） | ≥5 物品命中正確；依賴鏈正確；**6 條陷阱全過**：① NBT-object item ② `itemfilters:or`／`:tag` ③ CRLF ④ 轉義引號 ⑤ raw JSON component 行 ⑥ **冇 description 嘅任務（49.3%）唔可以當空命中**；negative control 老實回空 |
 | V2 | 工具沿用／schema | `quest_fetch` 仍喺 `FIRST_ROUND_TOOLS`／`CAPABLE_TOOLS`；新 args 合法；**冇新增工具名**；ALLOWLIST 未改 |
-| V3 | 預算（實測數字入報告） | 回傳 ≤2,000 字；命中 ≤5；每描述 ≤300；depth ≤2；出度 ≤8（用 `cold_sweat:item_insulation`／`gateways:gate_pearl`／樞紐任務 `3E9DD0B78886A183` 三個真實案例驗） |
+| V3 | 預算（實測數字入報告） | 回傳 ≤2,000 字；命中 ≤5；每描述 ≤300；depth ≤2；出度 ≤8。案例 id 已核實真存在：`lightmanscurrency:coin_gold` **1,010 次**、`cold_sweat:item_insulation` **30 次**、`gateways:gate_pearl` **16 次**、樞紐 `3E9DD0B78886A183` **163 次**；另加一個「**冇任務關聯**」嘅物品案例 → **由 harness 即場揀（唔寫死 id）** |
 | V4 | 全量 checks | 唔多過 baseline（4 FAIL；T0 修好後 3 FAIL） |
 | V5 | 真機 | SK 5 題（含 1 冇任務關聯、1 問右鍵／左鍵行為）：任務線相關要列章節／任務／描述並可理解；冇嘅老實講；機制題要講得出觸發行為＋來源。⚠️ **`check_ask_display_leak` 嘅結果係 log-dependent**（舊 log 內既有違規會一直紅）→ 必須喺**部署後新一輪真機 smoke 嘅新 log** 上重跑才算 |
 | V6 | 無 regression | 7 個 quest checks 全綠；非任務題行為不變；`showHiddenQuests=false` 時唔會漏隱藏任務內容 |
