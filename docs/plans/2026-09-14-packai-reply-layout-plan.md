@@ -26,7 +26,10 @@ Log 原文路徑：`…\instances\AI_test_NFWC_DIM\minecraft\logs\latest.log`（
 
 **S0b — 新 trace（JSONL，每 ask 一檔）**
 - 開關：新 config `askTraceJsonl`（default **true**）；保留數 `askTraceKeepFiles`（default **50**，範圍 1..500）
-- 路徑：`config/packai_trace/ask-<yyyyMMdd-HHmmss>-<focusId>.jsonl`（**唔入 git**；唔寫 secrets，API key 一律 mask）
+- 路徑（SK 2026-09-14 定：**似 KubeJS 咁自成一格**）：`<instance>/packai/trace/ask-<yyyyMMdd-HHmmss>-<focusId>.jsonl`
+  - 即：遊戲目錄下新開 `packai/` folder（同 `kubejs/` 平級），入面 `trace/` 放逐次問答檔；folder 唔存在就自動建立，寫唔到就 warn 一次（唔准 crash）
+  - 另寫 `packai/trace/index.jsonl`：每次問答一行（時間／問題／焦點 id／檔名／輪數／出卡數／狀態）→ 方便快速瀏覽
+  - **唔入 git**；唔寫 secrets（API key 一律 mask）
 - 每個 ask 一個檔，事件（一行一個 JSON object，`event` 欄做 type）：
   1. **送出**：`send.prompt.system`／`send.prompt.history`／`send.prompt.user`（全文；已有 `logFullPrompt` 對應 MC log 版）＋ `send.tools`（工具 schema 名單）＋ `send.facts`（tool context／grounding 區塊）
   2. **工具**：`tool.call`（name／args／round）＋ `tool.result`（全文；過長就 `sha256`＋頭尾 2k）
