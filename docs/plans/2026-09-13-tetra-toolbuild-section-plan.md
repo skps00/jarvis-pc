@@ -1,7 +1,8 @@
 # Plan v3 — Tetra「組成」歸段（＋ T5 真機發現嘅 `role=` 洩漏）
 
 > 觸發：SK 真機煙測（2026-09-13，jar `450c3a76`）：① Tetra 工具嘅零件／材料／強化清單被寫入「怎麼用」；② 最新答案嘅【來源】行出現內部欄位名 `role=output／input`（真洩漏，令 `check_ask_display_leak.py` 由綠變紅）。
-> Repo：`super_minecraft_AI_player`（雙樹）。**呢份係 plan，未開工。**
+> Repo：`super_minecraft_AI_player`（雙樹）。**plan；🟢 SK 2026-09-13 批准（問題 A = a）走結構性分流＋順手改措辭，已派 cursor Task A 實作。**
+> 業界證據（SK 要求搜）：placement error 係獨立失敗類別（arXiv 2608.25358）；業界中間路線＝LLM 出內容＋deterministic renderer（arXiv 2511.00843）；純辣 prompt 有天花板（The Stack Underflow 2026-07：structure problem wearing a compliance costume）。
 >
 > **v3 改動（R2 反方 4:6 → 修；以下全部有 R2 實跑證據）**：
 > 1. **拆錯 causal 假設**：v2 打算喺 `ToolBuildFacts.format()` **首行**加提示 —— 實測會撞 mirror：`check_tetra_tool_build.py:296/321/322` 係 `startswith(HEADER)`、`:365` 係 **exact equality**（`empty_mod == HEADER + "\n" + UNPARSED`）；而且 mirror 係**另一份 Python 重寫**（`format_scan:143-170`），repo **冇任何 test** 比對 Java 輸出 == mirror 輸出 → 只改 Java 會**靜默失同步（假綠）**。⇒ **取消 v2 T1b**，改為「先量度、後改、再量度」實驗設計。

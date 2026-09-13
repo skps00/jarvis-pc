@@ -24,6 +24,12 @@
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
 
+- 2026-09-13 15:0x：**T0 修復部署**（真實洩漏：答案【來源】行寫 `role=output／input`＋`PURPOSE`）——根因 `PLAYER_UNSAFE_MARKERS` 只過濾 FACT fallback、模型正文路徑冇剝；改 `AskReplyScrub.scrubInternalFieldEcho`＋`ReplySources` 髒 footer 換 canonical＋6 lang；我獨立 Java harness 實測真機字串通過；jar `551136fb` 部署（三邊 sha256 一致、舊 `450c3a76` 已備份）。
+- 2026-09-13 15:0x：**Tetra 計劃** R1 4:6→R2 4:6→R3 6:4 未達 8:2 → 依契約停手報 SK；SK 揀 **a（結構性分流）**；已派 cursor 將 `[TOOL_BUILD]` 由 `AskService:449-452` prepend 抽出、改掛 `AskEngine:508-518` `sectionHowToGet` 之下（兩樹）。
+- 2026-09-13 15:0x：**FTB 任務線 plan**（SK 要求新增）R1 3:7→R2 5:5／7:3→R3 7:3／8:2 **達標**；SK 決定 **HOLD**（只留 plan，將來做）。
+- 2026-09-13 15:0x：**ASR（Fun-ASR-Nano）**：模型 08-07 已完整下載（2.0GB）；離線載入 15.2s、每條 0.6–1.2s、A/B 樣本唔夠判 → SK 決定**全線 hold 等新 mic**（同 wake／聲紋／AEC 一齊）。
+- 2026-09-13 15:0x：契約更新 —— `AGENTS.md` 加「SK 叫→顯示／JARVIS 主動→`--minimized`」（第 115 行；主契約＋源頭 copy md5 `7230bf0b`）。
+
 - 2026-09-13 13:3x–14:0x（Discord session，SK 逐項拍板）：T5 **jar 已 build＋部署**（`gradlew jar` 16s；新 `450c3a76`＝build/libs＝instance mods＝dist 三邊一致；舊 `17ebc474` 備份 `dist/_smoke_backups/packai-0.2.1+mc1.19.2-forge.jar.bak-20260913_133727`）
 - 2026-09-13 14:0x：`check_jar_contains_fix.py` **OK**（T2 fail-closed symbols＋lang keys）＋K30–K34 harness **綠**（`AskToolLoopCheck`／`AskReplyScrubCheck OK`）
 - 2026-09-13 14:0x：修 **pre-existing 過時 assert**（`"output"`→`"OUTPUT"`；兩樹 md5 `e18f6747`；baseline worktree `7317763` 證實執之前已壞）＋ cursor read-only 一致性分析 **VERDICT SHIP／零 FINDING**（**未 commit**，等 SK）
