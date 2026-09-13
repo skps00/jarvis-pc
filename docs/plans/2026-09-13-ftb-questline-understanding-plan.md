@@ -9,7 +9,7 @@
 > 1. **§1 gap3 錯**：**工具已經存在** —— `logic/QuestFetchAskTool.java`（`name()` = `"quest_fetch"`），`AskToolLoop.java:37`（`FIRST_ROUND_TOOLS`）＋`:40`（`CAPABLE_TOOLS`）已含佢，`AskToolLoop.java:347/354` 仲會自動 run。⇒ **LD3 改為「擴充 `quest_fetch`」，唔新開工具**（新名會因 ALLOWLIST 閘被**靜默丟棄**：`AskToolLoop.java:137-143` `register()`、`:292` `run()`、`LlmClient.nativeToolsSchema():606`；`registerExternal` 只回 `OK_STORED_NOT_ALLOWLISTED`）。
 > 2. **§0 事實更正**：`quests/lang/` **唔存在**（唔係「空」）；語料實數 = chapters **50 檔／1,601,903 B**、tree **1,609,136 B**、最大 chapter **158,035 B**；`QuestGuide.java:138` **`Files.size(p) > 500_000` 就靜默 return**（跳過大檔、冇 log）→ headroom 只 3.16×，pack 更新即可能整章消失。
 > 3. **LD2 加 degree cap**：depth-2 會爆（實測 `cold_sweat:item_insulation` d2 = 196 任務／4,015 字；`gateways:gate_pearl` d2 = 94／4,326；樞紐任務 `3E9DD0B78886A183` 有 **162 dependents**；depth-2 closure p90 = 1.6%、max 8.9% ≈ 224 任務）⇒ 加「**每節點出度 cap ≤8**＋總預算」。
-> 4. **Harness 加 6 條真陷阱 assert**（見 §5 V1）：NBT-object item（1,665 處）、`itemfilters:or`／`:tag`、CRLF（66,247）、426 個轉義引號、14 行 raw JSON component、**48.7% 任務冇 description**。
+> 4. **Harness 加 6 條真陷阱 assert**（見 §5 V1）：NBT-object item（**1,824** 處；R2 反方重數，plan v2 寫 1,665 偏低）、`itemfilters:or`／`:tag`、CRLF（66,247）、426 個轉義引號、**29 行** raw JSON component（R2 反方重數，v2 寫 14 偏低）、**48.7% 任務冇 description**。
 > 5. **矛盾書面解決**：§7 cache 位置 vs §6「唔准郁 ALLOWLIST」；另加「描述內贊助／宣傳連結要剔走」。
 > 6. **Scope 依 SK**：目標由「點用」擴為「**用嗰件嘢（右鍵／左鍵／觸發）會發生咩事＋背後系統**」；任務線係**其中一個證據來源**，要同現有機制來源並用（`graphFacts` `on:/right_click/desc`、KubeJS 腳本片段、tooltip、`[CONSUME_USE]`／`[TETRA_USE]`／`[SCROLL_*]`）。
 
@@ -58,7 +58,7 @@
 
 | ID | 決定 | v2 立場 |
 |---|---|---|
-| **LD1** | 直接讀 `config/ftbquests/quests/**` SNBT（擴充 `QuestGuide`），唔用 FTB API | 保留；**但必須處理 `:138` 500KB 靜默 skip**（提高上限／分段讀／至少加 log） |
+| **LD1** | 直接讀 `config/ftbquests/quests/**` SNBT（擴充 `QuestGuide`），唔用 FTB API | 保留；**必須處理 `:138` 500KB 靜默 skip**：① 新上限寫成**具體數字**（例如 4MB）② 超限要**出 warn log**（唔准靜默）③ harness 用 **temp 即場生成 >500KB 檔**驗「唔再靜默 skip」④ 同時量 `depth1Field:1274-1283`＋`braceDepthAt:1286-1312`（O(offset) 掃描，近 O(n²)）喺大章嘅實際耗時 |
 | **LD2** | 檢索式：item → 命中任務 → 依賴鄰域 depth 1–2，**每節點出度 cap ≤8**、總回傳 ≤2,000 字、命中 ≤5 | **修正**（加 cap；用 reviewer 實測數字驗） |
 | **LD3** | **擴充現有 `quest_fetch`**（加 `depth`／`limit`／`full_desc` args），**唔新開工具名**、唔改 ALLOWLIST | **修正**（R1 反方：新名會被靜默丟棄） |
 | **LD4** | 政策放寬：可用任務描述做用途／進度證據（標來源）；保留反幻覺規則（唔捏造、唔准 hex ID、任務名≠物品證明） | 保留（改 `fact_check`／`llm_style`／`reply_pattern` 3 語言 × 2 樹；核 7 個 quest checks） |
@@ -75,7 +75,7 @@
 
 - **T1 harness 先行**：`tests/check_questline_index.py` 對真 50 章語料：索引正確性（2,380 item 錨定）、依賴鏈、去雜訊、6 條陷阱、negative control；**先鎖現狀 baseline**。
 - **T2 索引層**：擴充 `QuestGuide`（或新 `QuestLineIndex`，內部 class）：全 chapter parse（**處理 500KB skip**）、任務節點（id／chapter／order_index／title／full description／tasks／rewards item ids／dependencies／hidden）、反向索引 item→quest、依賴圖（入度／出度）。
-- **T3 檢索層**：`lookup(item|query, depth=2, limit=5, degreeCap=8)`；去色碼／UI 雜訊／宣傳連結；depth 1–2 鄰域＋章節順序。
+- **T3 檢索層**：`lookup(item|query, depth=2, limit=5, degreeCap=8)`；**明文 ranking**：task 錨定 > reward 錨定 > 文字提及；**命中 5 條出完整 desc**、依賴鄰域**只出 title**；**總字數超 2,000 硬截**；去色碼／UI 雜訊／宣傳連結；depth 1–2 鄰域＋章節順序。
 - **T4 暴露層**：擴充 `QuestFetchAskTool`（args：`depth`／`limit`／`full_desc`）＋回傳格式（章節→任務→描述→依賴）；`toolMissNote` 講清「任務線冇相關」。
 - **T5 設定層**：`PackAiConfig` 加 `questLineScope` ＋ GUI（Quests tab）＋ lang 鍵（3 語言 × 2 樹）。
 - **T6 政策層**：`fact_check`／`llm_style`／`reply_pattern` 政策改動（LD4／LD12）。
@@ -89,7 +89,7 @@
 | V2 | 工具沿用／schema | `quest_fetch` 仍喺 `FIRST_ROUND_TOOLS`／`CAPABLE_TOOLS`；新 args 合法；**冇新增工具名**；ALLOWLIST 未改 |
 | V3 | 預算（實測數字入報告） | 回傳 ≤2,000 字；命中 ≤5；每描述 ≤300；depth ≤2；出度 ≤8（用 `cold_sweat:item_insulation`／`gateways:gate_pearl`／樞紐任務 `3E9DD0B78886A183` 三個真實案例驗） |
 | V4 | 全量 checks | 唔多過 baseline（4 FAIL；T0 修好後 3 FAIL） |
-| V5 | 真機 | SK 5 題（含 1 冇任務關聯、1 問右鍵／左鍵行為）：任務線相關要列章節／任務／描述並可理解；冇嘅老實講；機制題要講得出觸發行為＋來源；`check_ask_display_leak` rc=0 |
+| V5 | 真機 | SK 5 題（含 1 冇任務關聯、1 問右鍵／左鍵行為）：任務線相關要列章節／任務／描述並可理解；冇嘅老實講；機制題要講得出觸發行為＋來源。⚠️ **`check_ask_display_leak` 嘅結果係 log-dependent**（舊 log 內既有違規會一直紅）→ 必須喺**部署後新一輪真機 smoke 嘅新 log** 上重跑才算 |
 | V6 | 無 regression | 7 個 quest checks 全綠；非任務題行為不變；`showHiddenQuests=false` 時唔會漏隱藏任務內容 |
 
 ## 6. 風險評估 / 最壞情況 / 還原
