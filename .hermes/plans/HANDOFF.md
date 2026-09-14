@@ -33,6 +33,7 @@
 - 09-14 05:13：SK 定 trace 路徑＝`<instance>/packai/trace/`＋`index.jsonl`（似 KubeJS 自成一格）→ `7954e84`。
 - 09-14 05:14：派 **Task S**（cursor-agent）實作 trace（零行為改動）；05:30 實況＝`AskTrace.java`×2＋`AskTraceCheck` 已寫、11 檔改動、報告 0 byte → **未 build／未驗**。
 - 09-14 05:4x（cron 核實）：jarvis-pc tree clean／cron 9 個全 ok／8765 `/health` ok／`shadow` 模式；MC 前景 playing（全程零 GUI 動作）。
+- 09-14 15:39：免費模型 upstage/solar-pro4:free 驗證 Through——HANDOFF agent 正常運作（Nous）。step-3.7-flash:free 曾 429 於 15:30/31。
 
 ## 逐日 index（一行一件；blocker 例外可 2 行）
 
