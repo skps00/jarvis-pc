@@ -16,11 +16,18 @@
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
  - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`；packai repo 有未追蹤 `logs/` → **唔准 `git add -A`**
-- **未解（等 SK 決）**：① **push**：jarvis-pc 29／packai 3 個 commit（等一句）② packai 版面修正＝**等 S0 trace 真機數據**才定 R5 判定鏈、才開工 ③ alert `enforce`（一次性 cron `4695c33b8bdf` 09-15 03:15 三情境驗收清單）④ AI_Studio Phase 1（hold）／ASR（HOLD 等新 mic）⑤ Task S 跑完要**我親自驗**（自報唔可信）
-- **下一步（優先序）**：① 收 Task S（poll 背景 process）→ build＋`AskTraceCheck`＋`check_dual_tree_sync`＋逐條核報告 → 出報告 ② SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace → 定 R5 → 開工 K1／K2／K3／R1／R2／R4-b（等 go）③ push（等 SK 一句）④ alert enforce（09-15 樣本齊）
+- **未解（等 SK 決）**：① **push**：jarvis-pc 29／packai 3 個 commit（等一句）② packai 版面修正＝**等 S0 trace 真機數據**才定 R5 判定鏈、才開工 ③ alert `enforce`（清單已出 09-15；cron `4695c33b8bdf` 03:45 **FAILED**＝API 600s timeout → 手動補出三情境；等 SK 親跑打機／通話／idle）④ AI_Studio Phase 1（hold）／ASR（HOLD 等新 mic）⑤ Task S 跑完要**我親自驗**（自報唔可信）
+- **下一步（優先序）**：① 收 Task S（poll 背景 process）→ build＋`AskTraceCheck`＋`check_dual_tree_sync`＋逐條核報告 → 出報告 ② SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace → 定 R5 → 開工 K1／K2／K3／R1／R2／R4-b（等 go）③ push（等 SK 一句）④ alert enforce（樣本已滿 48h；等 SK 跑三情境，pass 先上 enforce）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-15 session — alert enforce 驗收清單補送（cron FAILED）
+
+- 09-15 03:45：一次性 cron `4695c33b8bdf`（alert-enforce 三情境驗收清單，09-13 排）**FAILED**＝`RuntimeError: Non-streaming API call timed out after 600s`，清單冇自動送。
+- 09-15 05:2x：shadow 樣本已滿 48h（`shadow_heartbeat.jsonl` 最早 09-12 18:16，count 4018 行）；`--hours 48` 報告 decisions hold=7（全 gaming）／speak=0／digest=0／drop=0；gaming 落差 v1_true=312／v2_true=468／v1_only=11／v2_only=167。
+- 09-15 05:2x：手動補出三情境驗收清單（打機→hold／通話→hold／idle→speak，各核 `shadow_ledger` decision）。SK 未開始驗收、未上 enforce；`alert_policy_mode` 仍＝`shadow`。
+- SK 指示「check and update handoff first」（DeepSeek 模型唔穩定，隨時斷線）。零 config／code 改動、零 test alert、零 commit。
 
 ## 今日完成（2026-09-14）
 
