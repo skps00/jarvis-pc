@@ -29,6 +29,7 @@
 - **卡片線實錘**（SK 20:25–20:30 三次真機 ask，讀 `latest.log`＋trace）：`infinity_sword` 0 卡＝**正確**；`infinity_sword_organ` 4 卡＝3 正確＋1 張**tag 樣本顯示錯**（卡面 grid 兩個樣本都唔係焦點）；`tetra:modular_sword` 1 任務卡＋3 張**設計性抑制**（`toolParts path=strip`）。
 - **三次診斷翻轉（全部有 file:line 否證）**：① 以為錯卡＝attribution 錯 → 否證（`recipes/common.js:171` 器官真係合法材料，focus 真喺 `#kubejs:organ`）② 以為改卡樣本可行 → 否證（`RecipeCard` 冇 ingredient provenance、格仔由 JEI drawable 畫）③ 以為正文講隱藏卡＝卡側問題 → 否證（嗰句嚟自 lang `packai.reply.tool_build` #23 提示詞）。
 - **真 bug（反方搵到）**：`RecipeEmbed.placeEmissionCardsByRef:778-825` 插卡用**顯示清單 index**（唔係 refId）→ 顯示側一剷卡即**錯位**＝SK 講嘅「張冠李戴」→ **B11 為唯一修法**。
+- **B11 落地**（jar `97d279f7` 已部署）：`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡（純核心 `ModularFrameCards.shouldDropFrameCard` 同顯示側共用）、`AskLoopState` 新欄＋雙 bind＋兩處 auto-emit 跳過、全剷時工具明示「已隱藏」；115 check 全綠；我嘅負對照 ①拿掉過濾→紅 ②移到 refId 後→紅（`order pred=20 ref=19 add=23`）
 - **B9／B10 落地**（log-only，jar `b288f80e…` 未部署）：`AskCardsDebug.visibleEmissionRefIds`（**剔唔重編**）＋ `render.cards.final.role` 統一 `promptRole()`；harness 加 2 條子斷言；負對照紅→綠、114 check 全綠。
 - **B11**：plan §14 v2 過 review **正方 8 : 反方 2**（前置修：S2 次序、S1 範圍）→ **已派 cursor（跑緊）**。
 - **我嘅失誤（已寫入 skill／plan）**：① 比分方向寫反（SK 兩次糾正 → 定「**正方 : 反方**」，正方寫前）② 誤報 tag 未實作（只 grep 中文字面，忽略 lang-key 間接）③ 卡 bug 三次錯判因果（上列）。
