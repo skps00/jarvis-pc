@@ -3,24 +3,35 @@
 <!-- STATE:BEGIN -->
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
-- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）答案版面／取得途徑修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-14 05:4x 改寫）**
- - **jarvis-pc**：tree clean；branch `feature/hermes-alerts-mcp`（未 push：vs origin/feature **ahead 29**、vs origin/main **ahead 38**，未計本 cron 呢個 docs commit）；PR #12 已 merge（`96be515`）；cron 9 個（含 1 一次性）last_status 全 ok；常駐＝sidecar＋alert poll loop；`alert_policy_mode: shadow`（8765 `/health` ok、`wake_on:true`、ctypes error 0）
- - **packai（MC）**：`main` **ahead 3**（`f0ac745`／`8d25433`／`9f9baaf`，未 push）；真機部署 forge jar sha256 `a4e689de…`（09-13 20:06）；T0 洩漏／JEI 全 id／Tetra 分流／footer 標籤全部**已真機驗**（09-14 02:3x smoke 4/4）
- - **packai 版面修正（新，plan v4）**：`docs/plans/2026-09-14-packai-reply-layout-plan.md`；兩輪反方 R1／R2 都 **7:3** → 依契約停手問 SK → SK 揀 a；**Task S 05:14 已派（cursor-agent，零行為改動嘅全鏈路審計 trace）→ 05:30 仍跑緊、未 build／未驗、未 commit**；未動任何正式 behaviour 改動
- - **語音（ASR）**：SK 揀本地 Fun-ASR-Nano（MiMo 已停）；**HOLD＝等新 mic**（同 wake／聲紋／AEC 一齊）；09-13 晚 2 句粵語 garble（21:56／22:45，serve.log `[ear] raw=`）
- - **AI_Studio（非 JARVIS）**：Phase 1 hold；架構 A/B/C 押後
- - **GPU**：5090 driver 581.42 TDR 已知（SK 決定唔郁）；重服務用完即卸
+- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
+- **現狀（2026-09-15 22:1x 改寫）**
+ - **packai（MC，主線）**：forge 樹**大量未 commit 改動**（C-0／C-1／D 批／B1／B9／B10 全部已親驗）；真機 jar 已部署 **`57e59a06…`**（C-0 顯示層＋B1 per-card log＋C-1 三設定＋D 批一個掣＋長文字）；**新 jar `b288f80e…` 已 build、未部署**（等 B11 一次過）
+ - **Settings C 批**：C-0（繪製次序＋mouse 路由＋scroll 保 draft）✅ 驗收；C-1（trace 保留日數／追問輪數／每日 token 上限）✅ 已部署；**D 批**（一個掣揀模型＋長文字唔夠位）✅ 已部署（反方 P1 正方9:反方1、P2 正方8:反方2）；C-2／C-3／C-4 未開
+ - **卡片線（主戰場）**：plan `docs/plans/2026-09-15_card-attribution-and-suppression.md`（v7 `f9c7c23`）；B1／B9／B10 ✅ 落地；**B11（令模型卡集 == 顯示卡集，修 `[card:N]` index 錯位）已過 review（正方 8 : 反方 2）→ cursor 跑緊**；B2／B3／B4 已被反方否證撤回
+ - **jarvis-pc**：tree clean；branch `feature/hermes-alerts-mcp`（未 push）；`alert_policy_mode: shadow`；cron `mc-mod-jar-guard`（`e8a951a720d5`）**已 pause**（SK 決定；detector 非 preventer）
+ - **語音（ASR）**：HOLD 等新 mic；**AI_Studio**：Phase 1 hold；**GPU**：5090 TDR 已知（SK 決定唔郁）
 - **唔准郁（硬限制）**
- - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`；05:45 實況＝MC 前景 playing）
+ - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`；`playing`／`using` 只做無聲操作）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
- - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**唔准入 secrets**（HANDOFF 視為可公開）
- - 長跑分支**唔准 squash-merge**；packai code 一律經 cursor-agent；郁 packai code 前必讀 skill `minecraft-modpack-ai-development`；packai repo 有未追蹤 `logs/` → **唔准 `git add -A`**
-- **未解（等 SK 決）**：① **push**：jarvis-pc 29／packai 3 個 commit（等一句）② packai 版面修正＝**等 S0 trace 真機數據**才定 R5 判定鏈、才開工 ③ alert `enforce`（清單已出 09-15；cron `4695c33b8bdf` 03:45 **FAILED**＝API 600s timeout → 手動補出三情境；等 SK 親跑打機／通話／idle）④ AI_Studio Phase 1（hold）／ASR（HOLD 等新 mic）⑤ Task S 跑完要**我親自驗**（自報唔可信）
-- **下一步（優先序）**：① 收 Task S（poll 背景 process）→ build＋`AskTraceCheck`＋`check_dual_tree_sync`＋逐條核報告 → 出報告 ② SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace → 定 R5 → 開工 K1／K2／K3／R1／R2／R4-b（等 go）③ push（等 SK 一句）④ alert enforce（樣本已滿 48h；等 SK 跑三情境，pass 先上 enforce）
+ - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
+ - packai code **一律經 cursor-agent**；packai repo 有未追蹤 `logs/` → **唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**（遊戲／java 開住會 rc=2 拒絕）
+- **未解（等 SK 決）**：① packai 全部改動**未 commit**（等真機驗收過，bump 0.2.2）② 卡片線：lang `packai.reply.tool_build` #23 改唔改（我建議**唔改**）③ **push**（jarvis-pc／packai）④ alert `enforce`（等 SK 親跑三情境）⑤ B11 真機 A/B 未做 ⑥ C-2／C-3／C-4 未開
+- **下一步（優先序）**：① 收 B11（cursor 跑緊）→ 親驗（compile／harness／**114 check**／負對照）→ build＋部署 ② SK 真機驗收：Settings 4 項（輸入框可見／可點／打字後 scroll 唔吞字／tooltip 最上層）＋ 三個新設定 ＋ 重問「亞巴頓」／「寰宇器官」睇卡面＋正文 ③ 真機過 → commit（bump **0.2.2**）④ 再定 C-2／C-3
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-15 session（packai 主線）— Settings C 批／D 批／卡片線
+
+- **C-0 落地**（`1b207174…`）：`renderScreen` 兩分支次序（正常＝自繪→widgets→tips 最後；fallback＝widgets→「畫面太細」→tips，plan 字面反而錯）＋ `mouseClicked` 先交 vanilla（`if (super.mouseClicked(...)) return true;`）＋ scroll 觸發 rebuild 時**保 draft**；新閘 `check_settings_render_order.py`（其後升級 allowlist＋自帶注入負對照）；其餘 3 個 screen 只加註釋（零行為）。
+- **C-1 落地**（`ca6b2b36…`）：`llm.traceKeepDays`（預設 3、日清喺檔案數修剪**之前**）／`llm.askMaxToolRounds`（3、**欄位注入** `AskLoopState.maxLlmRounds`）／`llm.dailyTokenLimit`（`config/packai-usage.json`、`synchronized` 單一 writer、64 KiB 上限、缺失 usage 用估算入帳）；新檔 `logic/DailyTokenUsage.java`＋harness；新閘 `check_settings_c1.py`；負對照 2 個皆紅。
+- **D 批落地**（`57e59a06…`）：**一行「模型」**＋picker 兩節（雲端／本機；`Target`＋`Row`、header 唔可揀、空節唔顯示、強制 fetch 兩個後端＋CAS pending）；**tag 單一來源** `PackAiConfig.effectiveModelTagKey()`（停用／本機／雲端／雲端・未設 key）；描述板 `Font.split` 3 行 wrap＋**Shift 全文**（1.19.2 `Screen.renderTooltip` 唔會斷行，必須先 split）；`DESC_DOCK_H 36→56`＋可見行數 ≥4 斷言；`boxX = r.x + labelW + 4`；`hiddenInUi`（保留 registry 令 reset／setters 閘唔爆）；新閘 `check_settings_model_picker.py`＋harness `ModelPickerRowsCheck`。
+- **卡片線實錘**（SK 20:25–20:30 三次真機 ask，讀 `latest.log`＋trace）：`infinity_sword` 0 卡＝**正確**；`infinity_sword_organ` 4 卡＝3 正確＋1 張**tag 樣本顯示錯**（卡面 grid 兩個樣本都唔係焦點）；`tetra:modular_sword` 1 任務卡＋3 張**設計性抑制**（`toolParts path=strip`）。
+- **三次診斷翻轉（全部有 file:line 否證）**：① 以為錯卡＝attribution 錯 → 否證（`recipes/common.js:171` 器官真係合法材料，focus 真喺 `#kubejs:organ`）② 以為改卡樣本可行 → 否證（`RecipeCard` 冇 ingredient provenance、格仔由 JEI drawable 畫）③ 以為正文講隱藏卡＝卡側問題 → 否證（嗰句嚟自 lang `packai.reply.tool_build` #23 提示詞）。
+- **真 bug（反方搵到）**：`RecipeEmbed.placeEmissionCardsByRef:778-825` 插卡用**顯示清單 index**（唔係 refId）→ 顯示側一剷卡即**錯位**＝SK 講嘅「張冠李戴」→ **B11 為唯一修法**。
+- **B9／B10 落地**（log-only，jar `b288f80e…` 未部署）：`AskCardsDebug.visibleEmissionRefIds`（**剔唔重編**）＋ `render.cards.final.role` 統一 `promptRole()`；harness 加 2 條子斷言；負對照紅→綠、114 check 全綠。
+- **B11**：plan §14 v2 過 review **正方 8 : 反方 2**（前置修：S2 次序、S1 範圍）→ **已派 cursor（跑緊）**。
+- **我嘅失誤（已寫入 skill／plan）**：① 比分方向寫反（SK 兩次糾正 → 定「**正方 : 反方**」，正方寫前）② 誤報 tag 未實作（只 grep 中文字面，忽略 lang-key 間接）③ 卡 bug 三次錯判因果（上列）。
 
 ## 2026-09-15 session — alert enforce 驗收清單補送（cron FAILED）
 
