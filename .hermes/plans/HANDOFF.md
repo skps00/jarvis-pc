@@ -4,22 +4,35 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-15 22:1x 改寫）**
- - **packai（MC，主線）**：forge 樹**大量未 commit 改動**（C-0／C-1／D 批／B1／B9／B10 全部已親驗）；真機 jar 已部署 **`57e59a06…`**（C-0 顯示層＋B1 per-card log＋C-1 三設定＋D 批一個掣＋長文字）；**新 jar `b288f80e…` 已 build、未部署**（等 B11 一次過）
- - **Settings C 批**：C-0（繪製次序＋mouse 路由＋scroll 保 draft）✅ 驗收；C-1（trace 保留日數／追問輪數／每日 token 上限）✅ 已部署；**D 批**（一個掣揀模型＋長文字唔夠位）✅ 已部署（反方 P1 正方9:反方1、P2 正方8:反方2）；C-2／C-3／C-4 未開
- - **卡片線（主戰場）**：plan `docs/plans/2026-09-15_card-attribution-and-suppression.md`（v7 `f9c7c23`）；B1／B9／B10 ✅ 落地；**B11（令模型卡集 == 顯示卡集，修 `[card:N]` index 錯位）已過 review（正方 8 : 反方 2）→ cursor 跑緊**；B2／B3／B4 已被反方否證撤回
- - **jarvis-pc**：tree clean；branch `feature/hermes-alerts-mcp`（未 push）；`alert_policy_mode: shadow`；cron `mc-mod-jar-guard`（`e8a951a720d5`）**已 pause**（SK 決定；detector 非 preventer）
- - **語音（ASR）**：HOLD 等新 mic；**AI_Studio**：Phase 1 hold；**GPU**：5090 TDR 已知（SK 決定唔郁）
+- **現狀（2026-09-16 00:1x 改寫）**
+ - **packai（MC，主線）**：forge 樹**大量未 commit 改動**；真機 jar 已部署 **`97d279f7…`**（C-0／C-1／D 批／B1／B9／B10／**B11** 全部已親驗、115 check 綠）
+ - **卡片線**：B11 ✅（`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡；負對照 2 個紅→綠）；plan `2026-09-15_card-attribution-and-suppression.md`（§16 卡面樣本 反方 3:7 → **SK 決定 A 項唔做**、記為已知限制）
+ - **KubeJS 取得途徑線（新，狀態：停手後收窄）**：一般化方案**停手**（R1 3:7／2:8、R2 5:5、R3 4:6／3:7）→ 研究（JEI 需 per-mod plugin：本包 231 jar／47 個有；EMI 只有 2 個；JER 未裝；事件式轉換無 viewer 覆蓋）→ 窄版 v4 → R1 **2:8／3:7** → 拆 **plan α**（`2026-09-16_display-peer-leak-fix.md`：peer 行洩漏腳本路徑，真 trace 67 個 peer 有 64 個垃圾）＋**plan β**（`2026-09-16_kubejs-transform-narrow-v4.1.md`）；commit `149e628`；**R2 review 派咗但因 SK 關機未回**
+ - **Settings C／D 批**：全部 ✅ 已部署；C-2／C-3／C-4 未開
+ - **jarvis-pc**：tree clean；cron `mc-mod-jar-guard` pause；`alert_policy_mode: shadow`
 - **唔准郁（硬限制）**
- - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`；`playing`／`using` 只做無聲操作）
+ - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
- - packai code **一律經 cursor-agent**；packai repo 有未追蹤 `logs/` → **唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**（遊戲／java 開住會 rc=2 拒絕）
-- **未解（等 SK 決）**：① packai 全部改動**未 commit**（等真機驗收過，bump 0.2.2）② 卡片線：lang `packai.reply.tool_build` #23 改唔改（我建議**唔改**）③ **push**（jarvis-pc／packai）④ alert `enforce`（等 SK 親跑三情境）⑤ B11 真機 A/B 未做 ⑥ C-2／C-3／C-4 未開
-- **下一步（優先序）**：① 收 B11（cursor 跑緊）→ 親驗（compile／harness／**114 check**／負對照）→ build＋部署 ② SK 真機驗收：Settings 4 項（輸入框可見／可點／打字後 scroll 唔吞字／tooltip 最上層）＋ 三個新設定 ＋ 重問「亞巴頓」／「寰宇器官」睇卡面＋正文 ③ 真機過 → commit（bump **0.2.2**）④ 再定 C-2／C-3
+ - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**
+ - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗，SK 投訴過；已寫入 skill）
+- **未解（等 SK 決）**：① packai 全部改動**未 commit**（真機驗收過，bump 0.2.2）② plan α／β 未過 8:2（α＝第 1 輪、β＝第 2 輪，review 被中斷）③ **push** ④ B11 真機 A/B 未做 ⑤ C-2／C-3／C-4 未開 ⑥ A 項（卡面 tag 樣本）已知限制
+- **下一步（優先序）**：① 重啟後：重派 plan α／β review → α（peer 洩漏 bug fix，風險低）先做 ② SK 真機驗收 B11（問「亞巴頓」：模型消化清單唔應再有框架卡）③ 真機過 → commit（bump **0.2.2**）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-16 session（KubeJS 取得途徑線：停手 → 收窄）
+
+- SK 問「can AI know how to craft this item?」（满溢神恩项链）→ 我報「3 條途徑」**錯**：`goety_ritual.js:1` 簽名 `GoetyRitualRecipe(craftType, ingredients, activation_item, output)` → 第 3 個 arg 係**祭品（消耗）**；真產出係 gateway pearl。`weapon_infusion.js:14` 同類。
+- 真相：满溢項鍊唯一取得途徑＝**充能**（`server_scripts/curios/entity_death.js:21-27`：戴住「空」項鍊打死 4 王之一 → 變身）；空項鍊嚟自 `chestloot_2.json`（loot 索引已覆蓋）。AI 答「查唔到」係錯（路徑存在）。
+- **一般化方案停手**（照 SK 3–4 輪規矩）：逐輪比分 R1 3:7／2:8、R2 5:5、R3 4:6／3:7 → 停手報告 `2026-09-15_kubejs-acquisition-path-facts-v3-stop.md`（含卡死點：map-key 來源側／方向過濾擋唔到 peer 洩漏／4 王名要 entity 名解析）。
+- **研究（SK 指示 search online）**：JEI／EMI 需 per-mod plugin 才有自訂配方（本包 231 jar：47 個有 JEI plugin、**只有 2 個有 EMI plugin**）；JER 未裝；EMI Loot 已裝；**事件式轉換冇任何 viewer 覆蓋** → 只有腳本／tooltip。
+- 工具落地：`tools/kubejs_mechanism_audit.py` ＋ `docs/kubejs-mechanism-coverage.{md,json}`（13 pack：863 原始 → **402 清洗後候選機制**、21 種自訂 recipe class、86 個事件家族）；`tools/kubejs_inventory_probe.py`。commit `e874d9f`／`9828a01`。
+- 窄版 v4 → R1 **正方 2 : 反方 8**／**3 : 反方 7** → 拆 **plan α**（peer 行洩漏：真 trace 67 個 peer entry 有 **64 個垃圾**）＋**plan β（v4.1）**；commit `149e628`；R2 review 派咗（SK 關機中斷）。
+- 更正我兩個錯：① 「唔需要改 answer layer」**錯**（新 edge 喺 `AskEngine:472-504` 冇 branch 會直接被丟）② 王名 zh_cn 係「暗夜巫妖」唔係「暗夜巫師」。
+- B11 已 build＋部署（jar `97d279f7`）；115 check 全綠；我嘅負對照 2 個紅→綠。
+
 
 ## 2026-09-15 session（packai 主線）— Settings C 批／D 批／卡片線
 
