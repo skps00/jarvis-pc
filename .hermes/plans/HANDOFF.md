@@ -7,7 +7,7 @@
 - **現狀（2026-09-16 00:1x 改寫）**
  - **packai（MC，主線）**：forge 樹**大量未 commit 改動**；真機 jar 已部署 **`97d279f7…`**（C-0／C-1／D 批／B1／B9／B10／**B11** 全部已親驗、115 check 綠）
  - **卡片線**：B11 ✅（`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡；負對照 2 個紅→綠）；plan `2026-09-15_card-attribution-and-suppression.md`（§16 卡面樣本 反方 3:7 → **SK 決定 A 項唔做**、記為已知限制）
- - **KubeJS 取得途徑線（新，狀態：停手後收窄）**：一般化方案**停手**（R1 3:7／2:8、R2 5:5、R3 4:6／3:7）→ 研究（JEI 需 per-mod plugin：本包 231 jar／47 個有；EMI 只有 2 個；JER 未裝；事件式轉換無 viewer 覆蓋）→ 窄版 v4 → R1 **2:8／3:7** → 拆 **plan α**（`2026-09-16_display-peer-leak-fix.md`：peer 行洩漏腳本路徑，真 trace 67 個 peer 有 64 個垃圾）＋**plan β**（`2026-09-16_kubejs-transform-narrow-v4.1.md`）；commit `149e628`；**R2 review 派咗但因 SK 關機未回**
+ - **KubeJS 取得途徑線（新，狀態：停手後收窄）**：一般化方案**停手**（R1 3:7／2:8、R2 5:5、R3 4:6／3:7）→ 研究（JEI 需 per-mod plugin：本包 231 jar／47 個有；EMI 只有 2 個；JER 未裝；事件式轉換無 viewer 覆蓋）→ 窄版 v4 → R1 **2:8／3:7** → 拆 **plan α**（`2026-09-16_display-peer-leak-fix.md`：peer 行洩漏腳本路徑，真 trace 67 個 peer 有 64 個垃圾）＋**plan β**（`2026-09-16_kubejs-transform-narrow-v4.1.md`）；commit `149e628`；**R2 已回**：α 正方 6 : 反方 4（P1–P5 實測完備、0 誤殺；3 處硬傷：斷言自相矛盾／閘 RC 寫錯＋scope／baseline 未驗）／β 正方 5 : 反方 5（方向已修好；S3 斷言走錯通道、pin 錯函式、band 講反、`addFactForced` 會洪泛、漏 `MAX_RETRIEVE_FACTS=24`）→ 兩個都差最後一輪本地修正
  - **Settings C／D 批**：全部 ✅ 已部署；C-2／C-3／C-4 未開
  - **jarvis-pc**：tree clean；cron `mc-mod-jar-guard` pause；`alert_policy_mode: shadow`
 - **唔准郁（硬限制）**
