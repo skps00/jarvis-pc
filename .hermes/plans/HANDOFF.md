@@ -4,14 +4,14 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-16 07:58 改寫）**
+- **現狀（2026-09-17 08:0x 改寫）**
  - **Hermes gateway**：07:41-07:57 crash loop（uv CPython 3.11 缺 `python.exe` → 80070002、trampoline 失效）→ 已恢復（`uv python install 3.11 --reinstall` + `uv venv --allow-existing` + `hermes gateway start`）；見 `code_change_log.md`
  - **JARVIS ONE（09-16 10:00 更新）**：HUD **0.4.13** 已 build＋部署＋3 個 `.lnk` 更新（`spawnSidecar` ENOENT 卡死 bug 修好；A/B＋recovery＋正常 exit 三項實測）；8765/8770/8771 正常。**`hud/main.js` 未 commit**（等 SK 真機驗收）。Hermes watchdog **v3** 已上線（pre-flight ＋ bounded 自癒 ＋ 零彈窗 guard ＋ 誠實 reporter），真機 tick 驗證 PID 不變／0 flash
- - **packai（MC，主線）**：forge 樹**大量未 commit 改動**；真機 jar 已部署 **`97d279f7…`**（C-0／C-1／D 批／B1／B9／B10／**B11** 全部已親驗、115 check 綠）
+ - **packai（MC，主線，詳 MC repo HANDOFF）**：forge 樹**大量未 commit 改動**（等 bump `0.2.2`）；真機 jar ＝ **`d92cc62f`**（含 C-0／B11／C-1／D／α；11:05 部署，親核 sha256）
  - **卡片線**：B11 ✅（`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡；負對照 2 個紅→綠）；plan `2026-09-15_card-attribution-and-suppression.md`（§16 卡面樣本 反方 3:7 → **SK 決定 A 項唔做**、記為已知限制）
- - **KubeJS 取得途徑線（新，狀態：停手後收窄）**：一般化方案**停手**（R1 3:7／2:8、R2 5:5、R3 4:6／3:7）→ 研究（JEI 需 per-mod plugin：本包 231 jar／47 個有；EMI 只有 2 個；JER 未裝；事件式轉換無 viewer 覆蓋）→ 窄版 v4 → R1 **2:8／3:7** → 拆 **plan α**（`2026-09-16_display-peer-leak-fix.md`：peer 行洩漏腳本路徑，真 trace 67 個 peer 有 64 個垃圾）＋**plan β**（`2026-09-16_kubejs-transform-narrow-v4.1.md`）；commit `149e628`；**R2 已回**：α 正方 6 : 反方 4（P1–P5 實測完備、0 誤殺；3 處硬傷：斷言自相矛盾／閘 RC 寫錯＋scope／baseline 未驗）／β 正方 5 : 反方 5（方向已修好；S3 斷言走錯通道、pin 錯函式、band 講反、`addFactForced` 會洪泛、漏 `MAX_RETRIEVE_FACTS=24`）→ 兩個都差最後一輪本地修正
+ - **KubeJS 取得途徑線（MC 側，詳 MC repo HANDOFF）**：α（peer 行洩漏）**已達標（R3 8:2）＋已部署**；取得通道 plan 由 β（API-first v5.4，commit `d887ac8`）＋v6 線（code-first）演進至 **`v6.14`：R14 正方 8 : 反方 2 達標 → 等 SK go**
  - **Settings C／D 批**：全部 ✅ 已部署；C-2／C-3／C-4 未開
- - **jarvis-pc**：tree clean；cron `mc-mod-jar-guard` pause；`alert_policy_mode: shadow`
+ - **jarvis-pc tree**：未 commit＝`hud/main.js`＋`hud/package.json`（HUD 0.4.13）＋本 HANDOFF（3 檔）；cron `mc-mod-jar-guard` **pause**（09-15 20:25 起）；`alert_policy_mode: shadow`；8642／8765 ok、8770／8771 有應（無 /health route）
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
@@ -19,11 +19,15 @@
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**
  - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗，SK 投訴過；已寫入 skill）
  - **語音／mic 線 HOLD（等 SK 新 mic，09-16 SK 再明確提醒）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；**唔為咗測試重啟 sidecar**（每次重啟 = 停 wake）；**唔叫 SK 測 wake**；Settings tab 例外（唔關 mic 事）
-- **未解（等 SK 決）**：① packai 全部改動**未 commit**（真機驗收過，bump 0.2.2）② plan α／β 未過 8:2（α＝第 1 輪、β＝第 2 輪，review 被中斷）③ **push** ④ B11 真機 A/B 未做 ⑤ C-2／C-3／C-4 未開 ⑥ A 項（卡面 tag 樣本）已知限制 ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（唔加就可能再被刪 python.exe）⑧ `hud/main.js`＋`hud/package.json`（HUD 0.4.11）未 commit，等真機驗收
-- **下一步（優先序）**：① 重啟後：重派 plan α／β review → α（peer 洩漏 bug fix，風險低）先做 ② SK 真機驗收 B11（問「亞巴頓」：模型消化清單唔應再有框架卡）③ 真機過 → commit（bump **0.2.2**）
+- **未解（等 SK 決）**：① **packai α（peer 洩漏）已完成 code＋全綠＋已部署**（jar sha256 `d92cc62f`，含 C-0／B11／C-1／D）→ 未 commit（**已定案：等 bump `0.2.2` 一齊 commit＋push**）；另兩個 code 檔 **untracked** ② **plan α review 已達標**（R1 6:4 → R2 5:5 → R3 **8:2**；code review 2 輪，共 6 個真缺陷全修）；**plan β 確實存在**（`docs/plans/2026-09-16_kubejs-transform-v5.0-api-first.md` v5.4，commit `d887ac8`；review 已達標＝SAFE）→ 等 SK 定佢同 v6.14 嘅關係 ③ **push** 等 SK ④ **B11 真機 A/B 未做**（新 jar 已含 B11 → 可以今次一齊測：問「亞巴頓」，模型消化清單唔應有框架卡）⑤ C-0／C-1／D 真機未驗（新 jar 已含）⑥ C-2／C-3／C-4 未開 ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（⚠️ `%PROGRAMDATA%\Surfshark\antivirus.db` **今日 12:48 又有更新** → 唔加就可能再被刪 `python.exe`）⑧ `hud/main.js`＋`hud/package.json`（HUD **0.4.13**）未 commit，等 SK 真機驗收 ⑨ `jarvis-pc/AGENTS.md`「現行版本」仍寫 0.4.10（受保護檔，要 SK 明確 go） ⑩ **packai 主線最新**：KubeJS 取得通道 plan `v6.14` 已達 review 閘（R14 **正方 8 : 反方 2**）→ **等 SK go 派 cursor 實作（單 1）**（詳 MC repo HANDOFF）
+- **下一步（優先序）**：① **packai KubeJS 取得通道**：`v6.14` 等 SK go → 派 cursor 實作（單 1）② SK 開 MC → 一輪過真機驗收（α peer 行／C-1＋D Settings／B11 框架卡）→ 過就 commit（bump **0.2.2**）③ HUD 0.4.13 真機驗收 → commit ④ C-2（answerDetail／blacklist／answerLang）⑤ mic 線 **HOLD**（等新 mic；cron 08:06 報過 `host.json` 指錯 python 路徑——已記錄，唔郁）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-16/17 夜間（已核對，零新工作）
+
+- 09-16 21:03–23:46 語音 session ×5（api_server）全部 ASR 亂碼（「系啊唔系…」「马叫维斯」等）→ 照 **mic HOLD**、零動作、零彈窗；00:22 SK 熄機；09-17 07:43 gateway 起返後 cron 補跑（session-handoff／daily-self-review 皆 ok）。核對：JARVIS 本體零 code 改動、零 commit、零 deploy。
 
 ## 2026-09-16 session（JARVIS HUD 0.4.13 ＋ Hermes watchdog v3）
 
