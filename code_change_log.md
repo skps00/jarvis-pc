@@ -1,5 +1,37 @@
 # 代碼變更與問題日誌
 
+## [2026-09-16 09:26:00] 操作類型：修改
+
+- **文件路徑**：`%LOCALAPPDATA%\hermes\_watchdog_sandbox\build\hermes-gateway-watchdog.ps1`；`…\hermes-gateway-launch-guard.vbs`（sandbox build only；未 deploy live）；`%TEMP%\watchdog_sandbox_test2.py`（harness 量度）
+- **變更摘要**：watchdog v3 micro-fix——修 `Test-Interpreter`／`Invoke-UvHidden`／guard VBS probe 三個 PS 5.1 引號／Trim bug。
+- **遇到的問題**：
+  - 問題1：`Start-Process -ArgumentList @('-c','import sys')` join 唔加引號 → python exit 2 → 真 interpreter 當 broken
+  - 解決方案：改直接 `& $pyPath -c "import sys"`；uv 同理＋`Out-String`；guard 用 `sh.Run("""py"" -c ""import sys""")`
+  - 問題2：harness 喺 a 綠之後 b/d/f 假紅（guard 殘留／pythoncore 缺 DLL／flash banner／d 前 interpreter 仲喺）
+  - 解決方案：harness 清 marker、copy relocatable `Python\bin\python.exe`、d 前刪 py、只計 `FLASH #`
+  - 狀態：✅ 已解決（SUMMARY 全 True；報告 `%TEMP%\cursor_watchdog_microfix_report.md`）
+- **備註**：instructions `%TEMP%\cursor_watchdog_microfix_instructions.md`；唔改 live scripts
+
+## [2026-09-16 08:52:30] 操作類型：修改
+
+- **文件路徑**：`hud/main.js`；`hud/package.json`（version → 0.4.11，驗收後）
+- **變更摘要**：修 HUD sidecar spawn ENOENT 後永遠唔再 respawn——`child.on('error')` 清 `sidecarProc`＋5s retry；早退加 `exitCode === null`；health check 對已死 child 直接 null＋spawn。
+- **遇到的問題**：
+  - 問題1：`spawn()` ENOENT 只 emit `error`（唔 emit `exit`）→ `sidecarProc` 永久擋住 `spawnSidecar` early-return；health check 對死 child `.kill()` 無效
+  - 解決方案：error handler identity-check 清 ref＋寫 hud_error.log＋共用 5s respawn timer；早退／health 用 `exitCode`
+  - 狀態：✅ 已解決（2026-09-16 09:0x 驗收：`node --check` OK；A/B 實測——舊 code 撞 ENOENT 只試 1 次就永久卡死、新 code 11s 內重試 3 次後按 crash-loop 退避；recovery 測試：interpreter 中途出現後，app 未重啟下 sidecar 自動起返、`8765 /health` 200 `wake_on:true`）→ 已 build `JARVIS-ONE-0.4.11.exe` ＋ 換版 ＋ 3 個 .lnk 更新（TEMP 測試 harness：`%TEMP%\hud_sidecar_ab_test.py`）
+- **備註**：plan `docs/plans/2026-09-16-hud-sidecar-spawn-failure-respawn.md`
+
+## [2026-09-16 07:55:00] 操作類型：修改
+
+- **文件路徑**：`%APPDATA%\uv\python\cpython-3.11-...`；`%LOCALAPPDATA%\hermes\hermes-agent\venv`
+- **變更摘要**：修 Hermes gateway 離線——uv CPython 3.11 缺 `python.exe` → Startup `Hermes_Gateway.vbs` L17 報 80070002；`uv python install 3.11 --reinstall` + `uv venv --allow-existing` 補回 trampoline，再 `hermes gateway start`。
+- **遇到的問題**：
+  - 問題1：venv Scripts 無 python.exe；hermes.exe trampoline「canonicalize script path」失敗
+  - 解決方案：重裝 base CPython 3.11.15 後 recreate venv links（唔 wipe packages）
+  - 狀態：✅ 已解決
+- **備註**：HUD 本來已跑；離線係 Discord／:8642 腦。下次 login 唔應再彈 80070002。
+
 ## [2026-08-28 21:30:00] 操作類型：新增
 
 - **文件路徑**：`src/jarvis/hwinfo_shm.py`
