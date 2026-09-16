@@ -1,5 +1,15 @@
 # 代碼變更與問題日誌
 
+## [2026-09-16 09:44:00] 操作類型：修改
+
+- **文件路徑**：`hud/main.js`；`hud/package.json`（version → 0.4.13）
+- **變更摘要**：micro-fix #3——`spawnSidecar` error handler predicate 由壞嘅 `err.syscall !== 'spawn'` 改做 `child.pid === undefined`（clear-ref＋retry 只喺 spawn 從未成功時）。
+- **遇到的問題**：
+  - 問題1：round 2（0.4.12）用 `err.syscall === 'spawn'`；實測 syscall 係 `"spawn <path>"` → predicate 永遠 fail → 76s 內只試 1 次（退化）
+  - 解決方案：改用 `child.pid !== undefined` early-return；ENOENT 時 pid=undefined 才清 ref＋`scheduleSidecarRespawn`
+  - 狀態：✅ 已解決（syntax：`node --check`；行為驗收待 SK／harness phase B）
+- **備註**：plan `docs/plans/2026-09-16-hud-sidecar-spawn-failure-respawn.md` §1／§8 round 3
+
 ## [2026-09-16 09:26:00] 操作類型：修改
 
 - **文件路徑**：`%LOCALAPPDATA%\hermes\_watchdog_sandbox\build\hermes-gateway-watchdog.ps1`；`…\hermes-gateway-launch-guard.vbs`（sandbox build only；未 deploy live）；`%TEMP%\watchdog_sandbox_test2.py`（harness 量度）
