@@ -18,6 +18,7 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**
  - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗，SK 投訴過；已寫入 skill）
+ - **語音／mic 線 HOLD（等 SK 新 mic，09-16 SK 再明確提醒）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；**唔為咗測試重啟 sidecar**（每次重啟 = 停 wake）；**唔叫 SK 測 wake**；Settings tab 例外（唔關 mic 事）
 - **未解（等 SK 決）**：① packai 全部改動**未 commit**（真機驗收過，bump 0.2.2）② plan α／β 未過 8:2（α＝第 1 輪、β＝第 2 輪，review 被中斷）③ **push** ④ B11 真機 A/B 未做 ⑤ C-2／C-3／C-4 未開 ⑥ A 項（卡面 tag 樣本）已知限制 ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（唔加就可能再被刪 python.exe）⑧ `hud/main.js`＋`hud/package.json`（HUD 0.4.11）未 commit，等真機驗收
 - **下一步（優先序）**：① 重啟後：重派 plan α／β review → α（peer 洩漏 bug fix，風險低）先做 ② SK 真機驗收 B11（問「亞巴頓」：模型消化清單唔應再有框架卡）③ 真機過 → commit（bump **0.2.2**）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
