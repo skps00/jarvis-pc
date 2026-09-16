@@ -4,7 +4,8 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-16 00:1x 改寫）**
+- **現狀（2026-09-16 07:58 改寫）**
+ - **Hermes gateway**：07:41-07:57 crash loop（uv CPython 3.11 缺 `python.exe` → 80070002、trampoline 失效）→ 已恢復（`uv python install 3.11 --reinstall` + `uv venv --allow-existing` + `hermes gateway start`）；見 `code_change_log.md`
  - **packai（MC，主線）**：forge 樹**大量未 commit 改動**；真機 jar 已部署 **`97d279f7…`**（C-0／C-1／D 批／B1／B9／B10／**B11** 全部已親驗、115 check 綠）
  - **卡片線**：B11 ✅（`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡；負對照 2 個紅→綠）；plan `2026-09-15_card-attribution-and-suppression.md`（§16 卡面樣本 反方 3:7 → **SK 決定 A 項唔做**、記為已知限制）
  - **KubeJS 取得途徑線（新，狀態：停手後收窄）**：一般化方案**停手**（R1 3:7／2:8、R2 5:5、R3 4:6／3:7）→ 研究（JEI 需 per-mod plugin：本包 231 jar／47 個有；EMI 只有 2 個；JER 未裝；事件式轉換無 viewer 覆蓋）→ 窄版 v4 → R1 **2:8／3:7** → 拆 **plan α**（`2026-09-16_display-peer-leak-fix.md`：peer 行洩漏腳本路徑，真 trace 67 個 peer 有 64 個垃圾）＋**plan β**（`2026-09-16_kubejs-transform-narrow-v4.1.md`）；commit `149e628`；**R2 已回**：α 正方 6 : 反方 4（P1–P5 實測完備、0 誤殺；3 處硬傷：斷言自相矛盾／閘 RC 寫錯＋scope／baseline 未驗）／β 正方 5 : 反方 5（方向已修好；S3 斷言走錯通道、pin 錯函式、band 講反、`addFactForced` 會洪泛、漏 `MAX_RETRIEVE_FACTS=24`）→ 兩個都差最後一輪本地修正
@@ -21,6 +22,12 @@
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-09-16）
+
+- Hermes gateway 停機恢復（07:41-07:57）：uv CPython 3.11 缺 `python.exe` 致 trampoline 失效（報 80070002）、crash loop；`uv python install 3.11 --reinstall` + `uv venv --allow-existing` 補回 trampoline，`hermes gateway start` 恢復，crash loop 停止；見 `code_change_log.md`。
+
+
 
 ## 2026-09-16 session（KubeJS 取得途徑線：停手 → 收窄）
 
