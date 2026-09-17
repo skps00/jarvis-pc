@@ -18,9 +18,10 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**
  - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗，SK 投訴過；已寫入 skill）
+ - **⏸ JARVIS 全線 HOLD 至 2026-09-17 12:00（SK 09-17 08:1x 指示：「hold everything that related to jarvis until 12:00 noon，we start mc first」）**：12:00 前唔開工／唔派工／唔驗收任何 JARVIS 項（HUD／alerts／watchdog／voice／sidecar）；**MC（packai）優先**
  - **語音／mic 線 HOLD（等 SK 新 mic，09-16 SK 再明確提醒）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；**唔為咗測試重啟 sidecar**（每次重啟 = 停 wake）；**唔叫 SK 測 wake**；Settings tab 例外（唔關 mic 事）
 - **未解（等 SK 決）**：① **packai α（peer 洩漏）已完成 code＋全綠＋已部署**（jar sha256 `d92cc62f`，含 C-0／B11／C-1／D）→ 未 commit（**已定案：等 bump `0.2.2` 一齊 commit＋push**）；另兩個 code 檔 **untracked** ② **plan α review 已達標**（R1 6:4 → R2 5:5 → R3 **8:2**；code review 2 輪，共 6 個真缺陷全修）；**plan β 確實存在**（`docs/plans/2026-09-16_kubejs-transform-v5.0-api-first.md` v5.4，commit `d887ac8`；review 已達標＝SAFE）→ 等 SK 定佢同 v6.14 嘅關係 ③ **push** 等 SK ④ **B11 真機 A/B 未做**（新 jar 已含 B11 → 可以今次一齊測：問「亞巴頓」，模型消化清單唔應有框架卡）⑤ C-0／C-1／D 真機未驗（新 jar 已含）⑥ C-2／C-3／C-4 未開 ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（⚠️ `%PROGRAMDATA%\Surfshark\antivirus.db` **今日 12:48 又有更新** → 唔加就可能再被刪 `python.exe`）⑧ `hud/main.js`＋`hud/package.json`（HUD **0.4.13**）未 commit，等 SK 真機驗收 ⑨ `jarvis-pc/AGENTS.md`「現行版本」仍寫 0.4.10（受保護檔，要 SK 明確 go） ⑩ **packai 主線最新**：KubeJS 取得通道 plan `v6.14` 已達 review 閘（R14 **正方 8 : 反方 2**）→ **等 SK go 派 cursor 實作（單 1）**（詳 MC repo HANDOFF）
-- **下一步（優先序）**：① **packai KubeJS 取得通道**：`v6.14` 等 SK go → 派 cursor 實作（單 1）② SK 開 MC → 一輪過真機驗收（α peer 行／C-1＋D Settings／B11 框架卡）→ 過就 commit（bump **0.2.2**）③ HUD 0.4.13 真機驗收 → commit ④ C-2（answerDetail／blacklist／answerLang）⑤ mic 線 **HOLD**（等新 mic；cron 08:06 報過 `host.json` 指錯 python 路徑——已記錄，唔郁）
+- **下一步（優先序，09-17 08:1x SK 指示：MC 先行）**：**12:00 前只做 MC（packai，詳 MC repo HANDOFF）**：① SK 開 MC → 一輪過真機驗收（α peer 行／C-1＋D Settings／B11 框架卡）→ 過就 bump `0.2.2` commit ② KubeJS 取得通道 `v6.14`（R14 8:2）**等 SK go** 派 cursor 實作（單 1）③ β（API-first v5.4）同 v6.14 關係待 SK 拍板 ④ C-2（answerDetail／blacklist／answerLang）→ C-3 → C-4；**JARVIS 全部押後至 12:00 後**（HUD 0.4.13 驗收／mic HOLD／alerts）
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
