@@ -5,6 +5,15 @@
 
 ---
 
+## 現況 sync（2026-09-20 06:5x；只有最新一份算數）
+
+- **JARVIS 線**：HUD 0.4.13 已 build／部署；`hud/main.js`＋`hud/package.json` 未 commit（等 SK 真機驗收）；語音／mic 線 **HOLD**（等新 mic）；jarvis-pc HEAD `feature/hermes-alerts-mcp` ahead 42 未 push。
+- **MC（packai）線**：詳 MC repo `.hermes/plans/HANDOFF.md`——v6 取得途徑已 push（`344e805`）；真 instance jar 仍 `06b5b129a114`（09-18），落後三批 code；73 檔未 commit（`mod_version` 0.2.3）；P1（全部資料：結構／挖礦取得，生態群系，礦物分佈，維度） 等 SK 定次序。
+- **Hermes 側**：cron `jarvis-session-handoff` 09-20 05:45 FAILED（API 429） → 零寫入，已手動補。
+- ⚠️ 以下 **2026-09-11 之前** 嘅 open item 清單多數已過時（例：push，PR #12，conftest APPDATA 隔離，MC 歸檔），唔准照抄落報告，要逐條 live 核。
+
+---
+
 ## H. 2026-08-29 Fragility Review（pass2）——三個月後最脆弱位 ⏳
 
 > 完整報告：`.hermes/plans/2026-08-29-fragility-review-pass2.md`（cursor review，10 findings）

@@ -28,6 +28,8 @@
 - 讀齊兩份 HANDOFF（jarvis-pc＋MC）＋逐項對 live 核（git／mtime／sha256／cron output／instance jar）；零新 code 改動。
 - 捉到 4 處過時，已修入 STATE：① jarvis-pc STATE 停留 09-17（09-17 12:00 HOLD 已過期、MC 摘要滯後）② 本檔 09-19 skill 段未 commit ③ MC STATE 未寫 73 檔未 commit 規模 ④ cron handoff 今日 05:45 FAILED(429) 零寫入。
 - 親核數字：jarvis-pc HEAD `c0a6a42`（feature branch ahead 41）；真 instance jar `06b5b129a114`（09-18 07:12）；MC tree 73 檔未 commit（+4,484／−1,305）。
+- SK 09-20 06:5x：「read hand off / check last session / update hand off first」 → 已讀上一個 session（09-19 08:03–09-20 01:05，3,830 msgs），本檔已更新；下一步序（a 維度／生態群系／礦物分佈｜ b 必答清單｜ c 細試點） **等 SK 覆**。
+- 親核：上一個 session 嘅遊戲內測試係喺 `packai_sandbox_ftb` 沙盒跑（jar `e0fbecc77085`）；真 instance jar 仍 `06b5b129a114`——jar 內方法名核實：真 instance **冇** `routeLinesForItem`／`mergeJarRoutes`，沙盒有。
 
 
 ## 2026-09-19 session（Discord；Hermes skill 庫 renew ＋ 語音 skill 3合1）
