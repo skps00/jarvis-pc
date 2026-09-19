@@ -4,27 +4,38 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-17 08:0x 改寫）**
- - **Hermes gateway**：07:41-07:57 crash loop（uv CPython 3.11 缺 `python.exe` → 80070002、trampoline 失效）→ 已恢復（`uv python install 3.11 --reinstall` + `uv venv --allow-existing` + `hermes gateway start`）；見 `code_change_log.md`
- - **JARVIS ONE（09-16 10:00 更新）**：HUD **0.4.13** 已 build＋部署＋3 個 `.lnk` 更新（`spawnSidecar` ENOENT 卡死 bug 修好；A/B＋recovery＋正常 exit 三項實測）；8765/8770/8771 正常。**`hud/main.js` 未 commit**（等 SK 真機驗收）。Hermes watchdog **v3** 已上線（pre-flight ＋ bounded 自癒 ＋ 零彈窗 guard ＋ 誠實 reporter），真機 tick 驗證 PID 不變／0 flash
- - **packai（MC，主線，詳 MC repo HANDOFF）**：forge 樹**大量未 commit 改動**（等 bump `0.2.2`）；真機 jar ＝ **`d92cc62f`**（含 C-0／B11／C-1／D／α；11:05 部署，親核 sha256）
- - **卡片線**：B11 ✅（`AskToolEnv.offerEmission` 喺 refId 之前剷框架卡；負對照 2 個紅→綠）；plan `2026-09-15_card-attribution-and-suppression.md`（§16 卡面樣本 反方 3:7 → **SK 決定 A 項唔做**、記為已知限制）
- - **KubeJS 取得途徑線（MC 側，詳 MC repo HANDOFF）**：α（peer 行洩漏）**已達標（R3 8:2）＋已部署**；取得通道 plan 由 β（API-first v5.4，commit `d887ac8`）＋v6 線（code-first）演進至 **`v6.14`：R14 正方 8 : 反方 2 達標 → 等 SK go**
- - **Settings C／D 批**：全部 ✅ 已部署；C-2／C-3／C-4 未開
- - **jarvis-pc tree**：未 commit＝`hud/main.js`＋`hud/package.json`（HUD 0.4.13）＋本 HANDOFF（3 檔）；cron `mc-mod-jar-guard` **pause**（09-15 20:25 起）；`alert_policy_mode: shadow`；8642／8765 ok、8770／8771 有應（無 /health route）
+- **現狀（2026-09-20 06:5x 改寫；全部 Hermes 親核）**
+ - **Git 位置**：HEAD ＝ `feature/hermes-alerts-mcp`（ahead 41 未 push）；`origin/main` 有 1 個未入本分支嘅 commit（PR #12 merge `96be515`）；本地 `main` behind 96
+ - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署＋3 個 `.lnk` 更新（09-16）；`hud/main.js`＋`hud/package.json` **未 commit**（等 SK 真機驗收）；8765／8770／8771 有應
+ - **Hermes**：gateway 09-17 07:57 恢復後無再 crash；⚠️ cron `jarvis-session-handoff` 今日 05:45 run **FAILED（HTTP 429 rate limit）→ 零寫入**
+ - **jarvis-pc tree**：未 commit ＝ `hud/main.js`＋`hud/package.json`＋本 HANDOFF（09-19 skill 段）；untracked ＝ `.hermes/plans/2026-09-19-skill-voice-merge-plan.md`＋`plans/reviews/`（5 份）
+ - **packai（MC 主線，詳 MC repo HANDOFF）**：真 instance `AI_test_NFWC_DIM` jar ＝ **`06b5b129a114`**（09-18 07:12，親核 sha256）；**之後三批 code 未部署未 commit**（fix A 09-19／P0 崩潰 `31185e8`／v6 routes `344e805`）→ 真機驗收一律走沙盒（`packai_sandbox_ftb`，harness jar 09-20 01:00）
+ - **MC tree**：**未 commit 73 檔（+4,484／−1,305）＋54 untracked**；`mod_version` 已 `0.2.3`
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
  - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
- - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**
- - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗，SK 投訴過；已寫入 skill）
- - **⏸ JARVIS 全線 HOLD 至 2026-09-17 12:00（SK 09-17 08:1x 指示：「hold everything that related to jarvis until 12:00 noon，we start mc first」）**：12:00 前唔開工／唔派工／唔驗收任何 JARVIS 項（HUD／alerts／watchdog／voice／sidecar）；**MC（packai）優先**
- - **語音／mic 線 HOLD（等 SK 新 mic，09-16 SK 再明確提醒）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；**唔為咗測試重啟 sidecar**（每次重啟 = 停 wake）；**唔叫 SK 測 wake**；Settings tab 例外（唔關 mic 事）
-- **未解（等 SK 決）**：① **packai α（peer 洩漏）已完成 code＋全綠＋已部署**（jar sha256 `d92cc62f`，含 C-0／B11／C-1／D）→ 未 commit（**已定案：等 bump `0.2.2` 一齊 commit＋push**）；另兩個 code 檔 **untracked** ② **plan α review 已達標**（R1 6:4 → R2 5:5 → R3 **8:2**；code review 2 輪，共 6 個真缺陷全修）；**plan β 確實存在**（`docs/plans/2026-09-16_kubejs-transform-v5.0-api-first.md` v5.4，commit `d887ac8`；review 已達標＝SAFE）→ 等 SK 定佢同 v6.14 嘅關係 ③ **push** 等 SK ④ **B11 真機 A/B 未做**（新 jar 已含 B11 → 可以今次一齊測：問「亞巴頓」，模型消化清單唔應有框架卡）⑤ C-0／C-1／D 真機未驗（新 jar 已含）⑥ C-2／C-3／C-4 未開 ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（⚠️ `%PROGRAMDATA%\Surfshark\antivirus.db` **今日 12:48 又有更新** → 唔加就可能再被刪 `python.exe`）⑧ `hud/main.js`＋`hud/package.json`（HUD **0.4.13**）未 commit，等 SK 真機驗收 ⑨ `jarvis-pc/AGENTS.md`「現行版本」仍寫 0.4.10（受保護檔，要 SK 明確 go） ⑩ **packai 主線最新**：KubeJS 取得通道 plan `v6.14` 已達 review 閘（R14 **正方 8 : 反方 2**）→ **等 SK go 派 cursor 實作（單 1）**（詳 MC repo HANDOFF）
-- **下一步（優先序，09-17 08:1x SK 指示：MC 先行）**：**12:00 前只做 MC（packai，詳 MC repo HANDOFF）**：① SK 開 MC → 一輪過真機驗收（α peer 行／C-1＋D Settings／B11 框架卡）→ 過就 bump `0.2.2` commit ② KubeJS 取得通道 `v6.14`（R14 8:2）**等 SK go** 派 cursor 實作（單 1）③ β（API-first v5.4）同 v6.14 關係待 SK 拍板 ④ C-2（answerDetail／blacklist／answerLang）→ C-3 → C-4；**JARVIS 全部押後至 12:00 後**（HUD 0.4.13 驗收／mic HOLD／alerts）
+ - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**（真 instance 唔准郁）
+ - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗）
+ - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；唔為測試重啟 sidecar；唔叫 SK 測 wake（Settings tab 例外）
+- **未解（等 SK 決）**：① **packai P1 次序**（worldgen 三類／D2 必答清單／tracer bullet）② **真 instance jar 落後三批 code** → 要 SK 關 MC 才可 build＋deploy＋一輪真機驗收（P0 崩潰／fix A／v6 routes）③ **MC 73 檔未 commit** 幾時收入（版本已 `0.2.3`；舊「等 bump `0.2.2`」講法已過時）④ `hud/main.js`＋`hud/package.json`（HUD 0.4.13）等 SK 真機驗收 ⑤ jarvis-pc 41 個 commit 未 push ⑥ **SK 手動**：Surfshark 加 3 個 exclusion folder（`antivirus.db` 更新過就可能再刪 `python.exe`）⑦ `jarvis-pc/AGENTS.md`「現行版本」仍寫 0.4.10（受保護檔，要 SK 明確 go）⑧ MC：`run` 報 tokens delta=0（記帳異常）；`MAX_FACTS_PER_ITEM=8` 令 raw L refs 只有 ~47% 可達
+- **下一步（優先序；MC 先行）**：① SK 定 packai P1 次序（建議先 worldgen 三類）② SK 開 MC → build 最新 ＋ `mc_mod_deploy_jar.py` 部署 → 一輪真機驗收（P0 崩潰／fix A／v6 routes）③ 驗收過後處理 MC 73 檔 commit（版本已 `0.2.3`）；**JARVIS 線**：HUD 0.4.13 真機驗收 → commit `hud/main.js`；push 待 SK 拍板
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-20 06:5x（Discord；SK「read hand off」→ drift 複核）
+- 讀齊兩份 HANDOFF（jarvis-pc＋MC）＋逐項對 live 核（git／mtime／sha256／cron output／instance jar）；零新 code 改動。
+- 捉到 4 處過時，已修入 STATE：① jarvis-pc STATE 停留 09-17（09-17 12:00 HOLD 已過期、MC 摘要滯後）② 本檔 09-19 skill 段未 commit ③ MC STATE 未寫 73 檔未 commit 規模 ④ cron handoff 今日 05:45 FAILED(429) 零寫入。
+- 親核數字：jarvis-pc HEAD `c0a6a42`（feature branch ahead 41）；真 instance jar `06b5b129a114`（09-18 07:12）；MC tree 73 檔未 commit（+4,484／−1,305）。
+
+
+## 2026-09-19 session（Discord；Hermes skill 庫 renew ＋ 語音 skill 3合1）
+
+- **④ 語音 skill 3合1＝已執行＋驗收通過（SK `go`；Hermes 親手做）**：`jarvis-voice-assistant` 為 umbrella，吸收 `windows-voice-pipeline`＋`hermes-voice-windows`；兩者已用 **`hermes curator archive`** 歸檔（`skills\.archive\`）。**7 項實測驗收全中**：A1 `software-development 31→30`／`autonomous-ai-agents 13→12`／curator managed 124→122／`list-archived 1→3`；A2 14 個搬入檔＝**11 sha1 逐字一致＋3 有改動**；A3 總量 221,887→**222,982**（Δ＝+274 fm／+746 指標節／+75 七行）；A4 HOLD 段 identical；A5 `references/*.md`＝31；A6 舊名命中 12 行（逐行處置；`electron-windows-overlay:11` 已改指 umbrella）。備份：`%TEMP%\skill_voice_merge_backup_20260919_195843`（36 檔＋`MANIFEST.json`）；**還原 3 步已倒帶演練＝CLEAN（21/21 sha1 一致）**。plan：`.hermes\plans\2026-09-19-skill-voice-merge-plan.md`；review 5 份 `plans\reviews\2026-09-19_skill-voice-merge-plan-R{1..5}-opposing.md`（**4:6→6:4→7:3→7:3→8:2**）。
+- **③ skill 庫 renew 其餘 3 項（Hermes 自己 ③ 清單）**：① 修真死路徑：`hermes-voice-windows` 內 `~/.hermes/AGENTS.md` → `$HERMES_HOME/...`（其餘 6 條經親驗為文檔／陷阱記錄＝誤報）② git 分支雙胞胎合併 → keeper `long-lived-branch-merge`（吸收政策表／invariant／診斷指令／非專家報告法），`git-branch-integration` 已原生歸檔 ③ `minecraft-modpack-ai-development` **100,306 → 56,212 字**（4 大段逐字搬 `references/`，sha1 驗證零損失）。
+- **流程教訓（可重用）**：① audit 報告必須逐項親驗（今次第 1、5 項都係誤報）② **整合前先喺 `%TEMP%` 彩排 dry-run**（今次彩排揭發 2 個 bug：HOLD 抽段法錯、A6 用「合併前」值）③ 歸檔**一律用 `hermes curator archive`**——raw `mv` 會令 disk／snapshot／usage／live index 四層狀態唔一致（已修 `git-branch-integration`）。
+
 
 ## 2026-09-16/17 夜間（已核對，零新工作）
 
