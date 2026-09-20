@@ -25,6 +25,7 @@
 <!-- STATE:END -->
 
 - **MC／packai a+b（09-20）**：plan v3.1 過 review（R3 8:2）→ cursor 實作 → Hermes 親驗（compile RC=0／53 檢查綠／python 124 檔 1 已知紅／5 條負控）→ FTB 沙盒 4 輪真機（世界生成三類 ＋ 必答清單）＋ 跨包 UniversIO 7/7；**code 未 commit，等 SK**。詳 `super_minecraft_AI_player/.hermes/plans/HANDOFF.md`。
+- **MC a+b（09-20 後續）**：code review 捉到 P0（gap 判定被 marker 自我命中 ⇒ b 對 a no-op），Hermes 親手 RED→修→NC 紅→還原綠→真機一輪；另修 P1×2、留 P1×4 待辦；docs commit `ae70d74`；**code 未 commit**（等 SK 揀 (1) 只 commit 本批 ／ (2) 累積到版本）。
 ## 2026-09-20 06:5x（Discord；SK「read hand off」→ drift 複核）
 - 讀齊兩份 HANDOFF（jarvis-pc＋MC）＋逐項對 live 核（git／mtime／sha256／cron output／instance jar）；零新 code 改動。
 - 捉到 4 處過時，已修入 STATE：① jarvis-pc STATE 停留 09-17（09-17 12:00 HOLD 已過期、MC 摘要滯後）② 本檔 09-19 skill 段未 commit ③ MC STATE 未寫 73 檔未 commit 規模 ④ cron handoff 今日 05:45 FAILED(429) 零寫入。
