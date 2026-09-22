@@ -22,6 +22,9 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 
 <!-- STATE:END -->
+## 2026-09-22 22:3x（Discord；MS 面試：Gmail 實錘 9/9 面試官＝Mike Wong＋英文 30 秒口語稿）
+- **Gmail 實錘（只讀）**：① 9/9 screen invite 明寫面試官＝**Mike Wong**（9:00–9:30，30 分鐘）→ 証實 9/9「阿 Mi」＝Mike Wong＝舊老闆＝hiring manager＝9/28 第一場（同一人，100% 確定）；② 4 封 invite（9/28 11:30／9/29 11:00／9/29 12:00／9/30 11:00）只有面試官**顯示名**，**冇 email alias** → OSINT 查人工具冇輸入可用（已回覆 SK）。
+- **交付**：`MS_DCT_Prep\英文口語稿-30秒版.md`（14 條、每條 22–35 秒、出聲練習用，含開場／收場／後備句）→ guide 加 **§20**，準備包 **39→44 頁**、cheat sheet 保持 **2 頁**（0 空洞頁）。**未 commit** MS_DCT_Prep（非 git repo）。
 ## 2026-09-22 21:4x（Discord；MS 面試：9/9 首次面試轉錄分析 → 新增卡 7＋統一講法）
 - **做法**：轉錄 `Videos\2026-09-09 08-59-28.mp4`（26 分鐘）——**同 hiring manager 嘅 phone screening**（通話由影片 01:30 開始）。同 pipeline：ffmpeg → SenseVoice 逐 30 秒（52 段、0 錯誤）；`asr_chunks.py` 加 `ASR_SRC` 參數（原本 hardcode 舊 wav，已修）。
 - **情報**：招聘藍圖＝replacement headcount／1 位 → 佢篩 CV → 首面（9/9）→ 帶期望薪金見大 manager → **panel（幾個 manager、可能外國、問 skill／knowledge／competence）** → HR email 結果＋**發 competence／culture 準備材料**；佢明講**主要用英文**。**評分第一標準＝主動性／ownership**（原話「好多嘢你自己 own」「資源公司有，ownership 在你」）。佢自介「阿 Mi」＋自稱 hiring manager → **極可能＝Mike W.（舊老闆）**。
