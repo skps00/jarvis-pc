@@ -22,6 +22,9 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 
 <!-- STATE:END -->
+## 2026-09-22 21:1x（Discord；MS 面試：模擬題＋示範答案、6 張英文 STAR 卡）
+- **交付**：`Documents\MS_DCT_Prep\` 新增 `模擬題與示範答案.md`（四場 × 2 條，英文照背＋中文思路＋後備句）＋`STAR卡-6張-英文.md`（6 張 60–90 秒、含反思句、選卡對照表、待補數字清單）；已併入準備包 **§17／§18**（guide 26→**35 頁**，cheat sheet 保持 **2 頁**；0 孤兒標題、無 <500 字頁）。
+- **順手發現（要 SK 留意）**：① CV 顯示圖書館（2023/8–2025/8）同 HKEX（2025/3–7）**時間重疊** → 面試官可能問「同時做兩份？」要預備答案；② 通話提到「表現唔差」嘅候選人＝**MU 同科畢業四年**（HK Metropolitan University）＝同你同校同科 → 有同質競爭者。
 ## 2026-09-22 20:5x（Discord；MS 面試：舊老闆通話轉錄 → 「逐個面試官會問咩」）
 - **做法**：SK 叫 check `Videos\2026-09-18 18-26-51.mp4`（5.95GB、CS2 遊戲中講電話）→ ffmpeg 抽 16k mono 音軌 → 本機 **SenseVoiceSmall（粵語）逐 30 秒切塊**轉錄（109 段、RTF 0.02）＋whisper-small 交叉核對（兩者一致）。**零上傳**。
 - **情報（通話 00:00–02:30 原話，兩個引擎互相印證）**：**Elena Yeh（台灣・唯一女・PM）→ 問 Safety＋「點 handle」情境**；**Owen Lee（佢老細、啱啱由 PM 升上去）→ technical：日常作業＋重大 change → 答 Safety／SOP／compliance／冇 spec 要 document＋trace back**；**Dhaval Desai（印度・PM）→ culture 抽象題（用生活例子、唔會問敏感題）**；Mike W.＝打電話嗰位（可能出題人）。另：薪金約 **29k**、grade 2/3（開價 28–29k）、team 12 人、年尾開 2 位。
