@@ -24,6 +24,11 @@
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+- **✅ 自動調門檻已凍結（SK 2026-09-22 18:0x 答「k」）**：唔改 code，做法＝把 `wake_debug.log` **改名歸檔**（`wake_debug.log.bak-20260922_171739-tunerfreeze`，6,586,680 bytes 原封保留）→ 檔唔存在 ⇒ `_parse_wake_debug` 得 `avg_peak=None` ⇒ decay 分支（要求 `avg_peak is not None`）**永遠唔成立** ⇒ 門檻唔再自己漂。
+  **親核**：跑 `run_once()` → summary `thr=0.55->0.55`、`settings.json` mtime/size 前後一樣（1790068327／2740）→ 真係冇寫入。
+  **還原**：`mv wake_debug.log.bak-20260922_171739-tunerfreeze wake_debug.log`（聽候重開時本來就會生新檔，唔影響）。
+  **注意（pre-existing，非本次引入）**：同一 run `notable=True` 係因為 serve.log 尾有 `err=2`，唔係門檻 — 即係「每日一句 self-monitor 英文提示」原本就會發生。
+
 ## 2026-09-22 18:1x（Discord；SK 決定「3＋停語音喚醒」）
 - **SK 決定**：① 自我監測老實化／趨勢規則 = **選 3 停手**（等新 mic）；② **停止 JARVIS 語音喚醒**。
 - **語音喚醒已關（Hermes 親做親核）**：`settings.json` `voice_frontend: jarvis → hermes`（經 8765 `POST /settings` **單一 writer**；備份 `%APPDATA%\Jarvis\settings.json.bak-20260922_171207`）→ 側車重啟（舊 PID 33076 → 新 27956，**14 秒**起返）。
