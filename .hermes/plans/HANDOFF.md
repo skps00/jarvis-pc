@@ -22,6 +22,10 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 
 <!-- STATE:END -->
+## 2026-09-22 21:4x（Discord；MS 面試：9/9 首次面試轉錄分析 → 新增卡 7＋統一講法）
+- **做法**：轉錄 `Videos\2026-09-09 08-59-28.mp4`（26 分鐘）——**同 hiring manager 嘅 phone screening**（通話由影片 01:30 開始）。同 pipeline：ffmpeg → SenseVoice 逐 30 秒（52 段、0 錯誤）；`asr_chunks.py` 加 `ASR_SRC` 參數（原本 hardcode 舊 wav，已修）。
+- **情報**：招聘藍圖＝replacement headcount／1 位 → 佢篩 CV → 首面（9/9）→ 帶期望薪金見大 manager → **panel（幾個 manager、可能外國、問 skill／knowledge／competence）** → HR email 結果＋**發 competence／culture 準備材料**；佢明講**主要用英文**。**評分第一標準＝主動性／ownership**（原話「好多嘢你自己 own」「資源公司有，ownership 在你」）。佢自介「阿 Mi」＋自稱 hiring manager → **極可能＝Mike W.（舊老闆）**。
+- **交付**：`MS_DCT_Prep\` 新增 `首次面試-20260909-逐字稿.md`／`分析.md`；guide 加 **§19**＋**§18 加卡 7（主動性）**＋3 句統一講法（離職原因／證書／主動性）→ 準備包 **39 頁**、速查卡 **2 頁**（0 空洞頁）。
 ## 2026-09-22 21:1x（Discord；MS 面試：模擬題＋示範答案、6 張英文 STAR 卡）
 - **交付**：`Documents\MS_DCT_Prep\` 新增 `模擬題與示範答案.md`（四場 × 2 條，英文照背＋中文思路＋後備句）＋`STAR卡-6張-英文.md`（6 張 60–90 秒、含反思句、選卡對照表、待補數字清單）；已併入準備包 **§17／§18**（guide 26→**35 頁**，cheat sheet 保持 **2 頁**；0 孤兒標題、無 <500 字頁）。
 - **順手發現（要 SK 留意）**：① CV 顯示圖書館（2023/8–2025/8）同 HKEX（2025/3–7）**時間重疊** → 面試官可能問「同時做兩份？」要預備答案；② 通話提到「表現唔差」嘅候選人＝**MU 同科畢業四年**（HK Metropolitan University）＝同你同校同科 → 有同質競爭者。
