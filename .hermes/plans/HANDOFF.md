@@ -24,7 +24,22 @@
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
-## 2026-09-22 16:5x（Discord；SK「d first」＋「重啟幾次好似正常」）
+## 2026-09-22 18:1x（Discord；SK 決定「3＋停語音喚醒」）
+- **SK 決定**：① 自我監測老實化／趨勢規則 = **選 3 停手**（等新 mic）；② **停止 JARVIS 語音喚醒**。
+- **語音喚醒已關（Hermes 親做親核）**：`settings.json` `voice_frontend: jarvis → hermes`（經 8765 `POST /settings` **單一 writer**；備份 `%APPDATA%\Jarvis\settings.json.bak-20260922_171207`）→ 側車重啟（舊 PID 33076 → 新 27956，**14 秒**起返）。
+- **實證**：`/health` `wake_on:false`；`voice_status.json` `wake_on:false` 17:12:26；serve.log 出現 `[warn] 語音前端=Hermes — Jarvis 聽候已禁`；`wake_debug.log` **75 秒零增長**（最後一行 17:12:09）→ 聽候線程真停。alert poller（pythonw）／STT SenseVoice 預載照正常。
+- **還原方法**：`POST /settings {"voice_frontend":"jarvis"}`（或改 settings.json）→ 重啟側車（kill 8765 擁有者 PID，Electron 自動 respawn）→ 見 `[ok] 聽候 Jarvis` 即回到原狀。
+- **⚠️ 未處理風險（等 SK 一句）**：側車每日 09:00 自檢仍會跑 `_tune_threshold` 嘅 decay 分支（`avg_peak<0.28 and fires==0` → 門檻 −0.05，最低 0.25），而 `notable` 含「門檻有變」→ 可能**每日自動降門檻＋出一次提示音**；新 mic 到時門檻可能已漂到 0.25（＝更易誤觸）。
+- **plan 歸檔**：`.hermes/plans/2026-09-22-self-monitor-honest-fp-and-step-trend.md` 已標「SK 選 3 停手」，內含 R1（3:7）／R2（2:8）逐條 blocker ＋ review log → 新 mic 到時可直接沿用，唔使重做。
+- **發現 B（實錘）**：`state.db` 有 247 個 `jarvis-*` session，其中 **198 個第一句係完全相同字串 `怎樣開 Chrome？`**（09-12 16:36–18:27 一日 70 個，最短隔 9 秒）；`serve.log`＋備份搜該字串 **0 次** → 冇經麥克風。
+- **真兇**：`tests/test_brain.py::test_engine_query_with_mocked_llm`（:302）只 mock `brain._chat`，**冇停 `hermes_enabled`** → `engine.execute_utterance`（:124/:138 route=unknown）行 `_dispatch_hermes()` → 真 Hermes API。**現場證實**：單跑該測試 → 即新增 session `jarvis-1fd59b1d`（`如何開啟 Chrome #6`）。
+- 語音側實數：09-01（SK 叫買新 mic）後語音路徑收音 **81** 次（舊備份 33＋現行 48），其中 **73 次（90%）＝亂碼／空白**；09-13 後仍留 22 個垃圾 session。
+- Plan 已加 §2.5（發現 B）＋§3.5（測試隔離設計：mock `engine.load_settings`／哨兵測試／可選 conftest 全域隔離）；等 SK 揀 (a)/(b) ＋隔離深度。
+
+## 2026-09-22 17:3x（Discord；SK「go」→ 自我監測老實化 plan）
+- 親核實錘（SK 報「冇用 JARVIS 但 false active」）：serve.log 窗口 09-10→09-22，`[ear] raw=` **48** 次中，`[fail] 聽唔清` 7 ＋ `[route] unknown`／`[hermes] kind=unknown` 40 → **100% 語音指令無效**（例 `精行还还在。`／`这样大家很公平都会。`／`。`），且真開咗垃圾 session（`[hermes] session=`）。
+- 但 `self_monitor.py:33 _FP_DUR_S=0.6` 只計 `oww_cmd_pcm dur<0.6s` → 呢批 `dur=1.8~4.6s` 全唔計，self_monitor.log 連日 `fp=0`；連鎖：`_tune_threshold`（fp≥3 才 +0.05）永遠唔觸發。
+- Plan 寫好：`.hermes/plans/2026-09-22-self-monitor-honest-fp-and-step-trend.md`（新 deterministic 訊號 fp_junk/junk_sess、headline fp 合成、step-change 趨勢規則、驗收＋負控＋還原）。**待 SK 揀 (a) 只報數字（暫停 auto-tune，建議）／(b) 照自動調門檻**；R1 反方＋數字核實雙 reviewer 排 18:00 後（非高峰）。
 - LHM 開機自動啟動**親證有效**：今日 08:54:22 開機（同日 08:38／08:18／08:08 亦 boot 過）；LHM 進程 08:55:04 起（開機 +35s，零手動）；排程工作 `JARVIS LHM Sensor`（logon trigger、RunLevel Highest）Action＝`LibreHardwareMonitor.exe`。
 - LHM 網頁埠 8085 已 listen；`scripts/hw_monitor.py` 讀到 `cpu_temp_c=80.0`（CS2 中）／GPU 59°C 62% 280W／uptime 7.8h → D 項「LHM autostart 等真 reboot」**收貨**（RC：os.LastBootUpTime＋Get-Process StartTime＋hw_monitor JSON）。
 - 順手核 JARVIS 本體正常：`JARVIS-ONE-0.4.13.exe` 行緊、8765 `/health` ok（wake_on true）。
