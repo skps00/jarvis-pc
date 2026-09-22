@@ -18,7 +18,7 @@
  - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT／AEC／聲紋／wake threshold／mic device；唔叫 SK 測 wake
 - **未解（等 SK 決）**：① **測試隔離 ii 實作**（已批准，未開工）② **Slice 1b 真機 A/B** ③ Slice 1c plan（源頭措辭／機翻／關聯閘）④ Slice 2 世界生成正式 plan ⑤ 取得途徑缺口修補 ⑥ **dev → main 合併**（PR 定直接 merge）⑦ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑧ **SK 手動**：Surfshark 加 3 個 exclusion folder ⑨ **非專案**：MS DCT 面試 6 個 STAR 數字（覆咗即出英文可照背版）
 - **下一步（優先序）**：① **測試隔離 ii**（plan → review ≥8:2 → 實作；驗收＝跑測試前後 session 數／mtime 不變）② **packai Slice 1b 沙盒真機 A/B**（需 SK idle ＋ DS 空閒時段）③ Slice 1c plan → R1 review ④ Slice 2 正式 plan ⑤ 取得途徑缺口（等 SK 拍板）⑥ merge 決定
-- **歸檔索引**：**已完成任務（≤2026-09-20 全部 session、逐日 index、Game Session Phase 1）已搬 `plans/archive/HANDOFF-2026-09.md`**；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
+- **歸檔索引**：**已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（54 段，已按完成日期新→舊重排＋頂部有日期索引）**；更舊（2026-08）見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 
 <!-- STATE:END -->
