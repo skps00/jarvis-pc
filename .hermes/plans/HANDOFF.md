@@ -29,6 +29,13 @@
   **還原**：`mv wake_debug.log.bak-20260922_171739-tunerfreeze wake_debug.log`（聽候重開時本來就會生新檔，唔影響）。
   **注意（pre-existing，非本次引入）**：同一 run `notable=True` 係因為 serve.log 尾有 `err=2`，唔係門檻 — 即係「每日一句 self-monitor 英文提示」原本就會發生。
 
+## 2026-09-22 18:3x（Discord；SK 決定「C」＝監測靜音都停手，等新 mic）
+- **SK 決定**：自我監測提示靜音**唔做**（選 C）→ 等新 mic 到手一次過處理。今日兩條 monitoring 線（誤觸老實化＋提示靜音）**全部停手**。
+- **停手原因（照 SK 規矩 3–4 輪上限）**：R1 2:8／R2 有 blocker／R3 仍有 blocker 未達 8:2。R3 反方**推翻我一個數字**：我報「誤吞真事故 0.00%」係抽樣假綠（抽 3,000／全檔 373,113 → 實際誤吞 **36** 條）。
+- **留低嘅可用結論（新 mic 重啟時直接用）**：① 良性 traceback 判定要用「traceback 所屬 log record 含 marker」而唔係固定行距（核實方實測：現檔 30/30 過濾、備份唔誤吞）；② `resp_lat` 條件（`>5s`）係**恆真**假陽性（實測 21 個樣本 min 6.0s／p90 26s）→ 新 mic 後要用真數據重新定基準，唔可以照抄；③ 驗「真靜音」唔可以用 `queue.jsonl`（poller 1 秒 ack）或單靠 ledger（冇 run 標記、多生產者）→ 要正向對照。
+- **證據存底**（log 每分鐘長，舊樣本會跌出窗口）：`%LOCALAPPDATA%\Temp\serve_tail2000_snapshot_20260922.txt`、`benign_tb_blocks_snapshot_20260922.txt`。相關 plan：`.hermes\plans\2026-09-22-self-monitor-alert-mute.md`、`2026-09-22-self-monitor-honest-fp-and-step-trend.md`。
+- **現時行為（未改任何 code）**：提示仍會响（觸發＝serve.log 尾 2000 行出現 asyncio traceback 同／或 resp_lat>5s）；因為 wake 已關，`resp_lat` 會長期 n/a，實際上只餘 traceback 一種觸發，而且會隨 log 長大而自動跌出窗口（實測約 6 分鐘）。
+
 ## 2026-09-22 18:1x（Discord；SK 決定「3＋停語音喚醒」）
 - **SK 決定**：① 自我監測老實化／趨勢規則 = **選 3 停手**（等新 mic）；② **停止 JARVIS 語音喚醒**。
 - **語音喚醒已關（Hermes 親做親核）**：`settings.json` `voice_frontend: jarvis → hermes`（經 8765 `POST /settings` **單一 writer**；備份 `%APPDATA%\Jarvis\settings.json.bak-20260922_171207`）→ 側車重啟（舊 PID 33076 → 新 27956，**14 秒**起返）。
