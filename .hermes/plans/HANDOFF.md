@@ -4,22 +4,21 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-22 09:0x 改寫；全部 Hermes 親核）**
- - **Git 位置**：HEAD ＝ `feature/hermes-alerts-mcp`（be003f4，ahead **56** 未 push）；`origin/main` 有 1 個未入本分支嘅 commit（PR #12 merge `96be515`）；本地 `main`（582ac9b）behind origin/main **96**、自身零領先
- - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署＋3 個 `.lnk` 更新（09-16）；`hud/main.js`＋`hud/package.json` **未 commit**（mtime 09-16 09:45，等 SK 真機驗收）；8765／8770／8771 有應
- - **Hermes**：gateway 09-17 07:57 恢復後無再 crash；⚠️ cron `jarvis-session-handoff` 09-22 **08:14 補跑**：script 段成功（今日 section 已寫入、`size_rc=0`）、agent 段 `RuntimeError: timed out` → `last_status=error`（**非 429、零資料損失**）；`jarvis-alert-shadow-report` 08:11 Discord 送訊 timeout（delivery error）
- - **jarvis-pc tree**：未 commit ＝ `hud/main.js`＋`hud/package.json`＋本 HANDOFF；**untracked＝0**（09-19 skill plan＋5 份 reviews 已入 git，舊敘述過時）
- - **packai（MC 主線，詳 MC repo HANDOFF）**：Slice 1（人話化）已 commit＋push（`8cf28a4`／`f8a3c34`／`46805fb`），真機三條 PASS；**Slice 1b（prose 層 jargon＋唯一性）code 已改好、Hermes 自驗綠（compile RC=0／harness 58/58／python 125 檔 1 baseline 紅／NC3 紅→還原→綠），真機 A/B 未跑 → 未 commit**；真 instance `AI_test_NFWC_DIM` jar ＝ **`af448fa4d939`**（09-21 21:41，親核 sha256）；沙盒 `packai_sandbox` jar ＝ `0a79ee90c0bd`
- - **MC tree**：MC repo HEAD `013e4ac` **已全部 push**（`origin/main` 一致）；未 commit ＝ Slice 1b 5 檔（`AskReplyScrub.java e60c1a4c…`／`InternalJargonCheck.java af65eae0…`／`AskReplyScrubCheck.java 9fad6127…`＋`tmp-check.gradle`＋`code_change_log.md`）＋ `logs/` untracked（故意）；`mod_version` 已 `0.2.3`
+- **現狀（2026-09-22 18:4x 改寫；全部 Hermes 親核）**
+ - **Git**：HEAD ＝ `feature/hermes-alerts-mcp` `1a55b19`，**ahead origin 5**（全部 docs commit，未 push）；origin/main 有 `96be515`（PR #12）未入本分支；agent 未 commit 檔 = **0**（`src/`／`tests/`／`hud/` 全部乾淨）
+ - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署＋捷徑更新；`hud/main.js`＋`hud/package.json` **已 commit**（`61354de`）；**語音喚醒已關**（`voice_frontend=hermes`，側車重啟生效，8765 `/health` `wake_on=false`，wake_debug 75 秒零增長實證）；**自動調門檻已凍結**（`wake_debug.log` 歸檔 → `avg_peak=None` → thr 定死 0.55，親核 `0.55->0.55`）
+ - **兩條監測線停手（等 SK 新 mic）**：① 誤觸／無效指令數字老實化＋step 趨勢（plan `2026-09-22-self-monitor-honest-fp-and-step-trend.md`；R1 3:7、R2 2:8）② 自檢提示靜音（plan `2026-09-22-self-monitor-alert-mute.md`；R1 2:8、R2／R3 仍有 blocker）。**兩份 plan 內含全部 blocker 同反轉條件，重啟唔使重做 research。**
+ - **已批准但未做**：**測試隔離 ii**（全域）—— `tests/test_brain.py:302` 條測試冇停 `hermes_enabled` → 會真 call Hermes 開 session（已實錘：198 個同字串 `怎樣開 Chrome？` session；親手跑一次即新增 `jarvis-1fd59b1d`）。SK 2026-09-22 揀「2 ii」。
+ - **packai（MC 主線，詳 MC repo HANDOFF）**：Slice 1 已 commit＋push；**Slice 1b code 已改好、自驗綠（compile RC=0／harness 58/58／python 125 檔 1 baseline 紅／NC3 紅→還原→綠），真機 A/B 未跑 → 未 commit**（未 commit 5 檔：`AskReplyScrub.java`／`InternalJargonCheck.java`／`AskReplyScrubCheck.java`＋`tmp-check.gradle`＋`code_change_log.md`）；真 instance jar `af448fa4d939`（09-21 21:41）；沙盒 `0a79ee90c0bd`；MC repo HEAD `013e4ac` 已全部 push
+ - **Hermes**：cron `jarvis-session-handoff` 09-22 05:45／08:14 agent 段 timeout（**非 429、零資料損失**）；`jarvis-alert-shadow-report` 08:11 Discord 送訊 timeout
+ - **本檔**：402 行（**已過 400 門檻 → 下次開工先歸檔最舊 section 落 `plans/archive/HANDOFF-2026-09.md`**）
 - **唔准郁（硬限制）**
- - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）
- - GUI 窗一律開**第二副屏幕**（SK 要睇嘅先主螢幕）；Chrome 主動開 = `bg_launch.py --minimized`
+ - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
- - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；**部署只准用 `mc_mod_deploy_jar.py`**（真 instance 唔准郁）
- - cursor 派工**唔准用 `--no-desktop`**（會令 git／rg 彈 console 窗）
- - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT(ASR)／AEC／聲紋／wake threshold／mic device；唔為測試重啟 sidecar；唔叫 SK 測 wake（Settings tab 例外）
-- **未解（等 SK 決）**：① **Slice 1b 真機 A/B 未跑**（真機過才 commit）② Slice 1c plan 未寫（源頭措辭／機翻／關聯閘）③ Slice 2 世界生成正式 plan 未寫 ④ **取得途徑缺口修補**（advancement `inventory_changed` 接入＋「JSON 冇 ≠ 遊戲冇」措辭誠實化）等 SK 決定開唔開 plan ⑤ `hud/main.js`＋`hud/package.json`（HUD 0.4.13）等 SK 真機驗收 ⑥ jarvis-pc **56** 個 commit 未 push ⑦ **SK 手動**：Surfshark 加 3 個 exclusion folder（`antivirus.db` 更新過就可能再刪 `python.exe`）⑧ `jarvis-pc/AGENTS.md`「現行版本」仍寫 0.4.10（受保護檔，要 SK 明確 go）⑨ MC：HANDOFF 主檔已 ~400 行門檻，下次開工先歸檔
-- **下一步（優先序；MC 先行）**：① **Slice 1b 沙盒真機 A/B**（diamond／amethyst／crying_obsidian／brazier＋Tetra，掃 body 0 hit）→ 全過才 commit；需 SK 唔用機（Gate＝idle）＋DS 空閒（12:00 後）② Slice 1c plan → R1 review ③ Slice 2 正式 plan ④ 取得途徑缺口修（等 SK 拍板）；**JARVIS 線**：HUD 0.4.13 真機驗收 → commit `hud/main.js`；push 待 SK 拍板
+ - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）；cursor 派工唔准用 `--no-desktop`
+ - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT／AEC／聲紋／wake threshold／mic device；唔叫 SK 測 wake
+- **未解（等 SK 決）**：① **測試隔離 ii 實作**（已批准，未開工）② **Slice 1b 真機 A/B** ③ Slice 1c plan（源頭措辭／機翻／關聯閘）④ Slice 2 世界生成正式 plan ⑤ 取得途徑缺口修補（advancement `inventory_changed`＋「JSON 冇 ≠ 遊戲冇」措辭）⑥ **dev → main 合併**（PR 定直接 merge）⑦ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑧ **SK 手動**：Surfshark 加 3 個 exclusion folder
+- **下一步（優先序）**：① **測試隔離 ii**（可即做；要 plan → review ≥8:2 → 實作；驗收＝跑測試前後 session 數／檔案 mtime 不變）② **packai Slice 1b 沙盒真機 A/B**（diamond／amethyst／crying_obsidian／brazier＋Tetra，掃 body 0 hit）→ 全過才 commit；需 SK 唔用機（idle）＋DS 空閒 ③ Slice 1c plan → R1 review ④ Slice 2 正式 plan ⑤ 取得途徑缺口（等 SK 拍板）⑥ merge 決定 ⑦ HANDOFF 歸檔
 - **歸檔索引**：≤2026-09-11 全部搬 `plans/archive/HANDOFF-2026-09.md`；更舊見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
