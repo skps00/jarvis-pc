@@ -93,9 +93,20 @@ function sidecarRunning() {
   });
 }
 
+function scheduleSidecarRespawn() {
+  // Shared 5s retry path for exit + spawn error (ENOENT never emits exit).
+  if (sidecarStopping) return;
+  if (sidecarRespawnTimer) clearTimeout(sidecarRespawnTimer);
+  sidecarRespawnTimer = setTimeout(() => {
+    sidecarRespawnTimer = null;
+    sidecarRunning().then((up) => { if (!up) spawnSidecar(); });
+  }, 5000);
+}
+
 function spawnSidecar() {
   if (sidecarStopping) return;
-  if (sidecarProc && !sidecarProc.killed) return;
+  // exitCode===null = still alive; exited/failed child must not block respawn.
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) return;
   // Crash-loop rate limit: ≥3 spawns in 60s → back off 60s, notify once.
   const now = Date.now();
   sidecarRestartTimes = sidecarRestartTimes.filter((t) => now - t < 60000);
@@ -121,15 +132,25 @@ function spawnSidecar() {
   try { fs.closeSync(out); } catch (e) {}  // child dup'd the handle; parent must not leak FDs
   sidecarProc = child;
   sidecarRestartTimes.push(now);
+  child.on('error', (err) => {
+    // Measured (Node 24 / Electron 33 node 20.18.3): spawn ENOENT → pid=undefined,
+    // exitCode=-4058, killed=false, kill() returns false & emits no error; only 'error'+'close', NOT 'exit'.
+    // child 'error' also fires on kill()/IPC failure while process still alive — clear+respawn ONLY when
+    // spawn never succeeded (pid===undefined). Do NOT use err.syscall==='spawn': real value is "spawn <path>".
+    try {
+      fs.appendFileSync(
+        process.env.APPDATA + '\\Jarvis\\hud_error.log',
+        new Date().toISOString() + ' ' + (err && err.stack ? err.stack : String(err)) + '\n'
+      );
+    } catch (_) {}
+    if (child.pid !== undefined) return;
+    if (sidecarProc === child) sidecarProc = null;
+    scheduleSidecarRespawn();
+  });
   child.on('exit', (code, signal) => {
     // Identity-check: only clear our own ref (health-kill of a prior child must not wipe the new one).
     if (sidecarProc === child) sidecarProc = null;
-    if (sidecarStopping) return;
-    if (sidecarRespawnTimer) clearTimeout(sidecarRespawnTimer);
-    sidecarRespawnTimer = setTimeout(() => {
-      sidecarRespawnTimer = null;
-      sidecarRunning().then((up) => { if (!up) spawnSidecar(); });
-    }, 5000);
+    scheduleSidecarRespawn();
   });
 }
 
@@ -142,7 +163,11 @@ function startSidecarHealthCheck() {
       sidecarHealthFails += 1;
       if (sidecarHealthFails >= 3) {
         sidecarHealthFails = 0;
-        if (sidecarProc && !sidecarProc.killed) {
+        if (sidecarProc && sidecarProc.exitCode !== null) {
+          // Already dead — kill() is a no-op; clear + spawn directly.
+          sidecarProc = null;
+          spawnSidecar();
+        } else if (sidecarProc && !sidecarProc.killed) {
           // Let the exit handler own respawn (5s delay → port released, no bind race).
           try { sidecarProc.kill(); } catch (e) {}
         } else {
@@ -155,7 +180,8 @@ function startSidecarHealthCheck() {
 
 async function ensureSidecar() {
   startSidecarHealthCheck();
-  if (sidecarProc && !sidecarProc.killed) return;
+  // exitCode===null = still alive (failed spawn leaves killed=false + non-null exitCode).
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) return;
   const up = await sidecarRunning();
   if (up) return; // already running (watchdog/autostart)
   spawnSidecar();
@@ -165,7 +191,7 @@ function stopSidecar() {
   sidecarStopping = true;
   if (sidecarHealthTimer) { clearInterval(sidecarHealthTimer); sidecarHealthTimer = null; }
   if (sidecarRespawnTimer) { clearTimeout(sidecarRespawnTimer); sidecarRespawnTimer = null; }
-  if (sidecarProc && !sidecarProc.killed) {
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) {
     try { sidecarProc.kill(); } catch (e) {}
     sidecarProc = null;
   }
