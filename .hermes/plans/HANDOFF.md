@@ -23,6 +23,13 @@
 - **參考段（喺檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 2026-09-22 18:5x（Discord；Hermes 設定＋非專案事項）
+- **Hermes config 改動（已生效於新 session）**：`compression.micro_compact=true`、`micro_compact_every_n_turns=10`（每 10 輪自動摺一輪舊歷史入滾動摘要）＋`compression.threshold=0.35` 批次壓縮保留做保險。備份 `%LOCALAPPDATA%\hermes\config.yaml.bak-20260922-182831-microcompact`；還原＝`hermes config set compression.micro_compact false`。**未重啟 gateway**（SK 選等下個 session）。⚠️ 坑：`hermes config set` 會重寫 config.yaml 並刪走檔尾純註解（今次 38 行，已還原）。
+- **依據**：`hermes insights --days 3` ≈ US$5.14（~$1.7/日）；agent.log 顯示本 session 40 分鐘內 4 次 35 萬 token 批次壓縮（context 長期貼住 0.35×1M 上限）→ 開 micro-compaction 比純批次好；唔建議 cadence=1（前綴 35 萬 token，cache 失效成本會放大）。
+- **非專案工作（Microsoft 面試準備）**：DCT（HK, Job ID 200049923）4 場 Teams 面試 9/28–9/30；產出在 `C:\Users\skps9\Documents\MS_DCT_Prep\`（`MS-DCT-interview-prep-20260922.pdf` 21 頁、`MS-DCT-cheat-sheet-20260922.pdf` 2 頁＋`.md`／`.html` 源檔）。官方 15 頁 hiring tips 全讀；官方 Code of Conduct 明文「面試期間不得用外部協助」。**待 SK 提供 6 個 STAR 數字**，之後出英文可照背版。
+- **今日 jarvis-pc 狀態**：語音喚醒已關、自動調門檻已凍結、HUD 0.4.13 已 commit；兩條監測線停手等新 mic（SK 選 C）。**程式碼零改動**（`src/`／`tests/`／`hud/` 未改）。
+
+
 - **✅ 自動調門檻已凍結（SK 2026-09-22 18:0x 答「k」）**：唔改 code，做法＝把 `wake_debug.log` **改名歸檔**（`wake_debug.log.bak-20260922_171739-tunerfreeze`，6,586,680 bytes 原封保留）→ 檔唔存在 ⇒ `_parse_wake_debug` 得 `avg_peak=None` ⇒ decay 分支（要求 `avg_peak is not None`）**永遠唔成立** ⇒ 門檻唔再自己漂。
   **親核**：跑 `run_once()` → summary `thr=0.55->0.55`、`settings.json` mtime/size 前後一樣（1790068327／2740）→ 真係冇寫入。
   **還原**：`mv wake_debug.log.bak-20260922_171739-tunerfreeze wake_debug.log`（聽候重開時本來就會生新檔，唔影響）。
