@@ -23,8 +23,16 @@
 
 <!-- STATE:END -->
 
+## 2026-09-24 00:3x（Discord；session handoff：Slice 1 code 寫好、未 commit 未驗收）
+- **做咗**：plan v4（`f7f754e`）→ 經 **cursor-agent** 實作 Slice 1（**4 個檔未 commit**）：`shell_app.py`（新增 `_ensure_control_http` 無條件起 HTTP server ＋ 5 秒 self-probe ＋ 失敗老實寫 `hud_error.log`、唔自動重試；`_ensure_alerts_mcp` 只 gate poller）｜`hud/main.js`（health 改為要 `body.ok===true && service==='jarvis'`；`clampSettingsPatch` 鎖 8765）｜`src/jarvis/settings.py`（clamp 鎖 8765）｜`hud/settings.html`（欄位 readonly ＋ 鎖定提示）。
+- **自驗（Hermes 親跑，非照抄 agent）**：`node --check`＋`py_compile` OK；50 個相關測試全過（settings/shell_app/mcp_alerts_http/alert_piper_gate）；`eval_gate --lock` RC=0；diff 逐行對計劃一致。
+- **未 commit**（按規矩：驗收通過才 commit）；**patch 存底** `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`（`git apply --check --reverse` 驗證吻合）；還原＝`git checkout -- hud/main.js hud/settings.html src/jarvis/settings.py src/jarvis/shell_app.py`（HEAD `f37b4f4`）。
+- **下次做（等 SK 揀窗口）**：① 窗口 1（開 HUD 15–20 分鐘）：行為驗證（`alert_voice=false` spawn serve → 8765 LISTEN）＋驗收 #1–#4／#6／#7／#10 ＋ U1／U2 量測；② 打包換版（skill `scripts\swap_hud_version.ps1`）；③ 窗口 2（HUD 關）：Slice 2 monitor 桶化＋`OFF` 語意＋#8／#9；④ 全套 532 測試 ＋ `eval_gate --all`。
+- **SK 未反對＝照建議行嘅 3 條**：`OFF` 語意（HUD 關住唔通知）／`/settings` 解密面常開接受／MCP 工具（含 `jarvis_speak`）恢復可用。
+- **披露＋待辦**：① review subagent 曾喺 20:39 寫入 skill `jarvis-hud-electron-editing-pitfalls\\SKILL.md`（超出我唯讀指示，內容同 plan v4 一致、已核）；② skill `cursor-cli-integration` 已補「長 instructions 唔可以當 CLI 參數傳（命令列太長→偽成功 exit 0）」坑；③ `settings.py` 凍結後留低無害多餘 try/except → 下次落 cursor 順手清。
+
 ## 今日完成（2026-09-23）
-- **側車重啟循環修復：plan v1→v4**（R1 2:8 → R2 4:6 → R3 3:7 → **中立裁判 4:6 裁 `v3_adequate=true`**）；4 條必修（起 server 後 self-probe／凍結 port 8765／驗收 #3#4 加「改值→kill→確認仍 LISTEN」／monitor 加 `OFF` 語意）已入 v4，拆 Slice 1／2。**未改任何 code**（只 commit 計劃）。檔 `.hermes\plans\2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`；commit `3e8bfe8`(v2)→`250b033`(v3)→`f7f754e`(v4)。
+- **側車重啟循環修復：plan v1→v4**（R1 2:8 → R2 4:6 → R3 3:7 → **中立裁判 4:6 裁 `v3_adequate=true`**）；4 條必修（起 server 後 self-probe／凍結 port 8765／驗收 #3#4 加「改值→kill→確認仍 LISTEN」／monitor 加 `OFF` 語意）已入 v4，拆 Slice 1／2。⚠️ **此條寫於 23:0x（當時 code 未改）；23:2x 之後已實作 Slice 1 code，見上一個 section。** 檔 `.hermes\plans\2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`；commit `3e8bfe8`(v2)→`250b033`(v3)→`f7f754e`(v4)。
 - **plan 產出嘅新發現**：① 8765 唔止 health，仲係 Electron 設定視窗嘅讀寫口 → `alert_voice=false` 期間加密欄位顯示成 `dpapi:` 亂碼＋儲存繞過單一 writer；② port 硬編碼**共 6 處**（`main.js:90/573/674`、`hermes\config.yaml:254`、`jarvis_sidecar_health.py:15`、`swap_hud_version.ps1`）→ 裁定**凍結 8765**；③ 更正舊記錄：cron `6a98a79be95f` **只報告、唔會自動救** sidecar；④ 換版真工具＝skill 內 `scripts\swap_hud_version.ps1`（71 行，唔喺 repo）。
 - **等 SK 拍板**：驗收窗口 ×2（窗口 1 開 HUD 15–20 分鐘、窗口 2 HUD 關 ≥35 分鐘）＋ 3 條小決定（`OFF` 語意／`/settings` 解密面常開／MCP 工具恢復可用）。
 - jarvis-pc 當日 commit 1 個（最新：9b907f9 docs(handoff): STAR 卡改真實資料＋CV 30% 誠信修正（§21））
