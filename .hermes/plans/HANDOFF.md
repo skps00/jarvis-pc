@@ -120,3 +120,12 @@
 - wake_mic = 「麥克風 (2- Arctis Nova 7)」44.1k；TTS 輸出 = G27Q 螢幕喇叭；AEC reference = Sonar Media + Sonar Chat（唔用 Arctis loopback）
 - ⚠️ Arctis 週期性 rms=0.000（headset 休眠/斷連）——叫唔醒先睇 wake_debug.log
 - mic 細（avg ~0.05）→ AGC 上線；wake_threshold 0.75（self-monitor 自動調出嚟）
+
+
+## 2026-09-23 15:0x
+
+- 鍵盤輸入延遲根因**已確認**（兩個獨立原因）：① Surfshark 9/22 09:01 自動更新後 AntivirusService 卡死（服務 Stopped 但進程食 100% 一核）→ 已卸載（重啟後無服務/驅動/進程）；② Microsoft GameInput（9/20 裝、裝咗一套 XInput DLL）→ MSI 已卸載 + 內建 GameInputSvc 已 Disabled。
+- 另做：USB 選擇性暫停關（AC/DC 實測 0x0）+ 鍵盤/Razer 6 個介面取消省電（Enable=False）+ TRCC 已 kill（45% 一核，來源＝影片背景／HWiNFO 輪詢）。以上皆有還原腳本於 `%LOCALAPPDATA%\hermes\backups\`。
+- **新發現（重大）**：`jarvis serve` 每 ~90 秒被 Electron kill+respawn → 每次重載 1.2GB 模型（serve.log 見 294 次 download 週期；實測 14:34:26→14:35:56→14:37:29→14:38:58）→ 週期性 CPU/IO 尖峰 = SK 打機鍵盤延遲主因。關 JARVIS ONE 後 serve.log 100 秒 +0 bytes；SK 確認打字順返。
+- 根因：`hud/main.js:157-179` health check 30s × 3 miss = 90s 就 kill，而 serve 啟動 >90s（每次走網絡檢查 20 個模型檔）。業界做法已搜（K8s startupProbe / AWS grace period / sokuji 90s handshake）。
+- Plan：`.hermes/plans/2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`（3 改動：startup grace period / 模型本地快取 / log 輪替；7 項驗收標準）。**JARVIS ONE 現時保持關閉（HUD/提醒暫停）直到修好換版。**
