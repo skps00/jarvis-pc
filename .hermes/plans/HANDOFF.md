@@ -24,6 +24,9 @@
 <!-- STATE:END -->
 
 ## 今日完成（2026-09-23）
+- **側車重啟循環修復：plan v1→v4**（R1 2:8 → R2 4:6 → R3 3:7 → **中立裁判 4:6 裁 `v3_adequate=true`**）；4 條必修（起 server 後 self-probe／凍結 port 8765／驗收 #3#4 加「改值→kill→確認仍 LISTEN」／monitor 加 `OFF` 語意）已入 v4，拆 Slice 1／2。**未改任何 code**（只 commit 計劃）。檔 `.hermes\plans\2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`；commit `3e8bfe8`(v2)→`250b033`(v3)→`f7f754e`(v4)。
+- **plan 產出嘅新發現**：① 8765 唔止 health，仲係 Electron 設定視窗嘅讀寫口 → `alert_voice=false` 期間加密欄位顯示成 `dpapi:` 亂碼＋儲存繞過單一 writer；② port 硬編碼**共 6 處**（`main.js:90/573/674`、`hermes\config.yaml:254`、`jarvis_sidecar_health.py:15`、`swap_hud_version.ps1`）→ 裁定**凍結 8765**；③ 更正舊記錄：cron `6a98a79be95f` **只報告、唔會自動救** sidecar；④ 換版真工具＝skill 內 `scripts\swap_hud_version.ps1`（71 行，唔喺 repo）。
+- **等 SK 拍板**：驗收窗口 ×2（窗口 1 開 HUD 15–20 分鐘、窗口 2 HUD 關 ≥35 分鐘）＋ 3 條小決定（`OFF` 語意／`/settings` 解密面常開／MCP 工具恢復可用）。
 - jarvis-pc 當日 commit 1 個（最新：9b907f9 docs(handoff): STAR 卡改真實資料＋CV 30% 誠信修正（§21））
 - 領先 remote 15 個 commit（未 push）
 
