@@ -28,6 +28,7 @@
 - 領先 remote 15 個 commit（未 push）
 
 - 本機清理（SK 選 A）：刪註冊表空關聯 `HKCU\...\FileExts\.bak-20260916_093251`（無 UserChoice、未綁 Store）；Startup 舊備份 `Hermes_Gateway.vbs.bak-20260916_093251` 移去 `%LOCALAPPDATA%\hermes\backups\`（sha256 6a4fbd74537f 一致）。還原＝`reg import backups\reg\HKCU-FileExts-.bak-20260916_093251-20260923.reg` ＋ 移返 Startup。開機啟動不受影響。
+- 面試準備（Copilot 題庫整合）：SK 提供 Copilot 16 題 → 改寫成 30 秒口語併入 `MS_DCT_Prep\英文口語稿-30秒版.md`（未覆蓋嘅 10 條新題：1.5–1.9／2.4–2.5／3.4–3.6／4.5–4.6）＋guide §20 同步＋cheat sheet 加「8 題必背＋Safety>SOP>Compliance>Technical」；重建 PDF（guide **47 頁**、速查卡 **2 頁**，0 markdown leftovers）。原始版存 `Copilot題庫-16題-原始版-20260923.md`。⚠️ 未照抄兩處：薪金（用舊老闆版 28–29k，唔跟 Copilot 唔講數字）＋`a mistake` 題需 SK 確認真實素材。
 ## 2026-09-22 23:1x（Discord；收工前 handoff：STAR 卡改真實資料＋CV 30% 誠信修正）
 - **SK 提供 6 條真實數字（口答）**：HKEX 換件「幾次（唔記得）」；CMI＝**電源故障、睇 log、幾日搞好、當時冇 SOP**；圖書館 30%＝**AI 生成、冇量度基礎**（唔可引用）；HKEX 曾幫團隊**定位網絡問題**（無量化）；上手＝**1 星期（有清楚 SOP）**；HKEX 因專案結束、CMI 因 12 小時工時＋3–4 小時車程而離職。
 - **交付**：`STAR卡-6張-英文.md` 全 7 張改用真實資料（**刪除 30%**；卡 6 改「假設式」因無真實事件）＋附錄 CV 誠信核對；guide 加 **§21**、修正 §11／§18 → 準備包 **44→43 頁**、速查卡 **2 頁**；速查卡紅線改成「30% 係估算、唔好引用」。
