@@ -4,24 +4,34 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-22 19:0x 改寫；全部 Hermes 親核）**
- - **Git**：HEAD ＝ `feature/hermes-alerts-mcp` `358c2bc`，**ahead origin 8**（全部 docs commit，未 push）；origin/main `96be515`（PR #12）未入本分支；未 commit 檔 = **0**，`src/`／`tests/`／`hud/` 乾淨；**今日程式碼零改動**
- - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署＋捷徑更新（`61354de`）；**語音喚醒已關**（`voice_frontend=hermes`，8765 `/health` `wake_on=false`）→ 還原＝`POST /settings voice_frontend=jarvis`＋重啟側車；**自動調門檻已凍結**（`wake_debug.log` 改名歸檔 → thr 定死 0.55）→ 還原＝改返名
- - **監測線**：誤觸老實化＋提示靜音**兩條都停手**（SK 2026-09-22 選 C，等新 mic）；R1–R3 全部 blocker／反轉條件已存兩份 plan，重啟唔使重做 research
- - **packai（MC 主線，詳 MC repo HANDOFF）**：Slice 1 已 commit＋push；**Slice 1b code 自驗綠但真機 A/B 未跑 → 未 commit**（5 檔未 commit）；MC repo HEAD `013e4ac` 已全部 push
- - **Hermes 設定**：`compression.micro_compact=true`＋`micro_compact_every_n_turns=10`（**新 session 生效**；備份 `config.yaml.bak-20260922-182831-microcompact`；還原＝`hermes config set compression.micro_compact false`）
+- **現狀（2026-09-24 09:4x 改寫；全部 Hermes 親核）**
+ - **Git**：HEAD ＝ `feature/hermes-alerts-mcp` `ef9b85e`；**未 push 36 個 commit**（比 `origin/同名分支`，全部 docs）、**未 merge 入 main 92 個**（比 `origin/main`）——兩個數會跟下一個 commit 自己變，截至 09:4x。**未 commit 4 個 code 檔**（Slice 1，見下）＋HANDOFF。
+ - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署（今日 08:38 開機自動行緊）；**側車重啟循環今日冇再現**——今日 serve.log 只有一次模型載入（08:38:55）、`jarvis serve` 同一 PID（35292）行咗 58 分鐘、8765 `/health` 200；成因＝側車直接跑 repo `src`，未 commit 嘅 Slice 1「無條件起 HTTP server」已經生效。**語音喚醒仍關**（`wake_on=false`／`voice_frontend=hermes`）；門檻凍結 0.55；`alert_policy_mode=shadow`。
+ - **Slice 1（側車重啟循環修復）＝ code 寫好、Hermes 自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`（`_ensure_control_http` 無條件起 server＋self-probe）／`hud/main.js`（health 要 `ok===true && service==='jarvis'`）／`src/jarvis/settings.py`＋`hud/settings.html`（鎖 8765 唯讀）。自驗（`node --check`／`py_compile`／50 測試／`eval_gate --lock`）全綠。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗行為＋#1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；Task 3 打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。
+ - **監測線**：誤觸老實化＋提示靜音**兩條都停手**（SK 2026-09-22 選 C，等新 mic）；R1–R3 blocker／反轉條件已存 plan，新 mic 到可直接沿用。
+ - **packai（MC 主線，細節睇 MC repo HANDOFF）**：MC repo HEAD `013e4ac` **已 push**（`origin/main..HEAD` = 0）；**Slice 1b 4 檔未 commit**（sha16 `e60c1a4c388b3938`／`af65eae0eeda6348`／`9fad6127e975cd32` 同舊 STATE 記錄一致）＋**真機 A/B 未跑**。
+ - **Hermes 設定**：`compression.micro_compact=true`＋`micro_compact_every_n_turns=10`（新 session 生效；備份 `config.yaml.bak-20260922-182831-microcompact`）。
  - **本檔**：只留未做嘅事（已完成任務已全部歸檔）
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT／AEC／聲紋／wake threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **測試隔離 ii 實作**（已批准，未開工）② **Slice 1b 真機 A/B** ③ Slice 1c plan（源頭措辭／機翻／關聯閘）④ Slice 2 世界生成正式 plan ⑤ 取得途徑缺口修補 ⑥ **dev → main 合併**（PR 定直接 merge）⑦ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑧ **SK 手動**：Surfshark 加 3 個 exclusion folder ⑨ **非專案**：MS DCT 面試 6 個 STAR 數字（覆咗即出英文可照背版）
-- **下一步（優先序）**：① **測試隔離 ii**（plan → review ≥8:2 → 實作；驗收＝跑測試前後 session 數／mtime 不變）② **packai Slice 1b 沙盒真機 A/B**（需 SK idle ＋ DS 空閒時段）③ Slice 1c plan → R1 review ④ Slice 2 正式 plan ⑤ 取得途徑缺口（等 SK 拍板）⑥ merge 決定
+- **未解（等 SK 決）**：① **Slice 1 驗收窗口 1**（開 HUD 15–20 分鐘，唔打機）② **窗口 2**（HUD 關 ≥35 分鐘，可打機）③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑨ **SK 自己**：MS DCT 面試 9/28–30（材料 3 份 PDF 已定案，冇待辦）
+- **下一步（優先序）**：① 等 SK 揀窗口 → Slice 1 行為驗收 ② 打包換版 → 窗口 2 ③ **測試隔離 ii**（plan → review ≥8:2 → 實作）④ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑤ Slice 1c plan → R1 review ⑥ Slice 2 正式 plan ⑦ merge 決定
 - **歸檔索引**：**已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（54 段，已按完成日期新→舊重排＋頂部有日期索引）**；更舊（2026-08）見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
-
 <!-- STATE:END -->
+
+## 今日完成（2026-09-24）
+- jarvis-pc 當日 commit 1 個（最新：ef9b85e docs(handoff): Slice 1 code written (uncommitted) + self-verif）
+- 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 36 個 commit（未 push）
+
+## 2026-09-24 09:4x（Discord；read handoff：drift 複核，零新工作）
+- **STATE 改寫**（原本停喺 09-22 19:0x）：git 三個數分清（未 push 36／未 merge 入 main 92／未 commit 4 檔）、Slice 1 驗收窗口待 SK、packai Slice 1b 未 commit。
+- **舊句修正**：09-23 15:0x「JARVIS ONE 保持關閉」→ 已開返（08:38 開機自動行）；舊「未解 ⑨ STAR 數字待補」→ SK 09-22 已提供、3 份 PDF 09-23 11:34 完成。
+- **親核證據**：`git rev-list --count origin/同名分支..HEAD`=36、`origin/main..HEAD`=92；8765 `/health` 200 `wake_on=false`；serve.log 今日只一次 model 載入；MC 三檔 sha16 同記錄一致。
 
 ## 2026-09-24 00:3x（Discord；session handoff：Slice 1 code 寫好、未 commit 未驗收）
 - **做咗**：plan v4（`f7f754e`）→ 經 **cursor-agent** 實作 Slice 1（**4 個檔未 commit**）：`shell_app.py`（新增 `_ensure_control_http` 無條件起 HTTP server ＋ 5 秒 self-probe ＋ 失敗老實寫 `hud_error.log`、唔自動重試；`_ensure_alerts_mcp` 只 gate poller）｜`hud/main.js`（health 改為要 `body.ok===true && service==='jarvis'`；`clampSettingsPatch` 鎖 8765）｜`src/jarvis/settings.py`（clamp 鎖 8765）｜`hud/settings.html`（欄位 readonly ＋ 鎖定提示）。
@@ -140,3 +150,4 @@
 - **新發現（重大）**：`jarvis serve` 每 ~90 秒被 Electron kill+respawn → 每次重載 1.2GB 模型（serve.log 見 294 次 download 週期；實測 14:34:26→14:35:56→14:37:29→14:38:58）→ 週期性 CPU/IO 尖峰 = SK 打機鍵盤延遲主因。關 JARVIS ONE 後 serve.log 100 秒 +0 bytes；SK 確認打字順返。
 - 根因：`hud/main.js:157-179` health check 30s × 3 miss = 90s 就 kill，而 serve 啟動 >90s（每次走網絡檢查 20 個模型檔）。業界做法已搜（K8s startupProbe / AWS grace period / sokuji 90s handshake）。
 - Plan：`.hermes/plans/2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`（3 改動：startup grace period / 模型本地快取 / log 輪替；7 項驗收標準）。**JARVIS ONE 現時保持關閉（HUD/提醒暫停）直到修好換版。**
+- → ✅ 狀態更新（2026-09-24 09:4x 親核）：JARVIS ONE 已開返（08:38 開機自動行，側車同一 PID、8765 /health 200）；未 commit 嘅 Slice 1 已令重啟循環消失。
