@@ -29,6 +29,7 @@
 - CSS（為收返 9 頁）：body 10.15pt/1.45、`ul,ol` margin 2/3pt、`li` 1.2pt。試過 `li{break-after:avoid}` 令 p2 出現大片空白 → **已撤回**。
 - 備份／還原：同一份 `%LOCALAPPDATA%\hermes\backups\dct-prep-20260924-233903\`（內有改前 md）。PDF sha256 頭 16 ＝ `d280ef2d3d42eab4`（627KB、9 頁）。
 - 未變：Copilot 3 個 STAR 故事真偽、CMI cable 事件細節、「new center」解釋 仍待 SK。
+- **00:3x SK 問「Copilot 個 intro 好啲？」** → 核對後**採用佢嘅骨架**（每份工＋一句得著）、**保留我哋嘅事實同長度**：§4.1 改寫（加「thanks for making the time」開場；HKEX 加「work to someone else's standard, stay accurate under pressure」；CMI 加「hands-on…that's the part I enjoyed most」）。字數 167→168 ＝**講嘅時間一樣（≈60 秒）**，標示改「55–65 秒」。棄用 Copilot 版其餘全部：篇幅 ~330 字（≈2 分鐘，爆我哋 30–60 秒定案）、「took some time to reassess my career goals」（含糊帶過離職，同「老實講自己辭職＋車程」衝突）、「Thank you／I would love the opportunity」（hard sell 收尾）。PDF 9 頁、sha256 頭 16 ＝ `2029d0c14cd9fc4e`。
 
 ## 2026-09-24 23:5x（Discord；Copilot 第 5 份 Cheat Sheet → 核對＋吸收 5 條，單一 PDF 收返 9 頁）
 - 核對 SK 傳嘅 Copilot Cheat Sheet（存 `MS_DCT_Prep\from_copilot\Cheat_Sheet_copilot_20260924.pdf`）：同 9 頁定案重疊約 6 成，佢係 keyword 骨頭、冇完整句子。
