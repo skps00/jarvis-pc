@@ -17,11 +17,53 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT／AEC／聲紋／wake threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **Slice 1 驗收窗口 1**（開 HUD 15–20 分鐘，唔打機）② **窗口 2**（HUD 關 ≥35 分鐘，可打機）③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑨ **SK 自己**：MS DCT 面試 9/28–30（材料 3 份 PDF 已定案，冇待辦）
+- **未解（等 SK 決）**：① **Slice 1 驗收窗口 1**（開 HUD 15–20 分鐘，唔打機）② **窗口 2**（HUD 關 ≥35 分鐘，可打機）③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑨ **SK 自己**：MS DCT 面試 9/28–30（**已合併成單一 `Microsoft面試-DCT.pdf` 9 頁**；Copilot 全部 5 份材料嘅採用／棄用見檔尾附錄；**Copilot 3 個 STAR 故事待 SK 確認真偽**；CMI cable 事件細節＋「new center」解釋待 SK）
 - **下一步（優先序）**：① 等 SK 揀窗口 → Slice 1 行為驗收 ② 打包換版 → 窗口 2 ③ **測試隔離 ii**（plan → review ≥8:2 → 實作）④ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑤ Slice 1c plan → R1 review ⑥ Slice 2 正式 plan ⑦ merge 決定
 - **歸檔索引**：**已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（54 段，已按完成日期新→舊重排＋頂部有日期索引）**；更舊（2026-08）見 `plans/archive/HANDOFF_2026-08-*.md`
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-24 23:5x（Discord；Copilot 第 5 份 Cheat Sheet → 核對＋吸收 5 條，單一 PDF 收返 9 頁）
+- 核對 SK 傳嘅 Copilot Cheat Sheet（存 `MS_DCT_Prep\from_copilot\Cheat_Sheet_copilot_20260924.pdf`）：同 9 頁定案重疊約 6 成，佢係 keyword 骨頭、冇完整句子。
+- 吸收 5 條：① **新增 `Why are you a good fit for this role?`**（三格＝圖書館客服／HKEX SOP＋合規／CMI 日常 DC 運維）入 §4.2 Mike 場；② §4.3 安全題加**負面清單**（唔理／等等睇／自己搞掂晒）；③ §4.5 server down 加**硬件指示燈＋讀 log**；④ §4.5 change 失敗加**停後續 change＋評估影響**；⑤ §7 加 **20 個關鍵詞**（四組，明寫「放句入面、唔好背口號」）＋`Validation Check`＝post-execution check、`Change Management`＝PCN 對照。
+- 棄用（附錄記低）：靠公司名／規模做賣點（同平實版衝突）、「唔好提車程」、口號式堆砌；檔尾新增**附錄：Copilot 材料核對記錄**（5 條，含 09-22／23／24 前四份）。
+- PDF 重建（Hermes 親跑 `build_pdf.py`；hermes venv python 有 markdown＋pymupdf）：10 頁 → **收返 9 頁**（附錄由表格改 bullet＋CSS 邊距微調 10.5/1.5→10.3/1.46）；`md_leftovers=0`、無 <1000 字空洞頁、頁碼 9/9。順手修 3 處「list 前冇空行 → markdown 冇 render 成 bullet」（§1 唔好提及／§7 checklist／軟技巧）。
+- 親核：pymupdf 掃 6 條新字串全在（good fit／I don't wait and see／hardware indicators／hold any further changes／Validation Check／附錄）；render p4/p6/p9 睇過無重疊、無亂碼、無半截。
+- 備份：`%LOCALAPPDATA%\hermes\backups\dct-prep-20260924-233903\`（3.7M，含改前 md）。還原＝由該資料夾 copy 返 `MS_DCT_面試一份.md`＋`build_pdf.py` 再重建。
+- 未變：Copilot 3 個 STAR 故事（HKEX asset／急件／保養次序）仍等 SK 確認真偽；CMI cable 事件細節、「new center」解釋仍待 SK。
+
+## 2026-09-24 14:0x（Discord；SK 交 Copilot《Final Interview Guide》13 頁 → 核對＋吸收 2 題）
+- **核對**：Copilot 第三份材料（`MS_DCT_Prep\from_copilot\Final_Interview_Guide_copilot_20260924.txt`，13 頁 quick-memory 版）同我哋三份 PDF **重疊約 85%**，但冇官方術語／9-18 內線／薪金定案／紅線／軟技巧。
+- **吸收（已改 2 個 .md）**：30 秒稿 **§3.7 反饋題**、**§4.7 change 失敗題**；照讀稿同步 2 題；guide **附錄 C 加 RCA** ＋ §20 mirror 同步 ＋ 新增 **附錄 D-2**（採用／棄用逐條記錄；同時修走附錄 C 舊「47 頁」字串）。
+- **棄用（附錄 D-2 記低）**：generic 面試官分工（**已冇 phone screen 階段**）、含糊離職講法（同「自己辭職＋3-4 小時車程」定案衝突）、hard-sell 收尾句、「每題 1–2 分鐘」（我哋定 30–60 秒）。
+- **未證實（等 SK 一句）**：Copilot 三個 STAR 故事（HKEX 資產資料對唔上／急件壓力／保養次序分歧）**未經 SK 確認**，按官方誠實要求**未寫入**任何檔。
+- **備份**：`%LOCALAPPDATA%\hermes\backups\dct-prep-20260924-140028\`（14 檔：3 md＋3 pdf＋build_pdf.py 等）。
+- **14:2x Copilot 第 4 份（`message.txt` 12 題框架版）**：吸收 1 題（`Walk me through a server deployment.` → 30 秒稿 §4.8＋照讀稿）；guide 新增 **附錄 D-3**；⛔ 棄用「千萬唔好講車程太遠」（同 SK 09-23 親口定案衝突，且 9/28 面試官 Mike＝舊老闆知實情）。
+- **SK 答 3 個故事**：`1` HKEX 入錯 asset serial → **冇**（真事係 **CMI 一件同 cable 有關**嘅事，細節待答）；`2` CMI 急件具體個案 → **冇**，但「**仍然收過緊急工單**」＋提及「that was a new center」（待 SK 解釋係咩意思）；`3` 同同事為保養／檢查次序分歧 → **有**（細節待答）。
+- **PDF 已重建（Hermes 親跑 headless Chrome；SK 已離開獨佔全螢幕）**：準備包 **59 頁**（56→59：新增附錄 D-2／D-3＋2 題）、照讀稿 **10 頁**、速查卡 **2 頁**（守住 2 頁預算）；pymupdf 核過新內容全部在 PDF 內、`md_leftovers=0`、無 <500 字空洞頁。
+- **14:3x SK 指示「全部整理成一份減少頁數」** → 3 份 PDF（59＋10＋2＝71 頁）合併成 **`Microsoft面試-DCT.pdf` 10 頁**（新源檔 `MS_DCT_面試一份.md`；build_pdf.py 重寫成單檔；舊 13 個檔（3 PDF＋研究 md＋逐字稿）搬去 `MS_DCT_Prep\archive\`，**冇刪**）。新檔 7 節＝時間表＋紅線／術語 14 條／逐場情報／照讀答案（4 場＋收場）／尖問題（含薪金 28,000）／技術速記／當日＋軟技巧。Hermes 親核：頁數 10、`md_leftovers=0`、無 <1000 字空洞頁、pymupdf 掃關鍵字（28,000／NDT／LOTO／RCA／4.8 deployment／3.7 feedback／4.7 change fails）全部在；已 render 頁 3 睇過排版正常。備份 `dct-prep-20260924-142614`。
+- **16:1x SK 指示（精簡紅線）**：刪走「3 條紅線」整段＋兩處保密提醒（🔒「通水」／「唔好爆我」）→ 改成 4 行「**唔好提及**」清單（30% 數字／前公司壞話／薪金底線／你點知問題）；§3 尾改中性用法句。PDF 仍 **9 頁**，全文已無「保密／通水／紅線／出題」字眼（pymupdf 核）。
+- **16:0x SK 指示「只要 45–55 秒完整版 intro」** → §4.1 刪走短版自我介紹，只留完整版（含「輪班冇問題、只係車程」定案句）；全文已無「完整版」引用。PDF 仍 **9 頁**（末頁 1250 字）。備份 `dct-prep-20260924-*`。
+- **14:4x 最後修訂**：三個 mistake 版本改成獨立標題＋獨立引言塊（原本被 markdown 併成一塊，難分）＋收緊行距／頁邊 → **單一 PDF 9 頁**（最後一頁 1747 字、無空洞頁）；Hermes 親眼 render 核過 3 頁排版（無重疊／斷字）。
+- **14:39 SK 再澄清**：CMI 嗰條線係**電源線（power cord）** → 第二選擇改成「CMI 電源故障 → 維修期間插錯電源線 → 自己即刻發現、修正＋再確認、同主管講、零影響」；第三條（SOP／log 版）標明係同一次故障嘅另一角度。PDF **10 頁**（末頁 1992 字），pymupdf 掃過 6 條關鍵字全在。
+- **14:37 SK 補第 2 件真事**：CMI＝「故障由線引起 → 維修期間**插錯線** → 自己即刻發現 → 修正＋自己再確認＋同主管講、零影響」→ 寫入 mistake 題做**第二選擇**（CMI log 版降做第三）。PDF 仍 **10 頁**（末頁 1992 字），pymupdf 掃過新字串在。
+- **14:34 SK 補真事細節 → 寫入 mistake 題**：① **HKEX 開錯 ticket／重複開單（兩樣都發生過）**，自己發現、即時同主管講、開返正確單＋取消錯單、零影響 → 已做 **§4.4 主答案**；② CMI「睇 log 太耐」版保留做**第二選擇**。PDF 重建：**10 頁**（CSS 微調拉返一頁，末頁 1636 字、無空洞頁）。
+- **待做**：等 SK 補 2 件真事嘅細節（CMI cable 事件／同事次序分歧）＋解釋「new center」；有咗就寫入照讀稿 mistake 題同文化題，再重建 PDF。
+
+## 2026-09-24 17:0x（Discord；SK 報黑屏重開 → 查事件紀錄）
+- **事實（唯讀查 Windows 事件紀錄）**：9/24 08:37 開機 → **16:37:16 系統停止回應**（Event 6008 記錄「上次關機非正常」）→ **16:49:24–16:51:18 nvlddmkm event 153 ×54**（XML：`\Device\Video3`／`Error occurred on GPUID: 100`）＋ **Display 4101 ×3**（驅動停止回應後回復）＋ **16:51:05 dwm.exe 崩潰**（WER `AppCrash_dwm.exe`＋`Kernel_141_*`×2＋`Kernel_144_*`＋`Kernel_1b8_*`）→ SK 硬關機 → 16:58:44 重開（Event 41）。
+- **背景歷史**：同類 epi 09-04（nvlddmkm ×1）、09-11（4101×2／nvlddmkm×24）、09-24（最嚴重）。**無 WHEA 硬件錯誤**；顯卡 idle 44°C／80W、PCIe Gen5 x16、無 retired pages。
+- **環境**：NVIDIA driver **581.42**（2025-09-30 WHQL）、HAGS=2（開）、MPO 未關、TDR 全預設；背景跑 Wallpaper Engine（webwallpaper64 ×8）、Discord ×6、Razer×10、SteelSeries×11、MSI Center×6、HWiNFO（kernel driver）、TRCC。MSI LEDKeeper2 今日亦崩潰 2 次（12:31）。
+- **已做（SK 批 ②）**：`hermes\scripts\gpu_incident_watch.py`（no_agent，睇 nvlddmkm／4101／41／6008／dwm 崩潰）＋ cron **`4dfef80822b3`**（`*/5 * * * *`，deliver origin，zero-LLM）；自測：baseline 60 條（54×153＋3×4101＋dwm＋41＋6008）入 `state\gpu_incidents.jsonl`，第二次跑靜默。§電源線 SK 已自行檢查過（排除）。
+- **17:2x 驅動研究（SK 要「best version」）**：社群共識（C 級）＝出事區間 **580.97+**（SK 581.42 中招）、**591.44** 有報告修好、**610.88** 多處被指穩定、**595.71** 有 5090 專項分析（0.95V cap）；616.56／616.64 有新問題、617.14 只出 2 日。另有 PSU transient 說（SK 已是 1600W ATX3.1 Titanium → 較低可能）。未做任何 driver 動作。**⚠️ 17:5x 修正（第二輪研究）**：**撤回 595.71 首選** —— 595.71 係 595.59 召回後應急版，本身有電壓 cap（<3GHz、最多 -16%）＋**Event 153／黑屏／Kernel-Power 41 重災**；改推 **591.86**（NVIDIA 官方當時叫 rollback 嘅版本＋Reddit 聚合「2026 best balance」，含 CS2 字體扭曲修正）→ 次選 **610.88**；**避開 595.x／616.56-616.86／617.14**。
+- **18:0x SK「go」→ 交付 2 件**：① `Desktop\5090-tier1-fix.reg`（MPO off＋TdrDelay 20／TdrDdiDelay 30；等 SK double-click＋重啟）；② 證據包 `Documents\PC_Troubleshoot\5090-證據包.pdf`（4 頁）＋`evidence\`（事件 CSV 30 日、dxdiag、nvidia-smi、watchdog jsonl）。**watchdog 警報路徑實測通過**（模擬新事件 → 正確印出 60 條分組＋GPU 狀態；測試後已還原 state／log）。追加 `Desktop\5090-收集崩潰dump（管理員）.ps1`（WER／LiveKernelReports／Minidump → evidence\admin-dumps，需右鍵管理員執行）。實測：**WER 資料夾 ACL 擋非管理員**、**Windows 已清走全部 .dmp**（LiveKernelReports 0）。
+- **17:5x SK 傳單據相（城市科技/City Computer, Shop 69）**：條款**冇寫年期**，只寫「所有貨品原廠保養」＋「五年自攜免費檢查」＋散件 7 天一換一（已過）→ 年期跟原廠（Gigabyte 出貨地區）；要問鋪頭 3 條問題（地區／年期／收唔收代送）。報告 §4.3。
+- **17:4x SK 更正：香港買嘅 5090 係水貨** → Gigabyte HK／AORUS 官方條款唔適用；保養年期限於**賣家／代理（Rivia）**寫喺單或盒貼紙（一般 1 年店保）→ 若 1 年＝2026-12 到期。等 SK 睇單；如要送修要備證據包（事件匯出＋WER dump＋錄影）。
+- **17:3x SK 報購買日＝2025-12**（卡 2025-01 出廠＝倉底舊貨）→ 3 年保到 **2028-12**、有註冊則 4 年到 2029-12；NVIDIA UEFI 固件工具（修 2025-03 前出貨／Event 0x141）**更值得做**。
+- **17:3x SK 質疑「4 年保」→ 已更正（寫入報告 §4）**：Gigabyte **HK 官網標準＝3 年**；4 年係 AORUS 2026 全球延長保固（**要先喺購買後 30 日內註冊**，型號表有 GV-N5090GAMING OC-32GD）；HK 代理 **Rivia** 以盒上保養雷射貼紙為準。等 SK 講購買日＋有無註冊。
+- **17:5x 第三輪研究（SK：多平台、唔可以再買 5090）**：報告 `C:\Users\skps9\Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。**關鍵**：SK 卡 VBIOS＝**98.02.2E.00.D4（2025-01 出廠）**，同款 GV-N5090GAMING OC-32GD 卡主有**完全相同症狀**帖；**NVIDIA GPU UEFI Firmware Tool v2.0** 正修 `Event 0x141` 黑屏（SK WER 就係 Kernel_141）；主板 MSI X870E CARBON BIOS 1.A50（2025-06，落後）；驅動無單一最好（591.86 兩極／595.x 召回＋電壓 cap／616.x 新問題）。行動分 4 級：Tier1 今日（MPO＋TdrDelay＋電源模式＋功耗 95%）、Tier2 固件（NVIDIA UEFI／Gigabyte VBIOS／主板 BIOS／PCIe Gen4）、Tier3 驅動（596.49→610.88）、Tier4 硬件／DP 線／PCH 溫度。
+- **MPO 準備好但未生效**：`Desktop\mpo_off.reg`／`mpo_restore.reg` 已寫（HKLM\SOFTWARE\Microsoft\Windows\Dwm\OverlayTestMode=5）；Hermes shell **非 admin** → 要 SK double-click（UAC）。
+- **未做（等 SK 批）**：① 檢查 12V-2x6 顯卡電源線（SK 自己關機做）② driver clean install／更新 ③ 關 MPO（OverlayTestMode=5）④ 關 HAGS ⑤ watchdog cron（no_agent）記下次事發前後 60 秒 context。**零改動**，全部唯讀。
 
 ## 今日完成（2026-09-24）
 - jarvis-pc 當日 commit 1 個（最新：ef9b85e docs(handoff): Slice 1 code written (uncommitted) + self-verif）
