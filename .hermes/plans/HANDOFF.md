@@ -30,6 +30,7 @@
 - 備份／還原：同一份 `%LOCALAPPDATA%\hermes\backups\dct-prep-20260924-233903\`（內有改前 md）。PDF sha256 頭 16 ＝ `d280ef2d3d42eab4`（627KB、9 頁）。
 - 未變：Copilot 3 個 STAR 故事真偽、CMI cable 事件細節、「new center」解釋 仍待 SK。
 - **00:3x SK 問「Copilot 個 intro 好啲？」** → 核對後**採用佢嘅骨架**（每份工＋一句得著）、**保留我哋嘅事實同長度**：§4.1 改寫（加「thanks for making the time」開場；HKEX 加「work to someone else's standard, stay accurate under pressure」；CMI 加「hands-on…that's the part I enjoyed most」）。字數 167→168 ＝**講嘅時間一樣（≈60 秒）**，標示改「55–65 秒」。棄用 Copilot 版其餘全部：篇幅 ~330 字（≈2 分鐘，爆我哋 30–60 秒定案）、「took some time to reassess my career goals」（含糊帶過離職，同「老實講自己辭職＋車程」衝突）、「Thank you／I would love the opportunity」（hard sell 收尾）。PDF 9 頁、sha256 頭 16 ＝ `2029d0c14cd9fc4e`。
+- **00:5x SK 補：舊老闆講 intro 要 1.5–2 分鐘**（＋「thanks is polite」）→ **撤回上面「唔要長版」嘅判斷**：§4.1 擴寫成 **327 字 ≈ 1.9–2.2 分鐘**（Copilot 骨架＋我哋事實：自己辭職／車程／零 hard sell 收尾「That's what brought me here」），5 段之間加 `>` 分隔（原本 markdown 併成一大塊）。⚠️ 我哋三份逐字稿（9/9 電話、9/18 舊老闆通話）**冇錄到長度呢句** → 依 SK 口述當 A 級證據；**其餘 27 條仍 30–60 秒，等 SK 答係「開場」定「每題」**。PDF **10 頁**（+1 頁；p2 底有空白＝intro 整塊唔斷頁，方便照讀）、sha256 頭 16 ＝ `a69d59df2507e058`。
 
 ## 2026-09-24 23:5x（Discord；Copilot 第 5 份 Cheat Sheet → 核對＋吸收 5 條，單一 PDF 收返 9 頁）
 - 核對 SK 傳嘅 Copilot Cheat Sheet（存 `MS_DCT_Prep\from_copilot\Cheat_Sheet_copilot_20260924.pdf`）：同 9 頁定案重疊約 6 成，佢係 keyword 骨頭、冇完整句子。
