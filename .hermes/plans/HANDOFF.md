@@ -4,22 +4,24 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-24 09:4x 改寫；全部 Hermes 親核）**
- - **Git**：HEAD ＝ `feature/hermes-alerts-mcp` `ef9b85e`；**未 push 36 個 commit**（比 `origin/同名分支`，全部 docs）、**未 merge 入 main 92 個**（比 `origin/main`）——兩個數會跟下一個 commit 自己變，截至 09:4x。**未 commit 4 個 code 檔**（Slice 1，見下）＋HANDOFF。
- - **JARVIS ONE**：HUD **0.4.13** 已 build＋部署（今日 08:38 開機自動行緊）；**側車重啟循環今日冇再現**——今日 serve.log 只有一次模型載入（08:38:55）、`jarvis serve` 同一 PID（35292）行咗 58 分鐘、8765 `/health` 200；成因＝側車直接跑 repo `src`，未 commit 嘅 Slice 1「無條件起 HTTP server」已經生效。**語音喚醒仍關**（`wake_on=false`／`voice_frontend=hermes`）；門檻凍結 0.55；`alert_policy_mode=shadow`。
- - **Slice 1（側車重啟循環修復）＝ code 寫好、Hermes 自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`（`_ensure_control_http` 無條件起 server＋self-probe）／`hud/main.js`（health 要 `ok===true && service==='jarvis'`）／`src/jarvis/settings.py`＋`hud/settings.html`（鎖 8765 唯讀）。自驗（`node --check`／`py_compile`／50 測試／`eval_gate --lock`）全綠。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗行為＋#1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；Task 3 打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。
- - **監測線**：誤觸老實化＋提示靜音**兩條都停手**（SK 2026-09-22 選 C，等新 mic）；R1–R3 blocker／反轉條件已存 plan，新 mic 到可直接沿用。
- - **packai（MC 主線，細節睇 MC repo HANDOFF）**：MC repo HEAD `013e4ac` **已 push**（`origin/main..HEAD` = 0）；**Slice 1b 4 檔未 commit**（sha16 `e60c1a4c388b3938`／`af65eae0eeda6348`／`9fad6127e975cd32` 同舊 STATE 記錄一致）＋**真機 A/B 未跑**。
- - **Hermes 設定**：`compression.micro_compact=true`＋`micro_compact_every_n_turns=10`（新 session 生效；備份 `config.yaml.bak-20260922-182831-microcompact`）。
- - **本檔**：只留未做嘅事（已完成任務已全部歸檔）
+- **現狀（2026-09-25 01:1x 改寫；全部 Hermes 親核）**
+ - **Git**：HEAD ＝ `ffb1b45`（分支 `feature/hermes-alerts-mcp`）；**未 push 43 個**（比 `origin/同名分支`）、**未 merge 入 main 99 個**（比 `origin/main`）；**未 commit 4 個 code 檔**（Slice 1）。呢三個數會跟下一個 commit 自己變。
+ - **JARVIS ONE**：HUD **0.4.13** 行緊（今日 **17:00** 開機自動起，16:58 黑屏重開之後）；8765 `/health` ＝ `ok:true, wake_on:false`；側車 `python -m jarvis serve`（PID 36084）**重啟循環冇再現**（未 commit 嘅 Slice 1 改動已生效）。
+ - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
+ - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
+ - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 `a69d59df2507e058`）；29 條問題已改**列點＋中英對照**；**自我介紹擴到 327 字 ≈1.9–2.2 分鐘**（跟 SK 口述「舊老闆講 1.5–2 分鐘」）。備份 `hermes\backups\dct-prep-20260924-233903\`。
+ - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
+ - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
+ - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
- - **語音／mic 線 HOLD（等 SK 新 mic）**：唔郁 `wake.py`／STT／AEC／聲紋／wake threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **Slice 1 驗收窗口 1**（開 HUD 15–20 分鐘，唔打機）② **窗口 2**（HUD 關 ≥35 分鐘，可打機）③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ `jarvis-pc/AGENTS.md` 版本字串仍寫 0.4.10 ⑨ **SK 自己**：MS DCT 面試 9/28–30（**已合併成單一 `Microsoft面試-DCT.pdf` 9 頁**；Copilot 全部 5 份材料嘅採用／棄用見檔尾附錄；**Copilot 3 個 STAR 故事待 SK 確認真偽**；CMI cable 事件細節＋「new center」解釋待 SK）
-- **下一步（優先序）**：① 等 SK 揀窗口 → Slice 1 行為驗收 ② 打包換版 → 窗口 2 ③ **測試隔離 ii**（plan → review ≥8:2 → 實作）④ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑤ Slice 1c plan → R1 review ⑥ Slice 2 正式 plan ⑦ merge 決定
-- **歸檔索引**：**已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（54 段，已按完成日期新→舊重排＋頂部有日期索引）**；更舊（2026-08）見 `plans/archive/HANDOFF_2026-08-*.md`
+ - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
+- **未解（等 SK 決）**：① **DCT 自我介紹長度**：「1.5–2 分鐘」係「開場」定「每題」（A 只開場／B 每題都要擴寫其餘 27 條／C 唔肯定）② **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ③ **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ④ **JARVIS Slice 1 驗收窗口 1／2** ⑤ Slice 1 打包換版 ⑥ **測試隔離 ii 實作**（已批准未開工）⑦ **packai Slice 1b 真機 A/B** ⑧ Slice 1c／Slice 2 正式 plan ⑨ **dev → main 合併**（PR 定直接 merge）
+- **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 等 SK 答 A/B/C → 有需要擴寫其餘題 → 補 STAR／CMI 細節 ③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
+- **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
@@ -31,6 +33,7 @@
 - **01:0x SK 交朋友 CV（side task，非 JARVIS）**：Cheung Hei Ming（Timmy）＝2026 IVE 測量學高級文憑（QS stream）＋2024 Yau Lee 實習 → 交付 `Documents\Timmy_QS_Job_Search\`（md＋**5 頁 PDF**＋build_pdf.py＋朋友 CV 副本）。內容：**49 條 JobsDB 即時空缺直連**（AQS 25／見習 8／相鄰職位 15）＋**實測 5 個 post 嘅入職要求**（Techoy／Wise Trend **收 HD**；RLB／中國建築／太古地產**要 Degree**）＋A 級薪酬基準（HKTE：AQS $19–25k）＋CV 6 項修改＋3–5 年路線（top-up degree → HKIS APC；CIC 監工 T1/T2；EMSD 技術員訓練計劃，職學津貼最高 $120,800）。pymupdf 核：5 頁、49 條 unique link、8 個 section 齊、無 <1000 字空洞頁、render 頭／尾頁睇過。
 - ⚠️ **browser_exec 三個坑（今次血淚）**：① 程式碼**含中文** → harness stdin UTF-8 解碼失敗（`UnicodeDecodeError 0xa4`）→ 輸出變 `null`；② `js()` 回傳**含 CJK 嘅大字符串**（>~1.5k）→ 同樣輸出 `null`，要 `document.body.innerText.replace(/[^ -~]+/g,' ')` 再 `slice()` 分段；③ `time.sleep()` 同「導航期間 body=null」一樣會斷輸出 → 要 poll `document.body.innerText.length`。JobsDB 可正常抓（無 bot wall）。
 - 未變：Copilot 3 個 STAR 故事真偽、CMI cable 事件細節、「new center」解釋 仍待 SK。
+- **01:0x SK 問「點解有兩個 JARVIS ONE？」** → 親查 process 清單：**正常**（35732 portable 外層／9192 主進程／10168 GPU／33088 network／35880 renderer，同一個 app）。寫入 STATE 陷阱位，避免下次再誤會。
 - **02:0x 追加（同一 side task）**：SK 要「CV 同面試改善建議，先做 research」。已 research（JobsDB《Fresh Grad CV 懶人包》2026-02、HKIS 官網學生會員／認可學歷／QSD APC 卷一範圍、Currie & Brown 早期職位「what we look for」、英國 HBF QS 能力面試框架、apcguide／Robert Half 題庫 C 級）→ 同一份 PDF 加 **§7 CV 逐項改法（13 行前後對照表，含 `[填：數字]` 佔位、唔准作數）**＋**§8 面試準備（形式／3 條必答稿／10 條技術題／STAR 4 個故事／反問／當日 checklist）**；§7→§9 重編，來源分 A/B/C 級。PDF **9 頁**（最後一頁 306 字＝來源清單尾，已濃縮；唔夠位收返 8 頁，老實同 SK 講）。
 - **00:3x SK 問「Copilot 個 intro 好啲？」** → 核對後**採用佢嘅骨架**（每份工＋一句得著）、**保留我哋嘅事實同長度**：§4.1 改寫（加「thanks for making the time」開場；HKEX 加「work to someone else's standard, stay accurate under pressure」；CMI 加「hands-on…that's the part I enjoyed most」）。字數 167→168 ＝**講嘅時間一樣（≈60 秒）**，標示改「55–65 秒」。棄用 Copilot 版其餘全部：篇幅 ~330 字（≈2 分鐘，爆我哋 30–60 秒定案）、「took some time to reassess my career goals」（含糊帶過離職，同「老實講自己辭職＋車程」衝突）、「Thank you／I would love the opportunity」（hard sell 收尾）。PDF 9 頁、sha256 頭 16 ＝ `2029d0c14cd9fc4e`。
 - **00:5x SK 補：舊老闆講 intro 要 1.5–2 分鐘**（＋「thanks is polite」）→ **撤回上面「唔要長版」嘅判斷**：§4.1 擴寫成 **327 字 ≈ 1.9–2.2 分鐘**（Copilot 骨架＋我哋事實：自己辭職／車程／零 hard sell 收尾「That's what brought me here」），5 段之間加 `>` 分隔（原本 markdown 併成一大塊）。⚠️ 我哋三份逐字稿（9/9 電話、9/18 舊老闆通話）**冇錄到長度呢句** → 依 SK 口述當 A 級證據；**其餘 27 條仍 30–60 秒，等 SK 答係「開場」定「每題」**。PDF **10 頁**（+1 頁；p2 底有空白＝intro 整塊唔斷頁，方便照讀）、sha256 頭 16 ＝ `a69d59df2507e058`。
@@ -178,6 +181,8 @@
 - **MC a+b（09-4x）**：SK 揀 A → 累積批次 commit `f325c4e`（135 檔，唔 push）；commit 前掃 secrets 全清、runtime `logs/` 故意排除（未入 .gitignore，建議下次加）；UniversIO 最終版 jar 覆核 7/7 全綠。
 - **11:1x packai 測試範圍**：新增兩個沙盒（Star Technology／ATM8，皆 1.19.2 Forge）＋登記文件 `docs/TEST_SCOPE.md`；jar `b5ffe2761cea`；遊戲內 smoke 待 Gate 轉 idle。
 ## 陷阱（重溫）
+
+- **JARVIS ONE 進程數唔等於開咗幾多個 app**：一個 app 正常有 **4 個同名進程**（主進程／GPU／network service／renderer）＋ portable 外層 exe；Task Manager「詳細資料」每個進程一行（2026-09-25 查證）。**唔好 kill 主進程**。
 
 - **Settings 單一 writer**：改 settings 用 sidecar `POST /settings`（Bearer = `%APPDATA%\Jarvis\alerts\mcp_token.txt`），唔好直接寫 settings.json
 - **dpapi:** 值唔好當明文讀；settings.json 已加密
