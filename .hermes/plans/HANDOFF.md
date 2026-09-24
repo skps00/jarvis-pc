@@ -23,6 +23,13 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 2026-09-25 00:0x（Discord；SK 指示 §4 問題改「列點＋中英對照」，PDF 仍 9 頁）
+- SK 指示：§4 **問題部分**改成**列點（point form）＋中英對照**，答案唔動。實作：29 條問題由 `### 英文問句` 改成 `- **English?**｜中文`（中文我逐條寫，非機器直譯）＋§4.6 兩條反問同樣處理＋頂部「點用」加一句說明。
+- 親核：pymupdf 掃 **29／29 條英文問句**＋**28 條中文對照**全部在（1 條因換行要用 flat 比對）；`md_leftovers=0`、**9 頁**、無 <1000 字頁；render p3／p6 睇過（列點＋答案引用框排版乾淨、無重疊、頁碼 9/9）。
+- CSS（為收返 9 頁）：body 10.15pt/1.45、`ul,ol` margin 2/3pt、`li` 1.2pt。試過 `li{break-after:avoid}` 令 p2 出現大片空白 → **已撤回**。
+- 備份／還原：同一份 `%LOCALAPPDATA%\hermes\backups\dct-prep-20260924-233903\`（內有改前 md）。PDF sha256 頭 16 ＝ `d280ef2d3d42eab4`（627KB、9 頁）。
+- 未變：Copilot 3 個 STAR 故事真偽、CMI cable 事件細節、「new center」解釋 仍待 SK。
+
 ## 2026-09-24 23:5x（Discord；Copilot 第 5 份 Cheat Sheet → 核對＋吸收 5 條，單一 PDF 收返 9 頁）
 - 核對 SK 傳嘅 Copilot Cheat Sheet（存 `MS_DCT_Prep\from_copilot\Cheat_Sheet_copilot_20260924.pdf`）：同 9 頁定案重疊約 6 成，佢係 keyword 骨頭、冇完整句子。
 - 吸收 5 條：① **新增 `Why are you a good fit for this role?`**（三格＝圖書館客服／HKEX SOP＋合規／CMI 日常 DC 運維）入 §4.2 Mike 場；② §4.3 安全題加**負面清單**（唔理／等等睇／自己搞掂晒）；③ §4.5 server down 加**硬件指示燈＋讀 log**；④ §4.5 change 失敗加**停後續 change＋評估影響**；⑤ §7 加 **20 個關鍵詞**（四組，明寫「放句入面、唔好背口號」）＋`Validation Check`＝post-execution check、`Change Management`＝PCN 對照。
