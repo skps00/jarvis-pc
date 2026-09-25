@@ -30,6 +30,7 @@
 - **收口**：P3「每條答案撒真數字」SK **決定唔加** → 關閉。PDF **16 頁／39 題／133 點**、sha `c284982b039e7323`（`md_leftovers=0`、問題標題全喺框外、`power fault` 0 命中）。備份 `hermes\backups\dct-prep-20260925-181225\`。
 - **未做（等 SK 叫）**：面試前自己出聲練（1.5–2 分鐘自我介紹＋四場題）；模擬 panel 我提過、未叫。
 - **鍵盤診斷（順手）**：SK 報 Win/Alt 互換 → Windows 側零 remap（Scancode Map 唔存在、冇 PowerToys/AutoHotkey），真兇＝鍵盤切咗 Mac 模式（`VID_258A&PID_010C`＝AULA F75 同族，USB 自報 "Gaming Keyboard"）→ **Fn+W** 切返 Windows；SK 已修好。已寫入 skill `windows-desktop-automation`。
+- **MS 文化資料（SK 要求）**：PDF 加「附錄：Microsoft 文化參考（官方 A 級來源）」—— 四條文化屬性（careers Culture FY26 原文）、三條價值（about/values＋Code Book 原句）、Code Book 金句（know-it-all → learn-it-all、`I don't know — yet`）、Model·Coach·Care、2025–26 CEO blog 三大優先（Security／Quality／AI transformation，SFI／QEI）、CO+I DCT 招聘原文（daily safety briefings／EHS／THA／PPE／near-miss／embodies our culture）、中英對照表、8 個來源。**16 → 18 頁**，sha `4d646fc0ece25e4c`（39 題／133 點仍在）。
 - **Skill 更新**：`job-interview-prep` §7h-bis／§7r 加「同一時段 ≠ 同一件事（按角色＋名詞分開）」＋「thin fact 升級要守長度預算」；
 
 ## 2026-09-25 10:3x（Discord；SK「go」→ **P1＋P2＋P3 已入稿**，PDF 15 頁）
