@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 頭 16 `c19ec9621dad8965`、719,813 bytes）；**問題＝列點＋中英對照（29 條）**；**答案＝列點（§4.2–§4.5 共 97 點，內容零刪減）**；**自我介紹＝段落版（327 詞 ≈2 分鐘，SK 明講唔改）**。備份 `hermes\backups\dct-prep-20260925-082719\`（改前版）。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **12 頁**（sha256 頭 16 `01f9720fe2a8c611`）；**問題＝列點＋中英對照（29 條）**；**答案＝列點＋細字中文對照（97 點全部有；內容零刪減）**；**自我介紹＝段落版（327 詞 ≈2 分鐘，SK 明講唔改）**。**新：09-22 兩通舊老闆通話（19:00／19:55）已本機轉錄**（`舊老闆通話-20260922-情報摘要.md`＋2 份逐字稿）→ 有 6 條建議改動**等 SK 批**（安全情境／唔准斷估／對手情報／文化）。備份 `hermes\backups\dct-prep-20260925-082719\`（多個版本）。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -19,7 +19,7 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
+- **未解（等 SK 決）**：① **DCT：09-22 通話 6 條建議改動**（見 `舊老闆通話-20260922-情報摘要.md` §J）＋**SK 要補覆 HR email** ② **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ③ **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ④ **JARVIS Slice 1 驗收窗口 1／2** ⑤ Slice 1 打包換版 ⑥ **測試隔離 ii 實作**（已批准未開工）⑦ **packai Slice 1b 真機 A/B** ⑧ Slice 1c／Slice 2 正式 plan ⑨ **dev → main 合併**（PR 定直接 merge）
 - **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 補 STAR／CMI 細節（版面已定：問題列點、答案段落）③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
@@ -36,6 +36,13 @@
 - 改動：§4.2–§4.5 **28 條答案＋mistake 題第二／第三選擇**，由段落改成 **blockquote 內列點（共 97 點）**；**內容零刪減**（詞級 diff：2114→2068 詞，差異全部係標籤字，例「At HKEX」→「What happened at HKEX」）。問題維持列點＋中英對照。
 - 頁數控制：改完最初 **11 頁** → CSS 壓（blockquote 內 list margin 1.5pt／0.7pt、`hr` 12→9pt、blockquote 10.8pt/1.6→10.45pt/1.52）→ **10 頁**（維持原本預算）。
 - 親核：pymupdf 掃 29 條問題全在、自我介紹仍段落、`md_leftovers=0`、render p2／p4／p6 睇過（sub-bullet 對齊、無重疊、無孤兒標題）；sha256 頭 16 ＝ `c19ec9621dad8965`（719,813 bytes、10 頁）。
+
+## 2026-09-25 08:4x（Discord；DCT 答案加**中英對照**（SK 選 A）＋**轉錄 09-22 兩通舊老闆通話**）
+- **PDF（SK 選 A）**：答案 97 點每點下面加**細字中文對照**（`.zh` span、9pt/1.26 灰）；CSS 再收緊（`hr` 7.5pt、blockquote padding 3.5/9pt、h3 6.5pt）→ **12 頁**、`md_leftovers=0`、末頁 1,478 字（無空洞頁）。親核：**97 條中文全部在 PDF 內**、29 條問題仍在、自我介紹仍段落、render p4 睇過（中文字細一級、唔搶眼）。sha256 頭 16 ＝ `01f9720fe2a8c611`。
+- **轉錄（SK 指定）**：`Videos\2026-09-22 19-00-38.mp4`（23:22）＋`19-55-18.mp4`（19:32）→ ffmpeg 16k mono → **SenseVoiceSmall 逐 30s**（47＋40 段、0 錯誤）→ **faster-whisper small 交叉核**（14:30–20:30／06:30–10:30；whisper 用 `language=yue` 會回空 → 要 `language=None`，已記入 skill 待 patch）。**零上傳**；temp `seg_*.wav` 已清。
+- **交付**：`MS_DCT_Prep\舊老闆通話-20260922-情報摘要.md`（A–J 段：安排／心態／面試官風格／**安全情境示範**／回答方式／準備策略／三大評分原則／**對手情報**／文化待遇／**6 條建議改動**）＋2 份逐字稿。
+- **最重要情報**：① 安全情境＝**先帶所有人離場 → 報 facility（唔係 manager）→ 等 → 負責人確認先入返去**；② **唔清楚就要問清，唔准 take assumption**；③ 見 server 燈要**記住邊部**（天花板／地下都有 label）；④ 對手 3 個都好「淡定＋presentable」→ SK 要靠**幽默＋好奇心＋speak up** 拉分；⑤ 最終二選一由 manager 揀；⑥ **HR email SK 未覆，要補**。
+- **未改稿**：上述 6 條改動**未寫入** `MS_DCT_面試一份.md`／PDF，等 SK 一句 go。
 
 ## 今日完成（2026-09-25）
 - jarvis-pc 當日 commit 6 個（最新：3bfaacd docs(handoff): session close - STATE rewrite (DCT pack 10p, Sl）
