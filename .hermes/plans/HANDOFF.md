@@ -19,7 +19,7 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **SK 自己**：補覆 HR email（舊老闆提醒）＋Copilot 3 個 STAR 故事真偽＋CMI cable 事件細節＋「new center」解釋 ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
+- **未解（等 SK 決）**：① **SK 自己**：Copilot 3 個 STAR 故事真偽＋CMI cable 事件細節＋「new center」解釋（**HR email 已覆，2026-09-25**） ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
 - **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 補 STAR／CMI／new center 細節（版面已定：問題＋答案都列點、答案有中文對照）③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
@@ -46,7 +46,7 @@
 
 ## 2026-09-25 09:0x（Discord；SK「go」→ **09-22 通話情報寫入稿**，PDF 13 頁）
 - SK 補一句：文化情報要**做研究**（佢之前傳過嘅 link ＝ `careers.microsoft.com/v2/global/en/hiring-tips.html`）。用官方來源核實（**A 級**）：`microsoft.com/en-us/about/values`（Respect／Integrity／Accountability）、官方 **Trust Code** PDF（文化五項：Growth Mindset／Customer Obsessed／One Microsoft／Diverse & Inclusive／Making a Difference）、`news.microsoft.com/codebook`、careers「How we hire」（「We look for respect, integrity, accountability, and growth mindset」＋2–4 場、每場最多一小時、要具體例子）＋官方 Interview tips 欄目（**Do your research／Know our competencies／Accelerate our culture／Be yourself／Demonstrate your thinking and curiosity／Be specific**）。
-- **改咗 6 樣**：① §4.3 新增響警號情境題（5 點＋舊老闆紅框示範）② §4.5 新增 server 紅燈題（記住機櫃／位置，唔掃全場）③ §3 加面試官風格（Smile is important）＋對手情報＋二選一機制＋**HR email 要補覆** ④ §5 加 3 行（文化／升職加薪／警號指引）⑤ §7 加 4 條（傾偈式有次序／speak up／好奇心（官方都寫）／唔准斷估救命句）⑥ §4.6 加一句 clarify 英文句。
+- **改咗 6 樣**：① §4.3 新增響警號情境題（5 點＋舊老闆紅框示範）② §4.5 新增 server 紅燈題（記住機櫃／位置，唔掃全場）③ §3 加面試官風格（Smile is important）＋對手情報＋二選一機制＋HR email（**SK 09-25 已覆**）④ §5 加 3 行（文化／升職加薪／警號指引）⑤ §7 加 4 條（傾偈式有次序／speak up／好奇心（官方都寫）／唔准斷估救命句）⑥ §4.6 加一句 clarify 英文句。
 - 親核（pymupdf 親跑）：31 條問題＋105 條中文對照全在、`md_leftovers=0`、**13 頁**、無空洞頁（末頁 1,591 字）；render p5／p6 睇過（新題列點對齊、紅框提示正常、無重疊）。sha256 頭 16 ＝ `ab7e8a440ff8c3d1`。
 - 備份：`hermes\backups\dct-prep-20260925-082719\`（另有 `pdf-before-zh-gloss.pdf`／`pdf-before-pointform-intro.pdf`）。
 
