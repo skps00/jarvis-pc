@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **12 頁**（sha256 頭 16 `01f9720fe2a8c611`）；**問題＝列點＋中英對照（29 條）**；**答案＝列點＋細字中文對照（97 點全部有；內容零刪減）**；**自我介紹＝段落版（327 詞 ≈2 分鐘，SK 明講唔改）**。**新：09-22 兩通舊老闆通話（19:00／19:55）已本機轉錄**（`舊老闆通話-20260922-情報摘要.md`＋2 份逐字稿）→ 有 6 條建議改動**等 SK 批**（安全情境／唔准斷估／對手情報／文化）。備份 `hermes\backups\dct-prep-20260925-082719\`（多個版本）。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `ab7e8a440ff8c3d1`）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -19,8 +19,8 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **DCT：09-22 通話 6 條建議改動**（見 `舊老闆通話-20260922-情報摘要.md` §J）＋**SK 要補覆 HR email** ② **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ③ **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ④ **JARVIS Slice 1 驗收窗口 1／2** ⑤ Slice 1 打包換版 ⑥ **測試隔離 ii 實作**（已批准未開工）⑦ **packai Slice 1b 真機 A/B** ⑧ Slice 1c／Slice 2 正式 plan ⑨ **dev → main 合併**（PR 定直接 merge）
-- **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 補 STAR／CMI 細節（版面已定：問題列點、答案段落）③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
+- **未解（等 SK 決）**：① **SK 自己**：補覆 HR email（舊老闆提醒）＋Copilot 3 個 STAR 故事真偽＋CMI cable 事件細節＋「new center」解釋 ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
+- **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 補 STAR／CMI／new center 細節（版面已定：問題＋答案都列點、答案有中文對照）③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
@@ -43,6 +43,12 @@
 - **交付**：`MS_DCT_Prep\舊老闆通話-20260922-情報摘要.md`（A–J 段：安排／心態／面試官風格／**安全情境示範**／回答方式／準備策略／三大評分原則／**對手情報**／文化待遇／**6 條建議改動**）＋2 份逐字稿。
 - **最重要情報**：① 安全情境＝**先帶所有人離場 → 報 facility（唔係 manager）→ 等 → 負責人確認先入返去**；② **唔清楚就要問清，唔准 take assumption**；③ 見 server 燈要**記住邊部**（天花板／地下都有 label）；④ 對手 3 個都好「淡定＋presentable」→ SK 要靠**幽默＋好奇心＋speak up** 拉分；⑤ 最終二選一由 manager 揀；⑥ **HR email SK 未覆，要補**。
 - **未改稿**：上述 6 條改動**未寫入** `MS_DCT_面試一份.md`／PDF，等 SK 一句 go。
+
+## 2026-09-25 09:0x（Discord；SK「go」→ **09-22 通話情報寫入稿**，PDF 13 頁）
+- SK 補一句：文化情報要**做研究**（佢之前傳過嘅 link ＝ `careers.microsoft.com/v2/global/en/hiring-tips.html`）。用官方來源核實（**A 級**）：`microsoft.com/en-us/about/values`（Respect／Integrity／Accountability）、官方 **Trust Code** PDF（文化五項：Growth Mindset／Customer Obsessed／One Microsoft／Diverse & Inclusive／Making a Difference）、`news.microsoft.com/codebook`、careers「How we hire」（「We look for respect, integrity, accountability, and growth mindset」＋2–4 場、每場最多一小時、要具體例子）＋官方 Interview tips 欄目（**Do your research／Know our competencies／Accelerate our culture／Be yourself／Demonstrate your thinking and curiosity／Be specific**）。
+- **改咗 6 樣**：① §4.3 新增響警號情境題（5 點＋舊老闆紅框示範）② §4.5 新增 server 紅燈題（記住機櫃／位置，唔掃全場）③ §3 加面試官風格（Smile is important）＋對手情報＋二選一機制＋**HR email 要補覆** ④ §5 加 3 行（文化／升職加薪／警號指引）⑤ §7 加 4 條（傾偈式有次序／speak up／好奇心（官方都寫）／唔准斷估救命句）⑥ §4.6 加一句 clarify 英文句。
+- 親核（pymupdf 親跑）：31 條問題＋105 條中文對照全在、`md_leftovers=0`、**13 頁**、無空洞頁（末頁 1,591 字）；render p5／p6 睇過（新題列點對齊、紅框提示正常、無重疊）。sha256 頭 16 ＝ `ab7e8a440ff8c3d1`。
+- 備份：`hermes\backups\dct-prep-20260925-082719\`（另有 `pdf-before-zh-gloss.pdf`／`pdf-before-pointform-intro.pdf`）。
 
 ## 今日完成（2026-09-25）
 - jarvis-pc 當日 commit 6 個（最新：3bfaacd docs(handoff): session close - STATE rewrite (DCT pack 10p, Sl）
