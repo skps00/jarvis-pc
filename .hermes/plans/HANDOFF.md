@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `1821e005a4bb0150`，09:5x 重寫「幾年後」答案）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
+ - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **16 頁**（sha256 頭 16 `c284982b039e7323`，09-25 18:3x）＝ **39 條問題／133 點，每點有細字中文對照**；自我介紹＝段落版（≈349 詞 ≈2.1 分鐘）。**事實核實已收口（09-25 18:3x）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -19,11 +19,19 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **SK 自己**：Copilot 3 個 STAR 故事真偽＋CMI cable 事件細節＋「new center」解釋（**HR email 已覆，2026-09-25**） ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
+- **未解（等 SK 決）**：① ~~DCT 三樣待答~~ **已解決（09-25 18:3x）**：HKEX 開錯單＝真；急件 ticket＝另一單（OM 叫開單＋持續檢查）；保養次序分歧＝冇（保留通用答法）；CMI 細節＝換 RAM 插錯線；「new center」＝CMI 新項目／新場 ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）
 - **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 補 STAR／CMI／new center 細節（版面已定：問題＋答案都列點、答案有中文對照）③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 2026-09-25 18:3x（Discord；DCT 稿事實核實收口 ＋ 鍵盤 Win/Alt 診斷）
+- **DCT 事實核實（SK 親口逐條答）**：① HKEX 開錯單＋重複單＝真（主答案）② mistake 第二／第三選擇由「電源故障／插錯電源線」**改正為真事**：換 RAM → 拆晒線拉機出嚟 → 復原插錯一個位 → 靠拔線前影相自己發現 → 零影響 → **主管（supervisor，唔係 OM）**就喺旁邊即刻上報 ③ **另一單**：OM 叫開單＋持續檢查系統 → 獨立成 Owen 場新題「忙緊時收到急件 ticket」，兩者唔可以混 ④ Copilot「保養次序分歧」唔存在（SK 從未做保養）→ 保留通用答法 ⑤ 換件過程冇同同事分歧 ⑥「new center」＝ CMI 新項目／新場 → 入自我介紹＋good fit（同時剪 17 個贅字，自我介紹淨 +6 詞）。
+- **SK 規則（已入稿尾附錄）**：情境題可以用通用答法 **cover**，但**唔可以講成真實發生過**；真係冇就照實講。
+- **收口**：P3「每條答案撒真數字」SK **決定唔加** → 關閉。PDF **16 頁／39 題／133 點**、sha `c284982b039e7323`（`md_leftovers=0`、問題標題全喺框外、`power fault` 0 命中）。備份 `hermes\backups\dct-prep-20260925-181225\`。
+- **未做（等 SK 叫）**：面試前自己出聲練（1.5–2 分鐘自我介紹＋四場題）；模擬 panel 我提過、未叫。
+- **鍵盤診斷（順手）**：SK 報 Win/Alt 互換 → Windows 側零 remap（Scancode Map 唔存在、冇 PowerToys/AutoHotkey），真兇＝鍵盤切咗 Mac 模式（`VID_258A&PID_010C`＝AULA F75 同族，USB 自報 "Gaming Keyboard"）→ **Fn+W** 切返 Windows；SK 已修好。已寫入 skill `windows-desktop-automation`。
+- **Skill 更新**：`job-interview-prep` §7h-bis／§7r 加「同一時段 ≠ 同一件事（按角色＋名詞分開）」＋「thin fact 升級要守長度預算」；
+
 ## 2026-09-25 10:3x（Discord；SK「go」→ **P1＋P2＋P3 已入稿**，PDF 15 頁）
 - 入稿內容：① `Why Microsoft?` 補官方 mission＋200+ data centre＋一個標準 ② `Why DCT — not software?`＋`good fit` 補成長點 ③ 離職／intro 嘅「kept learning」講具體（Linux／scripting／Java side project）④ 薪金句去「我知個 range」→ `I'd rather not guess a range` ⑤ **§4.4 加 3 題**（integrity／同事唔跟程序（附舊老闆「攞份文件出嚟講返個 point」原話）／跨背景同事）⑥ **§4.5 加 2 題**（窗口就完但未做完＝壓力題／用非技術語言解釋 RAID）⑦ §4.6 反問 +2 條＋新增「開場連接句」3 句 ⑧ §3 加 Elena 普通話玩笑＋面試前睇 4 位面試官 LinkedIn＋1 條針對性反問 ⑨ §7 加官方 AI 用法（備試 OK、面試中靠自己）⑩ 去重（`ten minutes`／`rely on`／`improvise on live hardware`）。
 - **排版 bug 修好**：markdown 會將緊接 `>` 區塊嘅 `- **問題**` 吸成 blockquote 內嘅巢狀清單（問題標題變咗框內小圓點）→ **問題行前面補一個空行** 就正常；已修 5 處，並用 pymupdf 逐條核 **38 條問題全部喺框外**。
