@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 `a69d59df2507e058`）；29 條問題已改**列點＋中英對照**；**自我介紹擴到 327 字 ≈1.9–2.2 分鐘**（跟 SK 口述「舊老闆講 1.5–2 分鐘」）。備份 `hermes\backups\dct-prep-20260924-233903\`。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 頭 16 `7aec66f1a0ad2dfd`、08:28 重建）；29 條問題＝**列點＋中英對照**；**自我介紹＝5 點列點（①–⑤）≈325 詞 ≈2 分鐘**（每點標秒數）。備份 `hermes\backups\dct-prep-20260925-082719\`（內有改前 md＋pdf）。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -19,11 +19,23 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **DCT 自我介紹長度**：「1.5–2 分鐘」係「開場」定「每題」（A 只開場／B 每題都要擴寫其餘 27 條／C 唔肯定）② **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ③ **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ④ **JARVIS Slice 1 驗收窗口 1／2** ⑤ Slice 1 打包換版 ⑥ **測試隔離 ii 實作**（已批准未開工）⑦ **packai Slice 1b 真機 A/B** ⑧ Slice 1c／Slice 2 正式 plan ⑨ **dev → main 合併**（PR 定直接 merge）
-- **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 等 SK 答 A/B/C → 有需要擴寫其餘題 → 補 STAR／CMI 細節 ③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
+- **未解（等 SK 決）**：① **DCT 其餘 27 條答案要唔要同樣 point form**（自我介紹已改 5 點列點；「1.5–2 分鐘」暫按「只講開場」處理）② **DCT Copilot 3 個 STAR 故事真偽**＋CMI cable 事件細節＋「new center」解釋 ③ **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ④ **JARVIS Slice 1 驗收窗口 1／2** ⑤ Slice 1 打包換版 ⑥ **測試隔離 ii 實作**（已批准未開工）⑦ **packai Slice 1b 真機 A/B** ⑧ Slice 1c／Slice 2 正式 plan ⑨ **dev → main 合併**（PR 定直接 merge）
+- **下一步（優先序）**：① 5090 Tier 1（打機完 double-click＋重啟，2 分鐘）② DCT 等 SK 講其餘 27 條要唔要 point form → 補 STAR／CMI 細節 ③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-25 08:2x（Discord；SK「read hand off ＋我之前講過 point form」→ §4.1 自我介紹改 5 點列點）
+- SK 記錯來源核對：**SK 原話（09-24 23:5x）＝「將我哋呢份嘢 question part 改成 point from（中英對照）」** → 問題列點已做＋親核 29／29；今次 SK 指**答案**都要 point form → **§4.1 由 5 段 prose 改成 5 點列點（①開場／②圖書館／③HKEX／④CMI／⑤離職＋點解嚟）**。
+- 每點秒數＝該段英文詞數 ÷ **160 詞／分鐘**（率取自上一版記錄「327 詞 ≈1.9–2.2 分鐘」，唔另設乘數）→ ①7／②23／③34／④18／⑤39 秒，加埋 **325 詞 ≈2.0 分鐘**（1.5–2 分鐘上緣；想快減 ③⑤ 各一句）。
+- 親核（pymupdf 親跑）：7 條新字串全在、抽樣 8 條問題＋中文對照仍在、`md_leftovers=0`、**10 頁**、無 <500 字頁（末頁 540 字＝附錄尾）；render p2／p3 睇過（bullet 對齊、無重疊、頁碼 10/10）。
+- 備份／還原：`hermes\backups\dct-prep-20260925-082719\`（改前 md＋`pdf-before-pointform-intro.pdf`）；PDF sha256 頭 16 ＝ `7aec66f1a0ad2dfd`（666KB、10 頁、08:28）。檔尾附錄已加 09-25 修正記錄。
+- 未決：**其餘 27 條答案要唔要同樣 point form**（現時仍段落、30–60 秒）；「1.5–2 分鐘」暫按「只講開場」。
+
+## 今日完成（2026-09-25）
+- jarvis-pc 當日 commit 6 個（最新：3bfaacd docs(handoff): session close - STATE rewrite (DCT pack 10p, Sl）
+- 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 44 個 commit（未 push）
 
 ## 2026-09-25 00:0x（Discord；SK 指示 §4 問題改「列點＋中英對照」，PDF 仍 9 頁）
 - SK 指示：§4 **問題部分**改成**列點（point form）＋中英對照**，答案唔動。實作：29 條問題由 `### 英文問句` 改成 `- **English?**｜中文`（中文我逐條寫，非機器直譯）＋§4.6 兩條反問同樣處理＋頂部「點用」加一句說明。
