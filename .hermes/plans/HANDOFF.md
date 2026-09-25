@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `51f3bba4f9d351e8`，09:5x 重寫「幾年後」答案）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `1821e005a4bb0150`，09:5x 重寫「幾年後」答案）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -24,6 +24,13 @@
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 2026-09-25 10:3x（Discord；SK「go」→ **P1＋P2＋P3 已入稿**，PDF 15 頁）
+- 入稿內容：① `Why Microsoft?` 補官方 mission＋200+ data centre＋一個標準 ② `Why DCT — not software?`＋`good fit` 補成長點 ③ 離職／intro 嘅「kept learning」講具體（Linux／scripting／Java side project）④ 薪金句去「我知個 range」→ `I'd rather not guess a range` ⑤ **§4.4 加 3 題**（integrity／同事唔跟程序（附舊老闆「攞份文件出嚟講返個 point」原話）／跨背景同事）⑥ **§4.5 加 2 題**（窗口就完但未做完＝壓力題／用非技術語言解釋 RAID）⑦ §4.6 反問 +2 條＋新增「開場連接句」3 句 ⑧ §3 加 Elena 普通話玩笑＋面試前睇 4 位面試官 LinkedIn＋1 條針對性反問 ⑨ §7 加官方 AI 用法（備試 OK、面試中靠自己）⑩ 去重（`ten minutes`／`rely on`／`improvise on live hardware`）。
+- **排版 bug 修好**：markdown 會將緊接 `>` 區塊嘅 `- **問題**` 吸成 blockquote 內嘅巢狀清單（問題標題變咗框內小圓點）→ **問題行前面補一個空行** 就正常；已修 5 處，並用 pymupdf 逐條核 **38 條問題全部喺框外**。
+- 親核：`md_leftovers=0`、**15 頁**、38 條問題／128 點／128 條中文對照；sha256 頭 16 ＝ `1821e005a4bb0150`。
+- 未做：P3「每條答案撒一個真數字」要 SK 核實數字先做；三個 mistake 版本、幽默句、安全負面清單照原樣（誠實優先）。
+- 評審檔：`MS_DCT_Prep\答案評審-多角度-20260925.md`（6 視角＋P1/P2/P3 出處）。
+
 ## 2026-09-25 10:0x（Discord；SK「ok, also review it in diff pov」→ **多角度評審（未改稿）**）
 - 交付：`MS_DCT_Prep\答案評審-多角度-20260925.md` —— 用 **6 個視角**（A 成長／B 反方面試官／C 官方準則／D 舊老闆 insider／E 表達／F 一致性）逐條評 31 條答案，附建議＋優先序。
 - **P1（5 項，等 SK go）**：① Why Microsoft 公司半邊補官方 mission／200+ DC（對齊 §5「50/50」口徑）② `Why DCT — not software` 補成長句（同 SK 指出嘅同一病）③ 離職題「kept learning」講具體（進修＋自己動手＋主動求職）④ **§4.4 加「integrity／誠信」題**（官方 Integrity＋舊老闆「信字」）⑤ §3／§7 加「Elena 場可用普通話開玩笑」＋「面試前睇 4 位面試官背景、準備 1 條反問」。
