@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 頭 16 `e2651f8fc5d1a163`、636,698 bytes、08:30）；**問題部分＝列點＋中英對照（29 條）**；**自我介紹＝原本段落版（327 詞 ≈2 分鐘）**——SK 明講「question part 改 point form，self-intro still normal」。備份 `hermes\backups\dct-prep-20260925-082719\`（改前版）。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **10 頁**（sha256 頭 16 `c19ec9621dad8965`、719,813 bytes）；**問題＝列點＋中英對照（29 條）**；**答案＝列點（§4.2–§4.5 共 97 點，內容零刪減）**；**自我介紹＝段落版（327 詞 ≈2 分鐘，SK 明講唔改）**。備份 `hermes\backups\dct-prep-20260925-082719\`（改前版）。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -30,6 +30,12 @@
 - 還原做法：由備份 `hermes\backups\dct-prep-20260925-082719\MS_DCT_面試一份.md` copy 返（一次過覆蓋我 3 處改動：§4.1 5 點列點／附錄 09-25 修正行／「點用」句）→ 重跑 `build_pdf.py`。
 - 親核（pymupdf 親跑）：PDF **10 頁**、`md_leftovers=0`、**抽出文字同改前 PDF（`pdf-before-pointform-intro.pdf`）逐字相同**（sha 唔同只係 PDF 內嵌時間）；sha256 頭 16 ＝ `e2651f8fc5d1a163`（636,698 bytes、08:30）；問題列點＋中文對照抽樣仍在。
 - 現行版面（＝SK 想要）：**問題＝列點＋中英對照**；**自我介紹＝原本段落版（327 詞 ≈2 分鐘）**；其餘 27 條答案段落、30–60 秒。
+
+## 2026-09-25 08:3x（同場再更正；**§4.2–§4.5 答案全部改列點**，supersedes 上一段尾句）
+- SK 最終原話：「**no, I mean the question's answer use point form**」→ 要嘅係**每條問題嘅答案**列點；**自我介紹唔改**（維持段落）。
+- 改動：§4.2–§4.5 **28 條答案＋mistake 題第二／第三選擇**，由段落改成 **blockquote 內列點（共 97 點）**；**內容零刪減**（詞級 diff：2114→2068 詞，差異全部係標籤字，例「At HKEX」→「What happened at HKEX」）。問題維持列點＋中英對照。
+- 頁數控制：改完最初 **11 頁** → CSS 壓（blockquote 內 list margin 1.5pt／0.7pt、`hr` 12→9pt、blockquote 10.8pt/1.6→10.45pt/1.52）→ **10 頁**（維持原本預算）。
+- 親核：pymupdf 掃 29 條問題全在、自我介紹仍段落、`md_leftovers=0`、render p2／p4／p6 睇過（sub-bullet 對齊、無重疊、無孤兒標題）；sha256 頭 16 ＝ `c19ec9621dad8965`（719,813 bytes、10 頁）。
 
 ## 今日完成（2026-09-25）
 - jarvis-pc 當日 commit 6 個（最新：3bfaacd docs(handoff): session close - STATE rewrite (DCT pack 10p, Sl）
