@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `53dd9144c6d4d127`，09:4x 重建）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
+ - **MS DCT 面試（9/28–30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **13 頁**（sha256 頭 16 `51f3bba4f9d351e8`，09:5x 重寫「幾年後」答案）；**問題＝列點＋中英對照（31 條）**；**答案＝列點＋細字中文對照（105 點）**；**自我介紹＝段落版（327 詞 ≈2 分鐘）**。**09-22 舊老闆通話情報已入稿**（SK 09-25 批 go）：新增響警號情境題（帶人離場→報 facility→等→負責人確認）、server 紅燈題（記住位置）、§5 文化／升職／警號三行、§7 speak up／好奇心／唔准斷估、§3 對手＋二選一＋HR email。文化情報用**官方來源**（about/values、Trust Code、Code Book、careers「How we hire」／Interview tips）。情報摘要：`舊老闆通話-20260922-情報摘要.md`。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -24,6 +24,14 @@
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-25 09:5x（Discord；SK 審稿：「幾年後」答案唔夠好 → 重寫成**成長版**）
+- SK 原話：「that answer is not good enough — MS request us to keep growing, then why I stay in shift?」→ 舊答案（可靠／考 A+Server+／**唔離開實體基建**）聽落似**原地踏步**，同微軟官方 **growth mindset／learn-it-all** 文化撞。
+- 重寫：**112 詞 ≈42 秒**、5 點 —— ① 先可靠（baseline）② **reliability 係 floor 唔係 ceiling**：一兩年後學**上一層**（senior 技術員工作／change＋規劃／facility＋網絡點配合）③ 考 A+、Server+ 再上④ **成長唔等於離開機房**（要深、要上一級）⑤ 長遠做**帶新人上手**嗰個。
+- 順手修：「長做」題加「**一路學一路升；原地踏步唔啱我**」（Standing still isn't for me）。
+- 親核：pymupdf 掃新句全在、`md_leftovers=0`、**13 頁**；英文詞數 112（≈42 秒，符合 Mike 場 30–45 秒）。sha256 頭 16 ＝ `51f3bba4f9d351e8`。
+- 未做：其餘答案未用同一角度（成長口徑）逐條掃；SK 未答想唔想。
+
 
 ## 2026-09-25 08:3x（Discord；SK 更正 → §4.1 自我介紹**還原**成原本段落版）
 - **做錯再修**：我 08:2x 見 SK 提「point form」→ 將**自我介紹答案**改成 5 點列點（commit `9218903`）；SK 即更正原話：「**I mean question part 改成 point form / self-intro still normal**」→ 我**做多咗，已還原**。
