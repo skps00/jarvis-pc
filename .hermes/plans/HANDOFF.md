@@ -24,6 +24,12 @@
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 2026-09-25 10:0x（Discord；SK「ok, also review it in diff pov」→ **多角度評審（未改稿）**）
+- 交付：`MS_DCT_Prep\答案評審-多角度-20260925.md` —— 用 **6 個視角**（A 成長／B 反方面試官／C 官方準則／D 舊老闆 insider／E 表達／F 一致性）逐條評 31 條答案，附建議＋優先序。
+- **P1（5 項，等 SK go）**：① Why Microsoft 公司半邊補官方 mission／200+ DC（對齊 §5「50/50」口徑）② `Why DCT — not software` 補成長句（同 SK 指出嘅同一病）③ 離職題「kept learning」講具體（進修＋自己動手＋主動求職）④ **§4.4 加「integrity／誠信」題**（官方 Integrity＋舊老闆「信字」）⑤ §3／§7 加「Elena 場可用普通話開玩笑」＋「面試前睇 4 位面試官背景、準備 1 條反問」。
+- **P2（6 項）**：good fit 補成長半句／§4.5 加「非技術語言解釋」＋「壓力題」／§4.4 加「跨背景同事」／換走重複用語／反問加 2 條。**P3（3 項）**：PPE 情境、開場連接句、每條撒真數字（要 SK 核數）。
+- 未改稿；HANDOFF 只記評審結果。
+
 
 ## 2026-09-25 09:5x（Discord；SK 審稿：「幾年後」答案唔夠好 → 重寫成**成長版**）
 - SK 原話：「that answer is not good enough — MS request us to keep growing, then why I stay in shift?」→ 舊答案（可靠／考 A+Server+／**唔離開實體基建**）聽落似**原地踏步**，同微軟官方 **growth mindset／learn-it-all** 文化撞。
