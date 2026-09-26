@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **14 頁**（**重點筆記版**：重點／自我介紹／筆記；sha256 頭 16 `0463acb983433195`，09-26 11:2x；舊 18 頁版備份見 backups）＝ **39 條問題／133 點，每點有細字中文對照**；自我介紹＝段落版（≈349 詞 ≈2.1 分鐘）。**事實核實已收口（09-25 18:3x；09-26 已大瘦身做重點筆記版）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
+ - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **14 頁**（**重點筆記版**：重點／自我介紹／筆記；sha256 頭 16 `e7de8172b3415f95`，09-26 11:3x；舊 18 頁版備份見 backups）＝ **39 條問題／133 點，每點有細字中文對照**；自我介紹＝段落版（≈349 詞 ≈2.1 分鐘）。**事實核實已收口（09-25 18:3x；09-26 已大瘦身做重點筆記版）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -31,10 +31,11 @@
 - **實際改動**：`MS_DCT_面試一份.md` 62,876 → 48,041 bytes（9 個 h2 → 3 個）；結構＝§1 重點（場次表／佢哋睇重咩／文化濃縮／唔好提及／卡住點算／講嘢方式）＋§2 自我介紹（段落照讀）＋§3 筆記（3.1–3.4 逐場問答＋3.5 尖問題＋3.6 反問＋3.7 技術速記 point form）。**新增 1 條答案**：「份工重複，你點保持成長」（manager 9/9 親口提過）。順手修 markdown 坑（`**標題**` 後要空行，否則 bullet 被吸成段落）＋CSS 微調。
 - **第三輪修改（SK 再指示）**：① **自我介紹由段落改成「超詳細列點版」**（19 點：開場／學歷＋圖書館／PrimeTech→HKEX／CMI／離職／現況＋收句，每點英文句＋細字中文、段落標時間），另加「替代開場句」2 句（避免 4 場一字不改）② 開場句 `Sure — thanks for making the time.` 依據＝SK 9/9 第一輪自己講嘅「多謝你抽時間嚟見我」（逐字稿 01:30），非新發明。
 - **第四輪修改（SK 再指示）**：SK 指出**「：」講唔出口** → **全份 PDF 嘅全形冒號清零**（改「 —— 」當停頓；cover 都改埋）；保留英文句內嘅半形 `:`（佢係英文標點，讀出嚟就係停頓）。連帶修：`**標籤** ——` 前後空格、`1. 學歷＋第一份工（圖書館…）` 標題內冒號、`第三（…另一角度 —— 靠記錄，唔靠記憶）`。
-- **親核（第四輪後）**：14 頁、`md_leftovers=0`、PDF 內**全形冒號 = 0**、38 條問題全在、render p3 親眼睇過；sha256 頭 16 ＝ `0463acb983433195`。
+- **第五輪（SK「fix it」）**：連**英文句內嘅半形 `:` 都清埋**（23 個 → `—`）；連帶修 37 行「兩個長破折號太近」嘅讀感（前面嗰個改逗號）；**PDF 內冒號只剩時間碼**（11:30 等 11 個，唔改）。
+- **親核（第五輪後）**：14 頁、`md_leftovers=0`、PDF 內**全形冒號 = 0、半形 = 11（全部時間）**、38 條問題全在、render p4 親眼睇過（英句＋中文對照讀得順）；sha256 頭 16 ＝ `e7de8172b3415f95`。
 - ⚠️ **Markdown 坑（今日中兩次）**：`**純標題**` 落一行直接跟 `- ` bullet → python-markdown **唔會 render 成清單**，會變「文字＋- 」一大段 → **標題後必須加空行**。已寫入本檔備忘（下次改 PDF 稿先掃一次）。
 - **第二輪修改（SK 再指示）**：① **官方文化改中英對照**（英文原句＋細字中文，唔要附錄）② SK 確認 **9/9 電話篩選嘅「阿 Mi」＝9/28 場 Mike（佢舊老闆）** → §1 表＋新增「Mike 場特別注意」：**同一個人已聽過你 5 條答案 → 同一口徑、加深度、唔加新事實** ③ CSS：blockquote 改可斷頁（每點唔斷）→ 頁數由 18 收返 **14**。
-- **親核**：`build_pdf.py` rc=0、**14 頁**、`md_leftovers=0`、**38 條問題（35 問答＋3 反問）全部在 PDF**、中文對照 **162 條**、自我介紹 19 點、render p1／p2／p3／p4／p14 親眼睇過（無重疊、無孤兒標題）；sha256 頭 16 ＝ `0463acb983433195`。備份 `hermes\backups\dct-prep-20260926-102452\`（改前 md／pdf／build_pdf.py）。
+- **親核**：`build_pdf.py` rc=0、**14 頁**、`md_leftovers=0`、**38 條問題（35 問答＋3 反問）全部在 PDF**、中文對照 **162 條**、自我介紹 19 點、render p1／p2／p3／p4／p14 親眼睇過（無重疊、無孤兒標題）；sha256 頭 16 ＝ `e7de8172b3415f95`。備份 `hermes\backups\dct-prep-20260926-102452\`（改前 md／pdf／build_pdf.py）。
 - ✅ **已解決**：阿 Mi＝Mike（SK 2026-09-26 親口確認）；`第一輪面試-20260909-情報摘要.md` 已同步更新。
 
 
