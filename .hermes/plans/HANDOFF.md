@@ -10,7 +10,7 @@
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
  - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正未套用**（01:0x 親核：`OverlayTestMode`／`TdrDelay` 機碼唔存在）→ SK double-click `Desktop\5090-tier1-fix.reg`＋重啟即完成（還原 `mpo_restore.reg`）。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
- - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **14 頁**（**重點筆記版**：重點／自我介紹／筆記；sha256 頭 16 `e7de8172b3415f95`，09-26 11:3x；舊 18 頁版備份見 backups）＝ **39 條問題／133 點，每點有細字中文對照**；自我介紹＝段落版（≈349 詞 ≈2.1 分鐘）。**事實核實已收口（09-25 18:3x；09-26 已大瘦身做重點筆記版）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
+ - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **14 頁**（**重點筆記版**：重點／自我介紹／筆記；sha256 頭 16 `636d585d71e3b6d5`，09-26 19:3x；舊 18 頁版備份見 backups）＝ **39 條問題，每點有細字中文對照**；自我介紹＝**列點版（19 點，≈2.1 分鐘）**。09-26 19:4x 已吸收 **Copilot 第 6 份**（新增 `Why should we hire you?`／§1「慢少少」／離職題收口句）。**事實核實已收口（09-25 18:3x；09-26 已大瘦身做重點筆記版）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
  - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
@@ -24,6 +24,12 @@
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-09-26 19:4x（Discord；**Copilot 第 6 份提醒核對 → 加 3 樣**，PDF 仍 14 頁）
+- **核對結果**：Copilot 8 個提醒 **同現稿零衝突**（5 條已覆蓋 —— 技術題唔好估／Safety 行先／HKEX 故事／ownership 主動句／錯事要 growth，全部有原文位）。用佢個機率表逐條掃 —— 10 條高機率題我哋有 9 條，**唯一缺 `Why should we hire you?`**。
+- **加 3 樣（SK `go` 2026-09-26）**：① §3.1 尾新增 `Why should we hire you?`（4 點、≈105 詞／≈40 秒；唔重複 `good fit` 嗰條講法）② §1「講嘢方式」加「**慢少少**」—— 每點之間停半秒、唔好一分鐘衝完 ③ 離職題加收口句 `And the work was never the reason I left — the distance was.`（拆 Copilot 講嗰個疑慮「微軟辛苦你會唔會又走」）＋§3.5「點解離開」row 加追問補句。
+- **親核（Hermes 親跑）**：`build_pdf.py` rc=0、**14 頁**、`md_leftovers=0`、問題 **38 → 39**、**全形冒號 0／半形 11（全部時間碼）**、8 條新字串全部在 PDF、render p2（慢少少）＋p6（新題喺框外、4 點喺框內）親眼睇過（無重疊、無孤兒標題）。sha256 頭 16 ＝ `636d585d71e3b6d5`。備份 `hermes\backups\dct-prep-20260926-193819\`（改前 md／pdf／build_pdf.py）。
+- **未變**：Copilot「唔好黑 SELL 前公司」嘅做法同現稿一致（車程只講一次、唔埋怨）；佢建議「所有題拉返 Safety」唔做全稿改寫（怕變成口號堆砌，Elena／Owen 兩場已覆蓋）。
 
 ## 2026-09-26 10:2x（Discord；**DCT 稿大瘦身：18 頁 → 14 頁「重點筆記」** ＋ 9/9 第一輪轉錄）
 - **第一輪（9/9）轉錄落地**（本機 SenseVoiceSmall 30s 分塊 ＋ faster-whisper small 交叉核，**零上傳**）：`MS_DCT_Prep\第一輪面試-20260909-逐字稿.md`（53 段，26:04）＋`第一輪面試-20260909-情報摘要.md`。**內容**：電話篩選、hiring manager 親見；問咗 5 條（自我介紹／DC 日常／**WSA（跨中心調動＋24h＋standby 要幾鐘內返，佢講明「must」）**／同事唔得閒情境題／考證書 challenge）；佢親口講 panel＝幾個唔同部門甚至唔同國家 manager、得一個位、HR 俾 competency＋文化 material、**要預備普通話**；佢主動俾嘅重點＝**主動性／own 自己**（主動搵資料問人；資源係公司畀、**ownership 喺員工**、要 upgrade 自己）、**DC 工作重複（365 日一樣）→ 分別在於點 optimize**、微軟 insist growth。
