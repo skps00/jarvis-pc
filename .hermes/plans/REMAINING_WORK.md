@@ -5,7 +5,17 @@
 
 ---
 
-## 現況 sync（2026-09-20 06:5x；只有最新一份算數）
+## 現況 sync（2026-09-28 06:5x Hermes 親核）
+
+- **JARVIS 線**：HUD **0.4.13** 行緊 (09-28 06:52:06 重開機 → 06:53 自動起)；8765 `/health` = `ok:true, wake_on:false`；**Slice 1 四檔仍未 commit** (`hud/main.js` / `hud/settings.html` / `src/jarvis/settings.py` / `src/jarvis/shell_app.py`) → 等 SK 擇驗收窗口 1 / 2
+- **Git（09-28 06:5x 親核）**：jarvis-pc HEAD `6d8e50c` (`feature/hermes-alerts-mcp`)：**未 push 68**（比 remote 同名分支）、**未 merge 入 main 124**（比 `origin/main`）；MC repo `013e4ac` == `origin/main`（已 push、0 ahead），只餘 Slice 1b 四檔未 commit + 真機 A/B 未跑
+- **5090 Tier 1**：registry 四個值 (`OverlayTestMode=5` / `TdrDelay=20` / `TdrDdiDelay=30` / `HwSchMode=2`) **兩次重啟後仍在** → Tier 1 收貨；剩 驅動 / 固件 / BIOS 決定
+- **DCT 求職**：第一場 Mike **09-28 11:30–12:30**；Elena / Dhaval 09-29；Owen 09-30
+- **Hermes 側**：cron `jarvis-session-handoff` 09-28 06:53 正常跑；反方 reviewer R1 報告已喺 subagent session `20260927_231610_3d99d0` 搵返（11.3k 字）、尚未出三段式
+
+---
+
+## 現況 sync（2026-09-20 06:5x）
 
 - **JARVIS 線**：HUD 0.4.13 已 build／部署；`hud/main.js`＋`hud/package.json` 未 commit（等 SK 真機驗收）；語音／mic 線 **HOLD**（等新 mic）；jarvis-pc HEAD `feature/hermes-alerts-mcp` ahead 42 未 push。
 - **MC（packai）線**：詳 MC repo `.hermes/plans/HANDOFF.md`——v6 取得途徑已 push（`344e805`）；真 instance jar 仍 `06b5b129a114`（09-18），落後三批 code；73 檔未 commit（`mod_version` 0.2.3）；P1（全部資料：結構／挖礦取得，生態群系，礦物分佈，維度） 等 SK 定次序。

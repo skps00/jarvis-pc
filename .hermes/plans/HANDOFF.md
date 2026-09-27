@@ -4,12 +4,12 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-27 23:4x 改寫；全部 Hermes 親核）**
- - **Git**：HEAD ＝ `ffb1b45`（分支 `feature/hermes-alerts-mcp`）；**未 push 43 個**（比 `origin/同名分支`）、**未 merge 入 main 99 個**（比 `origin/main`）；**未 commit 4 個 code 檔**（Slice 1）。呢三個數會跟下一個 commit 自己變。
- - **JARVIS ONE**：HUD **0.4.13** 行緊（今日 **17:00** 開機自動起，16:58 黑屏重開之後）；8765 `/health` ＝ `ok:true, wake_on:false`；側車 `python -m jarvis serve`（PID 36084）**重啟循環冇再現**（未 commit 嘅 Slice 1 改動已生效）。
+- **現狀（2026-09-28 06:5x 改寫；全部 Hermes 親核 —— SK 06:52 重開機後）**
+ - **Git**：HEAD ＝ `6d8e50c`（分支 `feature/hermes-alerts-mcp`，remote 同名分支 tip `be003f4`）；**未 push 68 個**、**未 merge 入 main 124 個**（比 `origin/main`；local `main` 落後 96）；**未 commit 4 個 code 檔**（Slice 1）。三個數會跟下一個 commit 自己變 —— 截至 09-28 06:5x。
+ - **JARVIS ONE**：HUD **0.4.13** 行緊（**09-28 06:52:06 重開機 → 06:53 自動起**）；8765 `/health` ＝ `ok:true, wake_on:false`；側車 `python -m jarvis serve` **重啟循環冇再現**（未 commit 嘅 Slice 1 改動已生效；09-28 06:55 親核 `/health` 仍 ok）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主 9192／GPU 10168／網絡 33088／renderer 35880；portable 解壓到 `%TEMP%`，外層係 `JARVIS-ONE-0.4.13.exe`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘，驗 #1–#4／#6／#7／#10＋U1／U2；窗口 2＝HUD 關 ≥35 分鐘，驗 #8／#9＋`OFF` 情境）；打包換版（`swap_hud_version.ps1`）夾喺兩窗之間。
- - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正已寫入 registry（09-27 23:0x Hermes 親核：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30`）→ 已重啟＋已覆核生效**（SK 23:07:17 重開機；Hermes 23:4x 再親讀 registry 確認四個值都在；還原 `mpo_restore.reg`）。
+ - **5090 黑屏**：今日 **16:37 系統停止回應 → 16:49–16:51 nvlddmkm 153×54＋dwm 崩潰 → 16:58 重開**（同 09-04／09-11 同類）。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。**Tier 1 修正已寫入 registry（09-27 23:0x Hermes 親核：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30`）→ 已重啟＋已覆核生效**（SK 23:07:17 重開機；Hermes 23:4x 再親讀 registry 確認四個值都在；還原 `mpo_restore.reg`；**09-28 06:52 重開機後第三度親讀：四個值仍在 → Tier 1 確認持久**）。
  - **CS2 幀時 spike（450+ FPS 路線；09-27 22:0x–23:1x）**：Valve 官方 FAQ（help.steampowered 418E-7A04-B0DA-9032）明講「幀率高於刷新率→輕微卡頓」＋官方建議 G-Sync+V-Sync+Reflex；**SK 選 450+ → 唔 cap**（官方亦講 VRR 在高幀率下失效「應該不會造成任何影響」）。實測：fps_max=**0（不限）**／V-Sync 關／Reflex 啟用+加速／G-Sync 停用／畫質已全部低（**只剩 MSAA 4X** 貴）／HAGS 開／無邊框視窗。**已做**：DXCache 清 10.31GB（C 碟 305→315GB）。**未做**：MSAA 4X→2X（**只可遊戲內改**——`cs2_video.txt` 已證實係 2026-02 過時檔，改檔無效甚至可能倒返高畫質）、Steam overlay 關（registry／`localconfig.vdf` 都冇嗰個掣 → 要 GUI 3 個掣）。工具＋baseline：`Documents\PC_Troubleshoot\cs2-perf\`（`cs2_ccd_pin.ps1`／`probe_clock.ps1`／`probe_vcache3.ps1`／`verify_after_reboot.ps1`／`BASELINE_2026-09-27.md`／README）。**待量**：重啟 → 改 MSAA／overlay → A/B frametime，目標最高毫秒 **< 28.5ms**。⚠️ **「分唔到邊半邊有 V-Cache」已被推翻（09-27 23:4x 獨立數字核實）**：`probe_vcache2.ps1` 自帶 verdict 出 `CPU 0 … 157 cyc … L3-resident => V-Cache CCD`／`CPU 16 … 538 cyc … DRAM-bound => no V-Cache`；probe_vcache3 重跑 3 次一致（CPU0 到 96MB 仍 267 cyc、128MB 才跳 313–406 cyc）。→ **LPI 0-15 ＝ V-Cache CCD（96MB）、LPI 16-31 ＝ 32MB**；所以「唔用 CPU Sets」嘅理由**只剩 Game Mode／anti-cheat 衝突**（要 SK 重新決定，未改任何嘢）。另外：L3「192MB」係 **VBS 造成嘅已知誤報**，真值 128MB（2×32＋64 V-Cache）；副螢幕 **唔係內顯推**（兩個 monitor device 嘅 `DEVPKEY_Device_Parent` 都係 `VEN_10DE`）。報告 `Documents\PC_Troubleshoot\cs2-perf\NUMBERCHECK-2026-09-27.md`。驅動結論：**591.86**（次選 610.88），避開 595.x／616.5x-616.8x／617.14；另有 NVIDIA GPU UEFI 固件工具 v2.0＋主板 BIOS（1.A50 落後）。報告 `Documents\PC_Troubleshoot\5090黑屏-研究與行動計畫.md`。
  - **MS DCT 面試（Mike 9/28・Elena 9/29 11:00・Dhaval 9/29 12:00・Owen 9/30）**：單一 PDF `Documents\MS_DCT_Prep\Microsoft面試-DCT.pdf` ＝ **14 頁**（**重點筆記版**：重點／自我介紹／筆記；sha256 頭 16 `636d585d71e3b6d5`，09-26 19:3x；舊 18 頁版備份見 backups）＝ **39 條問題，每點有細字中文對照**；自我介紹＝**列點版（19 點，≈2.1 分鐘）**。09-26 19:4x 已吸收 **Copilot 第 6 份**（新增 `Why should we hire you?`／§1「慢少少」／離職題收口句）。**事實核實已收口（09-25 18:3x；09-26 已大瘦身做重點筆記版）**：CMI 事件由「電源故障」改正為真事（換 RAM 拆線、復原插錯一個位、靠影相自己發現、零影響）、主管（supervisor）同 OM 分清、CMI 新項目／新場素材已入自我介紹＋good fit。**P3「撒真數字」SK 決定唔加 → 該項關閉**。
  - **Side task 已完成**：SK 朋友 Timmy（IVE 測量學高級文憑 2026）求職包 `Documents\Timmy_QS_Job_Search\`（9 頁 PDF＋md：49 條 JobsDB 即時空缺＋CV 逐項改法＋QS 面試準備）。
@@ -20,11 +20,18 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① ~~DCT 三樣待答~~ **已解決（09-25 18:3x）**：HKEX 開錯單＝真；急件 ticket＝另一單（OM 叫開單＋持續檢查）；保養次序分歧＝冇（保留通用答法）；CMI 細節＝換 RAM 插錯線；「new center」＝CMI 新項目／新場 ② **5090 Tier 1 套用**＋驅動／固件／BIOS 決定 ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）⑨ **反方 reviewer R1 未回收**（LD1–LD6 逐條存活/死）⑩ **CS2 為何仍落 LPI 16-31**（已經知 0-15 才是 V-Cache CCD；Game Mode／AMD 派工未證實）
-- **下一步（優先序）**：① 收反方 reviewer R1 → 出三段式（反方逐條存活/死 → 正方 → 中立裁判比分＋最大未知＋反轉條件）② 覆核 pointer-chase（`probe_vcache2.ps1 -BufferMB 64` 重跑＋試 128MB 以上；⚠️ 只用 ns，cycles 欄受 WMI 時脈影響 ±40%）③ 改 CS2 剩兩樣（MSAA 4X→2X、Steam overlay 關）→ A/B 量 frametime（目標最高毫秒 < 28.5ms）④ DCT 補細節（如需）⑤ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ⑥ 測試隔離 ii（plan → review ≥8:2）⑦ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑧ dev→main 合併決定
+- **未解（等 SK 決）**：① ~~DCT 三樣待答~~ **已解決（09-25 18:3x）**：HKEX 開錯單＝真；急件 ticket＝另一單（OM 叫開單＋持續檢查）；保養次序分歧＝冇（保留通用答法）；CMI 細節＝換 RAM 插錯線；「new center」＝CMI 新項目／新場 ② **5090 驅動／固件／BIOS 決定**（Tier 1 registry 已套用、兩次重啟後仍生效 ✅） ③ **JARVIS Slice 1 驗收窗口 1／2** ④ Slice 1 打包換版 ⑤ **測試隔離 ii 實作**（已批准未開工）⑥ **packai Slice 1b 真機 A/B** ⑦ Slice 1c／Slice 2 正式 plan ⑧ **dev → main 合併**（PR 定直接 merge）⑨ **反方 reviewer R1 報告已搵到、未消化**（09-27 23:25 subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6 逐條死/活＋flip condition；當時 parent session 冇收到）⑩ **CS2 為何仍落 LPI 16-31**（已經知 0-15 才是 V-Cache CCD；Game Mode／AMD 派工未證實）
+- **下一步（優先序）**：⚠️ **今日 11:30–12:30 ＝ DCT 第一場 Mike**；之後 ① 反方 R1 報告已搵到（見未解 ⑨）→ 出三段式（反方逐條存活/死 → 正方 → 中立裁判比分＋最大未知＋反轉條件）② 覆核 pointer-chase（`probe_vcache2.ps1 -BufferMB 64` 重跑＋試 128MB 以上；⚠️ 只用 ns，cycles 欄受 WMI 時脈影響 ±40%）③ 改 CS2 剩兩樣（MSAA 4X→2X、Steam overlay 關）→ A/B 量 frametime（目標最高毫秒 < 28.5ms）④ DCT 補細節（如需）⑤ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ⑥ 測試隔離 ii（plan → review ≥8:2）⑦ packai Slice 1b 真機 A/B（需 SK idle＋DS 空閒）⑧ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-09-28）
+- jarvis-pc 當日 commit 1 個（最新：6d8e50c docs(handoff): number-verification pass on CS2 spike (L3 mis-r）
+- 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 68 個 commit（未 push）
+
+- 09-28 06:5x 重開機後覆核（SK「read hand off」）：HUD 0.4.13 自動起＋`/health` ok；Tier 1 registry 四個值仍在；git 實況 ＝ 未 push **68**／未 merge **124**（STATE 舊寫 43／99 已改）；反方 R1 報告喺 subagent session 搵返（11.3k 字）
 
 ## 2026-09-27 23:1x–23:5x（Discord；CS2 幀時 spike——「數字核實方」獨立 reviewer 15 項核完）
 - **MPO Tier 1 已覆核生效**：本機 **23:07:17** 重開機；`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30`／`HwSchMode=2` 全部 Hermes 親讀 registry 確認（23:4x）。watchdog `4dfef80822b3` 之後無新事件。
