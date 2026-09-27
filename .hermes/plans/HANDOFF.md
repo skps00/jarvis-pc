@@ -32,6 +32,7 @@
 - SK 決定（C 組）：**C2 唔做大手術**（實測 VACUUM 只省 2.9 MB、jarvis-* 只 1.8 MB；已做 wal_checkpoint，WAL 7.9→0 MB）；**C4** 刪 3 個死 cron（bglaunch-idle-test／sidequest-xianyu／packai-slice1），`mc-mod-jar-guard` 留 paused；**C5 iii ✅** vault＋AI_Studio 加 git ＋ **私有 repo `skps00/hermes-vault`／`skps00/ai-studio`** ＋ 每日 auto commit（cron `2fb53e441e91` `docs_autocommit.py`，已實測 push 成功）；**C6 暫時唔做**（5090 `.reg` 未套用）；**C7 ✅** 新 cron `808f043e8746` `vault-surface-weekly`（週六 10:00，推 3 條相關筆記＋記 `vault_usage.log`，4 週後決定 vault 去留）；**C3** 等 SK 做 Slice 1 實測先（未 merge，119 commit 留分支）。
 - Hermes 記憶：`memory_char_limit` 4,000 → **10,000**、`user_char_limit` 2,000 → **4,000**（config 備份 `backups\memlimit-20260927-113744\`；兩次 `hermes config set` 後都已還原檔尾註解，337 行）。
 - A 組：`content-absorption` P5 加「未決提案 loop」（grep 舊 plan＋單一清單＋有效期 7 日／4 週＋EXPIRED）＋新建 `media_import\PENDING_PROPOSALS.md`（15 待決／6 已落地）。
+- C7 煙霧測試 ✅（11:57 手動觸發 `vault-surface-weekly`）：job 正常跑（113s）、推咗 3 條相關筆記（`7465` vault/備份、`1426` 工具可靠性、`95587` token 成本）、`media_import\vault_usage.log` 已寫入 3 行（Hermes 親核 log＋3 個 note 檔都存在）；下次自動 2026-10-03 10:00。
 - jarvis-pc 當日無新 commit
 - 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
 - 領先 remote 63 個 commit（未 push）
