@@ -325,3 +325,17 @@
 
 - ✅ **alerts.py ctypes 64-bit hwnd bug：已完全收口（2026-09-11 cron 實錘）**——code 修 + push（`1bdac68`）→ 09-10 23:4x 重啟 sidecar → **`/health` ok、serve.log 27KB、`int too long to convert` = 0**（舊 136MB／370,905 次）；log 已 truncate（備份 `.gz`）。原 fix：cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠。詳見頂部 09-11 cron 核實 section + `self-evol-SUGGESTIONS.md`（TREND-err-2026-09-05/06/10 三條同源，已標 ✅）
 - ⏳ **detect_trend sustained-high 規則（未做，低優先）**：self_review 只喺「連續單調變差」先出 finding → step-change + plateau（如 ctypes flood 09-05→09-06 微跌）會靜音 3 個月；建議加「連續 ≥2 日 >10x 中位數」都出 finding（來源 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-06）。要唔要做由 SK 定。
+
+---
+
+## Content 吸收——HoloMat 影片（2026-09-27；SK 批記低「將來做」）
+
+> 來源：Concept Bytes《I Engineer Like Tony Stark! (Introducing the HoloMat)》 https://youtu.be/Yrj8bTTsQ2I
+> （10:27，2025-05-15 上架；字幕已抽、GitHub 已核）SK 2026-09-27 指示：「2 mark it to jarvis plan, we done it in future」→ **只記錄，唔排期、唔開工**。
+
+### H1. HUD 插件化 ＋ app carousel（⏳ 將來）
+- **影片做法**：HUD 係圓環式 app carousel，**一個 app ＝ 一個 JSX 檔**（＋一份 markdown 開發說明）；新 app 掉入目錄就自動出現，主程式唔需要為每個 app 改。
+- **我哋現狀（2026-09-27 實測）**：`hud/main.js` **825 行**；頁面寫死 4 個（`renderer/index.html`（HUD）／`companion.html`／`home.html`／`settings.html`）＋各自 preload；**冇 apps／plugins 目錄** → 加一件 widget 就要改 `main.js`，連帶要 rebuild／換版／人手驗收。
+- **將來目標**：`hud/apps/<name>/`——一個 app ＝ `app.js`（renderer）＋ optional `main.hook.js`（主程序 IPC 註冊）＋ `app.json`（名／icon／權限）；carousel 由目錄自動生成；主程序只暴露穩定 API（speak／sensors／alerts／media／settings），app 唔准直接摸 fs／shell。
+- **邊界**：唔引入第三方依賴、唔抄佢哋 UI、唔改現行 4 頁（先並存）；**要 SK 批先開工**。
+- **前置**：Slice 1（側車重啟循環修復）驗收＋換版完成先做，否則改 `main.js` 會同未 commit 嘅 Slice 1 撞。

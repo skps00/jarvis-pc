@@ -25,6 +25,14 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 今日完成（2026-09-27）
+- Hermes 記憶上限：`memory.memory_char_limit` 4,000 → **10,000**（config 備份 `hermes\backups\memlimit-20260927-113744\`；`hermes config set` 刪走嘅檔尾註解已還原，diff 除 key 外只此一項）。MEMORY **60 → 52 條**（合併重複：路徑／git／packai 資料真相／查證／玩家文字／內容規則；零刪規則，3,993 字）；USER 仍 1,847/2,000。
+- 系統＋流程審計（SK 要求，based on 抖音吸收）：`%LOCALAPPDATA%\hermes\media_import\2026-09-27-system-workflow-audit.md`——**4 週吸收 plan 只有 09-07 落地**；根因＝content-absorption P5 只 grep vault（已吸收內容），**冇 grep 舊 improve-plan**（未決提案）＋冇有效期；vault 230 note 有 0 次調動（README 自訂 2–3 週標準已到期）；＋6 件系統積壓（memory 99%、state.db 755MB、119 commit 未 merge、4 個死 cron、vault／AI_Studio 冇 git、5090 .reg 未裝）。
+- HoloMat 影片（`youtu.be/Yrj8bTTsQ2I`）吸收：HUD 插件化／app carousel **記入 REMAINING_WORK「Content 吸收——HoloMat」H1**（SK：將來做）。
+- jarvis-pc 當日無新 commit
+- 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 63 個 commit（未 push）
+
 ## 2026-09-26 19:4x（Discord；**Copilot 第 6 份提醒核對 → 加 3 樣**，PDF 仍 14 頁）
 - **核對結果**：Copilot 8 個提醒 **同現稿零衝突**（5 條已覆蓋 —— 技術題唔好估／Safety 行先／HKEX 故事／ownership 主動句／錯事要 growth，全部有原文位）。用佢個機率表逐條掃 —— 10 條高機率題我哋有 9 條，**唯一缺 `Why should we hire you?`**。
 - **加 3 樣（SK `go` 2026-09-26）**：① §3.1 尾新增 `Why should we hire you?`（4 點、≈105 詞／≈40 秒；唔重複 `good fit` 嗰條講法）② §1「講嘢方式」加「**慢少少**」—— 每點之間停半秒、唔好一分鐘衝完 ③ 離職題加收口句 `And the work was never the reason I left — the distance was.`（拆 Copilot 講嗰個疑慮「微軟辛苦你會唔會又走」）＋§3.5「點解離開」row 加追問補句。
