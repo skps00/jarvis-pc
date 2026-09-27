@@ -26,9 +26,12 @@
 <!-- STATE:END -->
 
 ## 今日完成（2026-09-27）
-- Hermes 記憶上限：`memory.memory_char_limit` 4,000 → **10,000**（config 備份 `hermes\backups\memlimit-20260927-113744\`；`hermes config set` 刪走嘅檔尾註解已還原，diff 除 key 外只此一項）。MEMORY **60 → 52 條**（合併重複：路徑／git／packai 資料真相／查證／玩家文字／內容規則；零刪規則，3,993 字）；USER 仍 1,847/2,000。
+- Hermes 記憶上限：`memory.memory_char_limit` 4,000 → **10,000**（config 備份 `hermes\backups\memlimit-20260927-113744\`；`hermes config set` 刪走嘅檔尾註解已還原，diff 除 key 外只此一項）。MEMORY **60 → 52 條**（合併重複：路徑／git／packai 資料真相／查證／玩家文字／內容規則；零刪規則，3,993 字）；USER 1,847 字（上限已加至 4,000）。
 - 系統＋流程審計（SK 要求，based on 抖音吸收）：`%LOCALAPPDATA%\hermes\media_import\2026-09-27-system-workflow-audit.md`——**4 週吸收 plan 只有 09-07 落地**；根因＝content-absorption P5 只 grep vault（已吸收內容），**冇 grep 舊 improve-plan**（未決提案）＋冇有效期；vault 230 note 有 0 次調動（README 自訂 2–3 週標準已到期）；＋6 件系統積壓（memory 99%、state.db 755MB、119 commit 未 merge、4 個死 cron、vault／AI_Studio 冇 git、5090 .reg 未裝）。
 - HoloMat 影片（`youtu.be/Yrj8bTTsQ2I`）吸收：HUD 插件化／app carousel **記入 REMAINING_WORK「Content 吸收——HoloMat」H1**（SK：將來做）。
+- SK 決定（C 組）：**C2 唔做大手術**（實測 VACUUM 只省 2.9 MB、jarvis-* 只 1.8 MB；已做 wal_checkpoint，WAL 7.9→0 MB）；**C4** 刪 3 個死 cron（bglaunch-idle-test／sidequest-xianyu／packai-slice1），`mc-mod-jar-guard` 留 paused；**C5 iii ✅** vault＋AI_Studio 加 git ＋ **私有 repo `skps00/hermes-vault`／`skps00/ai-studio`** ＋ 每日 auto commit（cron `2fb53e441e91` `docs_autocommit.py`，已實測 push 成功）；**C6 暫時唔做**（5090 `.reg` 未套用）；**C7 ✅** 新 cron `808f043e8746` `vault-surface-weekly`（週六 10:00，推 3 條相關筆記＋記 `vault_usage.log`，4 週後決定 vault 去留）；**C3** 等 SK 做 Slice 1 實測先（未 merge，119 commit 留分支）。
+- Hermes 記憶：`memory_char_limit` 4,000 → **10,000**、`user_char_limit` 2,000 → **4,000**（config 備份 `backups\memlimit-20260927-113744\`；兩次 `hermes config set` 後都已還原檔尾註解，337 行）。
+- A 組：`content-absorption` P5 加「未決提案 loop」（grep 舊 plan＋單一清單＋有效期 7 日／4 週＋EXPIRED）＋新建 `media_import\PENDING_PROPOSALS.md`（15 待決／6 已落地）。
 - jarvis-pc 當日無新 commit
 - 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
 - 領先 remote 63 個 commit（未 push）
