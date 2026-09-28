@@ -32,7 +32,8 @@
 - 領先 remote 68 個 commit（未 push）
 
 - 09-28 06:5x 重開機後覆核（SK「read hand off」）：HUD 0.4.13 自動起＋`/health` ok；Tier 1 registry 四個值仍在；git 實況 ＝ 未 push **68**／未 merge **124**（STATE 舊寫 43／99 已改）；反方 R1 報告喺 subagent session 搵返（11.3k 字）
-- 09-28 12:1x–13:4x 讀 Mike 場錄影（`Videos\2026-09-28 11-25-07.mp4`，48:59）→ 本機 ASR（SenseVoice 98 塊＋whisper small 三窗口核對）→ 交付 `MS_DCT_Prep\第二輪面試-20260928-逐字稿.md`（41 KB）＋`…-情報摘要.md`（11 KB）＋表情影格圖；pack 更新 14→16 頁（sha16 `08b654c28583f58e`；備份 `backups\*.20260928-1320.bak`）：新增偏好題／學習法／先鋒題答案、proxy 一句、每場針對性反問、9/28 流程情報、⏱30–45 秒紀律、微笑 0/10 實測
+- 09-28 16:0x 面試資料收口 —— 單一檔 `MS_DCT_Prep\面試一份-中英對照.pdf`（**18 頁**＝Part 1 面試中速查（10 秒 checklist／開場／要唔要表／8 條核心答案／反問／紅線／流程）＋Part 2 完整答案（自我介紹／Elena 安全／Dhaval 文化／Owen 技術／尖問題／技術速記）；sha16 `35669005fae65a22`）。過時段（§1 重點、Mike 場已問紀錄、已用反問、舊 19 頁版）歸 `archive\20260928-*`；教練通話逐字稿／情報摘要／重點筆記（PDF 3 頁）另存。面試日檔案變動已備份 `backups\*.20260928-16??.bak`。
+- 09-28 12:1x–13:4x 讀 Mike 場錄影（`Videos\2026-09-28 11-25-07.mp4`，48:59）→ 本機 ASR（SenseVoice 98 塊＋whisper 三窗口核對）→ 交付 `第二輪面試-20260928-逐字稿.md`（41 KB）＋`…-情報摘要.md`＋表情影格圖；當時 pack 14→16 頁（sha16 `08b654c28583f58e`；備份 `backups\*.20260928-1320.bak`）：新增偏好題／學習法／先鋒題答案、proxy 一句、每場針對性反問、9/28 流程情報、⏱30–45 秒紀律、微笑 0/10 實測
 - 09-28 14:3x–15:1x 教練通話（`Videos\2026-09-28 14-31-29.mp4`，28:44；Mike 打嚟）→ 本機 ASR（58 塊＋whisper 三窗口核對）→ 交付 `MS_DCT_Prep\教練通話-20260928-1431-逐字稿.md`＋`…-情報摘要.md`＋**`Copilot-註記-20260928.md`（SK 要貼去 Copilot 嘅稿）**；內容含內幕（只留 prep folder，HANDOFF 唔記細節）；下步＝按評分點出即用稿（troubleshooting／換件安全／network 字眼／conflict／accountability）
 
 ## 2026-09-27 23:1x–23:5x（Discord；CS2 幀時 spike——「數字核實方」獨立 reviewer 15 項核完）
