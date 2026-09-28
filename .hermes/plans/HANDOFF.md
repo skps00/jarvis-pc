@@ -5,7 +5,7 @@
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面唯一檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（**7 頁**、sha16 `363bfce7dd00d9f0`、0 冒號、0 殘留引號；`面試速查-中英對照.docx` 同步）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 15 句照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
+ - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面唯一檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（**7 頁**、sha16 `46d7796b17601667`、0 冒號、0 殘留引號；`面試速查-中英對照.docx` 同步）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **13 句 283 字（≈2:34 慢講）**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
  - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
  - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
@@ -19,7 +19,7 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① **自我介紹長度** —— 現稿 15 句 ≈335 英文字（≈2.5–3 分鐘），建議 60–90 秒（≈130–160 字）；未改 ② JARVIS Slice 1 驗收窗口 1／2 ③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6 逐條死/活＋flip condition）⑨ **CS2 為何仍落 LPI 16-31** ⑩ JARVIS 要唔要開返（09-29 未行）
+- **未解（等 SK 決）**：① ~~自我介紹長度~~ **已解決（09-29 08:0x：SK 揀 C，砍到 13 句 283 字 ≈2:34）** ② JARVIS Slice 1 驗收窗口 1／2 ③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6 逐條死/活＋flip condition）⑨ **CS2 為何仍落 LPI 16-31** ⑩ JARVIS 要唔要開返（09-29 未行）
 - **下一步（優先序）**：⬜ **今日 09-29 11:00 Elena／12:00 Dhaval、9/30 Owen** —— 每場 OBS 錄影、會後本機 ASR＋逐字稿＋情報摘要；之後 ① 反方 R1 → 三段式（反方逐條存活/死 → 正方 → 中立裁判比分＋最大未知＋反轉條件）② CS2 剩兩樣（MSAA 4X→2X、Steam overlay 關）→ A/B ③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B ⑥ dev→main 合併決定
 - **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
@@ -39,6 +39,7 @@
 - **09-29 07:3x 親核／動作**：速查 PDF 修好一個殘留引號 bug（`（天晉 [32:30]）；" "「…` 合併成一行）→ 重出 **7 頁、sha16 `363bfce7dd00d9f0`、0 冒號、0 殘留引號**；`.docx` 同步重出；改前備份 `hermes\backups\dct-prep-20260929-0730\`（md／pdf／docx）。
 - **JARVIS 冇行**：07:3x 親核 —— 冇 JARVIS／Electron 進程、8765／8770／8771 唔 listen（只有 Hermes API 8642）→ 冇主動開（SK 用緊機）。
 - Git 實況：HEAD `22943c9`（`feature/hermes-alerts-mcp`）、未 push **73**、未 merge **129**、未 commit **5** 檔。
+- **08:0x SK go（揀「C 中間版」）**：自我介紹由 15 句 **328 字**砍成 **13 句 283 字**（≈2:34 慢講／2:11 正常）；刪走嘅只有 `walk-in users`／`vibe`／`stuff like that` ＋ 連接詞／重複字（第 8／10／12 條字眼跟 SK 原文）；**13 條中譯全部重寫**。速查重出 **7 頁、sha16 `46d7796b17601667`、0 全形冒號、0 殘留引號**（Word `.docx` 同步）；親眼睇 p2／p3（無重疊、無孤兒標題、中譯對齊）。改前 md 存底 `hermes\backups\dct-prep-20260929-0730\…pre-intro-trim`。
 
 ## 今日完成（2026-09-28）
 - jarvis-pc 當日 commit 1 個（最新：6d8e50c docs(handoff): number-verification pass on CS2 spike (L3 mis-r）
