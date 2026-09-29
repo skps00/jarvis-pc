@@ -5,7 +5,7 @@
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `b221c60b5c714d52`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **Copilot 版 9 段 263 字（≈2:23 慢講）／全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
+ - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `23cff8f95973df3d`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **Copilot 版 9 段 17 句 275 字（≈2:30 慢講）／全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
  - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
  - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
@@ -47,11 +47,14 @@
  - **唔採用 ── Copilot 寫 `the HKEX project` 簡寫**（撞 Mike 教練規則「唔好講 CMI／HKEX 簡寫」＋速查紅線）。
  - **SK 指示 09-29 ── 名一律出全名**：HKMU → **Hong Kong Metropolitan University**、HKEX → **Hong Kong Exchange**、CMI → **China Mobile International**；開場句 → `I'm Chan Ka Hei — you can call me Andrew.`
  - 數字核實（Hermes 親量）── Copilot 建議版實際 **258 字 ≈2:21 慢講**（佢claim 2 分鐘）；佢個「90 秒後備版」實際 **101 字 ≈55 秒**。吸收後現稿 **281 字 ≈2:33 慢講／2:10 正常**。
- - 出檔 ── 速查 **7 頁、sha16 `b221c60b5c714d52`、0 全形冒號、0 殘留引號**（PDF＋Word 同步）；親眼看過 p2（自我介紹：全名／正面化／時態全部改好、無重疊無截字）。改前 md 存底 `hermes\backups\dct-prep-20260929-0730\…pre-copilot-absorb`。
+ - 出檔 ── 速查 **7 頁、sha16 `23cff8f95973df3d`、0 全形冒號、0 殘留引號**（PDF＋Word 同步）；親眼看過 p2（自我介紹：全名／正面化／時態全部改好、無重疊無截字）。改前 md 存底 `hermes\backups\dct-prep-20260929-0730\…pre-copilot-absorb`。
 - **09:4x SK 決定用 A（Copilot 完整版）**：自我介紹由我哋 13 句版**整段換成 Copilot 9 段版**（263 字、17 句、≈2:23 慢講／2:01 正常）；名一律全名（HKMU→Hong Kong Metropolitan University、HKEX→Hong Kong Exchange）。SK 指「句子與句子之間缺乏連接」係講**我哋自己嗰版**（唔係 Copilot）。
  - 17 句中譯全部重寫；另加兩條提示 —— ① 第 1 段同「開場句」重複（開場講咗名就由第 2 段開始）② Copilot 版冇 `my own decision`，被追問「自己走定被裁」時補 `It was my own decision. The shifts were fine — it was the commute.`
- - 出檔 ── 速查 **7 頁、sha16 `b221c60b5c714d52`、0 全形冒號、0 殘留引號**（PDF＋Word 同步）；親眼看過 p2（Copilot 版 9 段連中譯、無重疊無截字）。改前 md 存底 `…pre-copilot-A`。
+ - 出檔 ── 速查 **7 頁、sha16 `23cff8f95973df3d`、0 全形冒號、0 殘留引號**（PDF＋Word 同步）；親眼看過 p2（Copilot 版 9 段連中譯、無重疊無截字）。改前 md 存底 `…pre-copilot-A`。
  - 備用 ── 我另備一個「加連接詞版」（11 段 274 字 ≈2:30 慢講，例 `There I… and that is where…`／`Later…, where I…`），SK 未要。
+- **09:5x review 後 SK 只准改兩樣（「just review」→ 逐條裁決）**：① 離職段加返 `it was my own decision` ＋「three to four hours a day」② 抽象句 `the clear focus on operational quality` 換返具體 `you can see whether it has been done properly`。
+ - **SK 明確唔改** —— ② 公司關係（佢認為寫咗 `project` 就冇問題）③ 職銜（同 CV 一樣）⑤ Level 2／incident 例子（「no time」→ 用返唸稿第 5、11 題嘅真例子）⑥ 美式／英式拼寫（「I just speak it, so I don't care」）。
+ - 現稿 **275 字 ≈2:30 慢講／2:06 正常**；速查 **7 頁、sha16 `23cff8f95973df3d`、0 全形冒號、0 殘留引號**（PDF＋Word 同步）；親眼看過 p2（無重疊／無截字）。改前 md 存底 `…pre-review-fixes`。
 
 ## 今日完成（2026-09-28）
 - jarvis-pc 當日 commit 1 個（最新：6d8e50c docs(handoff): number-verification pass on CS2 spike (L3 mis-r）
