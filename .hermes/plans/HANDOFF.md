@@ -5,7 +5,7 @@
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇）＋`今日唸稿-20260929.pdf`（練習用、5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`；md 喺 `_src\`）（**7 頁**、sha16 `158a8d87bb3a3770`、0 冒號、0 殘留引號；`面試速查-中英對照.docx` 同步）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **13 句 281 字（≈2:33 慢講）／開場句用全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
+ - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `158a8d87bb3a3770`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **13 句 281 字（≈2:33 慢講）／開場句用全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
  - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
  - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
