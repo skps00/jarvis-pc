@@ -5,7 +5,7 @@
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `23cff8f95973df3d`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **Copilot 版 9 段 17 句 275 字（≈2:30 慢講）／全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
+ - **MS DCT 面試**：Elena **9/29 11:00**（loop 第 2 場）、Dhaval **9/29 12:00**（第 3 場）**已完成並轉錄**；**明日 9/30 11:00 ＝ Owen 場**（內線通話兩引擎都聽到 Owen 音；教練：佢唔會問刁鑽題）→ `records\面試-20260929-情報摘要.md`、`records\教練通話-20260929-1831-重點摘要.md`。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `23cff8f95973df3d`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **Copilot 版 9 段 17 句 275 字（≈2:30 慢講）／全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
  - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
  - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
@@ -29,6 +29,19 @@
 - jarvis-pc 當日無新 commit
 - 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
 - 領先 remote 73 個 commit（未 push）
+
+## 2026-09-29 20:0x（Discord；SK「check video, today interview and new phone call is here」→ 今日 4 段錄影轉錄）
+
+- **4 段錄影全部親核**（`ffprobe` 時長＋檔名時間戳＋OBS log `2026-09-29 07-09-00.txt` 對得上；冇 `obs64` 進程＝已收檔）：
+ - `Videos\2026-09-29 10-55-31.mp4`（52:06）＝ **Elena 場**（loop 第 2 場）
+ - `Videos\2026-09-29 11-47-39.mp4`（8:51）＝ **兩場之間嘅背景音樂**，零對話（SenseVoice 全文只有歌詞亂碼）→ 唔計
+ - `Videos\2026-09-29 11-57-47.mp4`（42:30）＝ **Dhaval 場**（loop 第 3 場）
+ - `Videos\2026-09-29 18-31-55.mp4`（53:47）＝ **內線教練電話覆盤**
+- **輸出**（`Documents\MS_DCT_Prep\records\`，全部由腳本 render，無手抄）：`面試-20260929-1100-Elena-逐字稿.md`、`面試-20260929-1200-Dhaval-逐字稿.md`、`教練通話-20260929-1831-逐字稿.md`、`面試-20260929-情報摘要.md`、`教練通話-20260929-1831-重點摘要.md`
+- **核對**：SenseVoice 30 秒分塊（RTF≈0.002，316 塊／7 塊靜音）；faster-whisper `small` **全檔 3 進程**（1132／426／447 行）逐條主張對照。核對**改正 1 個誤判**：[17:00] 唔係斷線，係 SK mic 被靜音（`you are on mute`）。Dhaval 場 [04:00] whisper 較清 → 今日＝ loop 第 2、3 場。
+- **教練通話 actionable（明日用）**：① **唔好再講「用手機影相」**（教練：quick and dirty、唔應該講出口；正確＝場內 provided notebook／trace-lock 記錄／拉多一個人；「十間十間公司都唔准帶手機」，紙都唔准）② **講慢啲、一句一句、每句一個 point** ③ **明日 11:00＝Owen**，佢唔會問刁鑽題；10/1、10/2 仲有其他人面試 → **下星期有 conclusion**。
+- **另記**：Elena 場三個 focus area＝ process compliance／safety／operational judgment；Dhaval 場實際係**技術情境題**（唔係原 plan 估嘅 culture），同一條「server 停／冇手機／冇程序」問咗 3 次 → 兩場題型高度重疊。
+- jarvis-pc code 冇郁；只 commit HANDOFF。
 
 ## 2026-09-29 07:3x（Discord；SK「read hand off + read past session」→ 速查收口 ＋ 補記前一個 session）
 
