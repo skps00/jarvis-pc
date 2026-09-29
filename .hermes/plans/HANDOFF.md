@@ -5,7 +5,7 @@
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面唯一檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（**7 頁**、sha16 `58d744646acec43f`、0 冒號、0 殘留引號；`面試速查-中英對照.docx` 同步）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **13 句 284 字（≈2:35 慢講）**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
+ - **今日＝MS DCT 面試日**：Elena **9/29 11:00**、Dhaval **9/29 12:00**（Owen 9/30）。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇）＋`今日唸稿-20260929.pdf`（練習用、5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`；md 喺 `_src\`）（**7 頁**、sha16 `58d744646acec43f`、0 冒號、0 殘留引號；`面試速查-中英對照.docx` 同步）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **13 句 284 字（≈2:35 慢講）**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
  - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
  - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
  - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
@@ -41,6 +41,7 @@
 - Git 實況：HEAD `22943c9`（`feature/hermes-alerts-mcp`）、未 push **73**、未 merge **129**、未 commit **5** 檔。
 - **08:0x SK go（揀「C 中間版」）**：自我介紹由 15 句 **328 字**砍成 **13 句 284 字**（≈2:35 慢講／2:11 正常）；刪走嘅只有 `walk-in users`／`vibe`／`stuff like that` ＋ 連接詞／重複字（第 8／10／12 條字眼跟 SK 原文）；**13 條中譯全部重寫**。速查重出 **7 頁、sha16 `58d744646acec43f`、0 全形冒號、0 殘留引號**（Word `.docx` 同步）；親眼睇 p2／p3（無重疊、無孤兒標題、中譯對齊）。改前 md 存底 `hermes\backups\dct-prep-20260929-0730\…pre-intro-trim`。
 - **08:1x SK 答「a」＝揀 A**：第 6 條 `the next project — China Mobile International` → **`the next project at China Mobile International`**（`that under China` 唔通 —— that 後面要動詞；中譯跟改為「（China Mobile International）」）。順手修兩個殘留數字：封面 `18 題` → **13 條問題**、答題 concept 標題 `唔使背 23 條` → **13 條**（對齊電話問題表實際 13 行）。最終速查 **7 頁、sha16 `58d744646acec43f`、284 字、0 全形冒號、0 殘留引號**（Word 同步）；親眼看過 p1（封面）／p2（自我介紹：每句中譯齊、無重疊、無截字）。改前 md 存底 `…pre-optionA`。
+- **09:0x SK「start thinking of how to answer the question」→ 今日唸稿**：寫 `_src\今日唸稿-20260929.md`（14 條題、逐題「問 → 答」、英文＋同行〔中譯〕、每條實測 28–57 秒；取代 9/28 舊唸稿）→ 出 **5 頁** `今日唸稿-20260929.pdf`（sha16 `953bf80767ec5323`、0 全形冒號、rc=0、md_leftovers=0；親眼看過 p1／p2 無重疊無截字）。覆蓋 ── 偏好題（**改寫：唔再講 panic**，Mike 話最傷）、換件題、安全題、方案比較題、犯錯題（四步）、跨 team 題、DC 日常、學習題（加「AI 收集但自己真機核實」）、衝突題、先鋒題、Troubleshooting＋換記憶體真例子、網絡題、反問 3 條、開場 checklist。⚠️ 界線已寫入檔尾：換件／安全／方案比較／先鋒＝「我會咁做」框架，唔好講成做過；犯錯題同換記憶體例子＝真事。
 
 ## 今日完成（2026-09-28）
 - jarvis-pc 當日 commit 1 個（最新：6d8e50c docs(handoff): number-verification pass on CS2 spike (L3 mis-r）
