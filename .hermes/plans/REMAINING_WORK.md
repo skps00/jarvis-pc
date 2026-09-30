@@ -23,6 +23,11 @@
 - **packai**：HEAD `013e4ac` 已 push；Slice 1b 四檔未 commit ＋ 真機 A/B 未跑。
 - **5090 Tier 1**：registry `OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；watchdog cron 無新事件。
 
+## 現況 sync（2026-10-01 03:4x Hermes 親核）
+
+- **MayaCraft DJ2 客戶端**：聊天欄紅字「single player mode」根因查到（Cleanroom 聊天建議系統 → TP `checkPermission`；每次問＝2 行｛本地＋伺服器｝）；修法三選項等 SK 揀（詳 HANDOFF 10-01 section）。
+- **JARVIS 線**：Slice 1 四檔仍未 commit；`feature/hermes-alerts-mcp` HEAD `aa7fe67`（未 push 99／未 merge 152，03:1x 親核）。
+
 ---
 
 ## 現況 sync（2026-09-20 06:5x）

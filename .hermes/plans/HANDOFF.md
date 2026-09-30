@@ -6,7 +6,7 @@
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
 - **現狀（2026-09-30 19:3x 改寫；全部 Hermes 親核）**
  - **MS DCT 面試：四場全部完成**（Mike 9/28；Elena＋Dhaval 9/29；**Owen 9/30 11:00＝最後一場**，59:58 已轉錄）→ `Documents\MS_DCT_Prep\records\`：`面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes）＋`-情報摘要.md`（10,342 bytes）；今日 focus＝technical knowledge；role 實際＝**70–80% hands on**（SK 原答 remote support 被即場修正）；Owen Lee＝前 Microsoft 香港 DC site operation manager（Mike Wong report 佢）。**冇下一輪；下星期有 conclusion**（10/1、10/2 係其他人面試）。枱面檔＝`面試速查-中英對照.pdf`（7 頁）＋`今日唸稿-20260929.pdf`。
- - **DJ2-Cleanroom（玩家支援；09-30 收線）**：① Actinium 0.0.11 版可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）② `使用說明.txt` 加【版本選擇：要 FPS 定要光影】（108 行；sha16 `7cef1cc4d2858c46`）③ 裝 **NeoFontRender 0.6.1＋ModularUI 3.2.0-nfr.2**（sha256 對官方 digest；**SmoothFont 已移除** → 根因＝Actinium 接管字體令 SmoothFont 自我停用）④ resource pack 錯版已移除：DJ2 用 `Modernity-f3-3.10.3.zip`（f1 版 pack_format 1 → GUI／格子對唔上）；**文檔／打包交咗另一個 AI，Hermes 只做測試**（16:11–19:10 連續玩、零 crash）⑤ 遊戲 ping 266ms **結案**＝join 後暫態（load 完 51ms；路徑 26ms 實測正常；間歇 +240ms 尖峰只出現喺「SK ↔ 該 host」，SK 部機已排除）。
+ - **DJ2-Cleanroom（玩家支援；09-30 收線）**：① Actinium 0.0.11 版可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）② `使用說明.txt` 加【版本選擇：要 FPS 定要光影】（108 行；sha16 `7cef1cc4d2858c46`）③ 裝 **NeoFontRender 0.6.1＋ModularUI 3.2.0-nfr.2**（sha256 對官方 digest；**SmoothFont 已移除** → 根因＝Actinium 接管字體令 SmoothFont 自我停用）④ resource pack 錯版已移除：DJ2 用 `Modernity-f3-3.10.3.zip`（f1 版 pack_format 1 → GUI／格子對唔上）；**文檔／打包交咗另一個 AI，Hermes 只做測試**（16:11–19:10 連續玩、零 crash）⑤ 遊戲 ping 266ms **結案**＝join 後暫態（load 完 51ms；路徑 26ms 實測正常；間歇 +240ms 尖峰只出現喺「SK ↔ 該 host」，SK 部機已排除）。⑥ **10-01 凌晨：聊天欄紅字根因查到**（Cleanroom 建議系統 → TP `checkPermission`；每次問＝2 行＝本地＋伺服器；修法三選項等 SK 揀）。
  - **Git**：jarvis-pc `feature/hermes-alerts-mcp` HEAD `26701c4`；**未 push 95**（vs origin/feature，未 fetch）、**未 merge 151**（vs origin/main）；**未 commit 4 檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py` ＝ Slice 1）。
  - **JARVIS ONE**：09-29 07:3x 親核冇行（要開先問 SK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**；還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口 1／2**（窗口 1＝開 HUD 15–20 分鐘；窗口 2＝HUD 關 ≥35 分鐘；打包換版夾喺兩窗之間）。
@@ -19,11 +19,23 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）
-- **下一步（優先序）**：① DJ2 文檔收尾（使用說明兩節 → v1.3 zip）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）⑪ **DJ2 聊天欄紅字修法**（①改 TP jar 5 bytes｛只減半｝／②自家 client mod 過濾顯示｛要起 1.12.2 build 環境｝／③改 Cleanroom jar｛脆｝）
+- **下一步（優先序）**：① DJ2 紅字修法（等 SK 揀 ①／②／③）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔曾歸檔一次：09-22 段落搬走）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 2026-10-01 01:4x–3:1x（Discord；DJ2 聊天欄紅字「single player mode」根因）
+
+- **症狀**：開有聊天輸入嘅畫面（T／JourneyMap 全螢幕／睡覺畫面）聊天欄出紅字。SK 實測：按 T ＝ **2 行**、打「/」＝ **4 行**。
+- **字串唯一出處（javap 親核）**：`toolprogression-1.12.2-1.6.12.jar` 嘅 `ToolProgressionCommand.func_184882_a`（checkPermission）——非單機就 `sendMessage` 紅字＋return false（訊息寫錯位：應該喺執行度，唔應該喺權限檢查）。
+- **邊個問呢個 check**：真 runtime jar（obf `minecraft-1.12.2.jar` ＋ tsrg 映射）掃出全部 caller 只有 `net/minecraft/command/CommandHandler` 三個方法：`executeCommand`／`getTabCompletions`／`getPossibleCommands`。
+- **觸發者（Cleanroom 自己）**：`com/cleanroommc/client/chat/suggestion/SuggestionUpdater` refresh 時 ①`ClientCommandHandler.autoComplete` → `getTabCompletions`（逐條指令掃，客戶端印 1 行）②砌 `CPacketTabComplete` 送去伺服器（`brz.a`）→ mayacraft 都有 TP → 伺服器再掃（第 2 行）⇒ **每次「問」＝ 2 行**（1 本地＋1 伺服器），解釋到 T=2／「/」=4。
+- **pack 自己嘅 fix 為何冇效**：EMT（`endermodpacktweaks-0.5.11.jar`）本來有 `ToolProgressionCommandMixin` 專吞呢句，但佢用 MCP 名（`checkPermission`／`ICommandSender;sendMessage`）＋`remap=false`，runtime 係 SRG 名（`func_184882_a`／`func_145747_a`），而 `mixins.endermodpacktweaks.refmap.json` 係 0 mapping → 注入點搵唔到、靜靜唔 apply（CleanMix 冇 APPLY 行）→ 開 `[01] Enable Tool Progression Tweaks` 都冇用。
+- **唔可以攞走 TP jar**：mayacraft 有裝 Tool Progression 並強制 client 亦要有（1.12.2-1.6.12）→ 停 client jar 會連唔到線（錯誤：`Requires version 1.12.2-1.6.12 but mod is not found on client`）。
+- **修法三選（等 SK 揀）**：① 改 TP jar 5 bytes（腳本＋README 已喺 `Documents\MC_Patches\dj2-tp-silence\`；**只減半**）② 自家 client mod 顯示前攔（兩邊清零；要起 1.12.2 build 環境，估 1–2h）③ 改 Cleanroom jar 令佢唔再問（清零但脆：relauncher manifest 有 sha1、且失去指令建議）。
+- **②可行性已核**：Cleanroom jar 內建 `zone/rong/mixinbooter/ILateMixinLoader`（EMT 就係用佢）；本機有 JDK17＋ASM 9.10.1＋cleanmix 0.7.2＋mixinextras 0.5.5；**欠** 1.12.2 編譯用 MC SRG jar。
+- **未做／現況**：`DJ2-Cleanroom-TEST` 副本已唔在磁碟（要重做測試先再複製）；SK 02:54 實測打緊 CS2（fullscreen）→ 全程零 GUI 操作、**未改任何 jar**。
+
 ## 2026-09-30 21:0x（Discord；DJ2 客戶端交咗另一個 AI → Hermes 只做測試）
 
 - **SK 決定**：MayaCraft DJ2 客戶端嘅**文檔／打包（使用說明補節、v1.3 zip）交咗另一個 AI 處理** → Hermes **唔做文檔**，只負責**測試**。
