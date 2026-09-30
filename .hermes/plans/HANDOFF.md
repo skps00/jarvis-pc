@@ -3,29 +3,28 @@
 <!-- STATE:BEGIN -->
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
-- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）設定／答案版面／卡片修復落地。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-29 07:3x 改寫；全部 Hermes 親核）**
- - **MS DCT 面試**：Elena **9/29 11:00**（loop 第 2 場）、Dhaval **9/29 12:00**（第 3 場）**已完成並轉錄**；**明日 9/30 11:00 ＝ Owen 場**（內線通話兩引擎都聽到 Owen 音；教練：佢唔會問刁鑽題）→ `records\面試-20260929-情報摘要.md`、`records\教練通話-20260929-1831-重點摘要.md`。枱面檔＝`Documents\MS_DCT_Prep\面試速查-中英對照.pdf`（面試中睇；**7 頁**、sha16 `23cff8f95973df3d`、0 冒號、0 殘留引號、Word 同步）＋`今日唸稿-20260929.pdf`（練習用；5 頁、14 題「問→答」中英對照、sha16 `953bf80767ec5323`）；md 源＋build script 喺 `_src\`，內幕／逐字稿收 `records\`（唔外傳）。版面＝10 秒 checklist／Mike 提醒／開場句／自我介紹 **Copilot 版 9 段 17 句 275 字（≈2:30 慢講）／全名**照讀／一個答題 concept（Stop→Clarify→Evidence→Ask→Verify→Safety）／6 領域／電話問題表／3 條反問／紅線。
- - **MS DCT 面試（09-30 更新；Hermes 親核）**：**Owen 場（9/30 11:00）已完成並轉錄** —— `records\面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes，120 塊／110 有聲）＋`records\面試-20260930-1100-Owen-情報摘要.md`（10,342 bytes）；錄影 59:58（OBS 10:54:46→11:54:44）、兩引擎（SenseVoice＋whisper full 1,529 行）。今日 focus＝**technical knowledge**；Owen Lee＝前 Microsoft 香港 DC site operation manager（Mike Wong report 佢）；role 實際＝**70–80% hands on**（SK 答 remote support 被即場修正）；core concept＝「唔好『應該 OK』就做、見到唔對路即刻停低問人＋black and white 記錄」。**下星期有 conclusion**（10/1、10/2 仲有其他人面試）。
- - **DJ2-Cleanroom 客戶端（MayaCraft Discord 玩家支援；09-30）**：Actinium 版（Actinium 0.0.11＋Chibi 5.33、Nothirium 組＋meldexun EntityCulling 停）已驗證可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）；`使用說明.txt` 加【版本選擇：要 FPS 定要光影】一節（切換步驟／兩條紅線／官方下載連結），sha16 `7cef1cc4d2858c46`；skill `cleanroom-modpack-crash-triage` 已建。已做：(c) 玩家回覆稿（短版＋詳細版）＝`hermes\backups\dj2-actinium-test1-20260930\玩家回覆-20260930.md`（5,035 bytes；事實全部親核：jar 名／release 三個 asset／紅線）。**SK 2026-09-30 決定唔做 A/B FPS 量測**（理由：「5090's result not that useful」）→ 該線收；光影包研究已做（Actinium 官方矩陣＋Modrinth 版本核實）＝`hermes\backups\dj2-actinium-test1-20260930\光影包推薦-20260930.md`（MakeUp 9.5f／BSL 10.1.8／Complementary r5.9.3；SEUS PTGI HRR 開唔到）。
- - **Git**：HEAD ＝ `22943c9`（分支 `feature/hermes-alerts-mcp`）；**未 push 73**、**未 merge 入 main 129**（比 `origin/main`；local `main` 落後 96）；**未 commit 5 個檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`／HANDOFF 自己）。
- - **JARVIS ONE 冇行**（09-29 07:3x 親核：冇 JARVIS／Electron 進程；8765／8770／8771 唔 listen；只有 Hermes API 8642）→ 要開先問 SK（佢用緊機）。
- - ⚠️ **一個 app 正常有 4 個同名「JARVIS ONE」進程**（主／GPU／網絡／renderer；portable 解壓到 `%TEMP%`）→ 唔係重複開 app，**唔好 kill 主進程**（會連 HUD＋側車一齊死）。
- - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**：4 檔＝`src/jarvis/shell_app.py`／`hud/main.js`／`src/jarvis/settings.py`／`hud/settings.html`。還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口**（窗口 1＝開 HUD 15–20 分鐘；窗口 2＝HUD 關 ≥35 分鐘；打包換版夾喺兩窗之間）。
- - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 已入 registry（**09-28 06:52 重開機後第三度親讀仍在**）；還原 `mpo_restore.reg`。watchdog cron `4dfef80822b3`（*/5、no_agent）行緊、之後無新事件。
- - **CS2 幀時 spike**：fps_max=0（不限）／V-Sync 關／Reflex 開／G-Sync 停用／畫質低（只剩 MSAA 4X）；DXCache 已清（C 碟 ~315GB 可用）。**未做**＝MSAA 4X→2X（只可遊戲內改）、Steam overlay 關，之後 A/B 量 frametime（目標最高毫秒 < 28.5ms）。工具／報告 `Documents\PC_Troubleshoot\cs2-perf\`。LPI 結論：**0-15 ＝ V-Cache CCD（96MB）**、16-31 ＝ 32MB（cycles 欄受 WMI 時脈影響 ±40% → 只用 ns）。
- - **packai（MC 主線）**：MC repo HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
- - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`（09-22 生效）。
+- **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
+- **現狀（2026-09-30 19:3x 改寫；全部 Hermes 親核）**
+ - **MS DCT 面試：四場全部完成**（Mike 9/28；Elena＋Dhaval 9/29；**Owen 9/30 11:00＝最後一場**，59:58 已轉錄）→ `Documents\MS_DCT_Prep\records\`：`面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes）＋`-情報摘要.md`（10,342 bytes）；今日 focus＝technical knowledge；role 實際＝**70–80% hands on**（SK 原答 remote support 被即場修正）；Owen Lee＝前 Microsoft 香港 DC site operation manager（Mike Wong report 佢）。**冇下一輪；下星期有 conclusion**（10/1、10/2 係其他人面試）。枱面檔＝`面試速查-中英對照.pdf`（7 頁）＋`今日唸稿-20260929.pdf`。
+ - **DJ2-Cleanroom（玩家支援；09-30 收線）**：① Actinium 0.0.11 版可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）② `使用說明.txt` 加【版本選擇：要 FPS 定要光影】（108 行；sha16 `7cef1cc4d2858c46`）③ 裝 **NeoFontRender 0.6.1＋ModularUI 3.2.0-nfr.2**（sha256 對官方 digest；**SmoothFont 已移除** → 根因＝Actinium 接管字體令 SmoothFont 自我停用）④ resource pack 錯版已移除：DJ2 用 `Modernity-f3-3.10.3.zip`（f1 版 pack_format 1 → GUI／格子對唔上）⑤ 遊戲 ping 266ms **結案**＝join 後暫態（load 完 51ms；路徑 26ms 實測正常；間歇 +240ms 尖峰只出現喺「SK ↔ 該 host」，SK 部機已排除）。
+ - **Git**：jarvis-pc `feature/hermes-alerts-mcp` HEAD `26701c4`；**未 push 95**（vs origin/feature，未 fetch）、**未 merge 151**（vs origin/main）；**未 commit 4 檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py` ＝ Slice 1）。
+ - **JARVIS ONE**：09-29 07:3x 親核冇行（要開先問 SK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
+ - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**；還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口 1／2**（窗口 1＝開 HUD 15–20 分鐘；窗口 2＝HUD 關 ≥35 分鐘；打包換版夾喺兩窗之間）。
+ - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在 registry；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）行緊、無新事件。
+ - **CS2 幀時 spike**：未做＝MSAA 4X→2X（只可遊戲內改）、Steam overlay 關 → 之後 A/B 量 frametime（工具／報告 `Documents\PC_Troubleshoot\cs2-perf\`）。LPI：0-15＝V-Cache CCD。
+ - **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
+ - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
- - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；部署只准用 `mc_mod_deploy_jar.py`（真 instance 唔准自動部署）
- - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device；唔叫 SK 測 wake
-- **未解（等 SK 決）**：① ~~自我介紹長度~~ **已解決（09-29 08:0x：SK 揀 C，砍到 13 句 284 字 ≈2:35）** ② JARVIS Slice 1 驗收窗口 1／2 ③ Slice 1 打包換版 ④ **測試隔離 ii 實作**（已批准未開工）⑤ **packai Slice 1b 真機 A/B** ⑥ Slice 1c／Slice 2 正式 plan ⑦ **dev → main 合併**（PR 定直接 merge）⑧ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6 逐條死/活＋flip condition）⑨ **CS2 為何仍落 LPI 16-31** ⑩ JARVIS 要唔要開返（09-29 未行）
-- **下一步（優先序）**：⬜ **今日 09-29 11:00 Elena／12:00 Dhaval、9/30 Owen** —— 每場 OBS 錄影、會後本機 ASR＋逐字稿＋情報摘要；之後 ① 反方 R1 → 三段式（反方逐條存活/死 → 正方 → 中立裁判比分＋最大未知＋反轉條件）② CS2 剩兩樣（MSAA 4X→2X、Steam overlay 關）→ A/B ③ JARVIS Slice 1 窗口 → 打包換版 → 窗口 2 ④ 測試隔離 ii（plan → review ≥8:2）⑤ packai Slice 1b 真機 A/B ⑥ dev→main 合併決定　⑦ DJ2-Cleanroom 已收線（玩家回覆稿＋光影建議已交；FPS 量測 SK 決定唔做）
-- **歸檔索引**：已完成記錄全部喺 `plans/archive/HANDOFF-2026-09.md`（＋`HANDOFF_2026-08-*.md`）
+ - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
+ - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
+- **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2：`使用說明.txt` 補兩節（字體／材質包）＋ v1.3 重新打包**（派發 zip 內說明仍 68 行舊版、`overrides/mods` 冇 NFR／ModularUI）
+- **下一步（優先序）**：① DJ2 文檔收尾（使用說明兩節 → v1.3 zip）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔曾歸檔一次：09-22 段落搬走）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
 
 ## 2026-09-30 12:0x（Discord；SK「done, read it」→ Owen 場面試轉錄）
 
