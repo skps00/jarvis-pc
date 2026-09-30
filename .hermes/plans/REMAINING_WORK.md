@@ -15,6 +15,16 @@
 
 ---
 
+## 現況 sync（2026-09-30 21:0x Hermes 親核）
+
+- **DCT 求職線**：四場面試全部完成（Mike 9/28、Elena＋Dhaval 9/29、**Owen 9/30 11:00＝最後一場**）；**冇下一輪**，下星期有 conclusion。逐字稿＋情報摘要 `Documents\MS_DCT_Prep\records\`。
+- **MayaCraft DJ2 客戶端（玩家支援）**：今日 Actinium 版收口＋裝 NeoFontRender 0.6.1／ModularUI 3.2.0-nfr.2、移走錯版 resource pack（改 f3）。**文檔（使用說明補節＋v1.3 zip 打包）交咗另一個 AI 處理** → Hermes 只剩**測試**。測試現況：16:11 起連續玩到 19:10、**零 crash report**（最後一個 crash 係 10:13:11，喺換版之前）；等 SK 眼睇字體／GUI／光影三項。
+- **JARVIS 線**：Slice 1 四檔仍未 commit（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`）、等 SK 揀驗收窗口；jarvis-pc `feature/hermes-alerts-mcp` HEAD `26701c4`（未 push 95／未 merge 151）。
+- **packai**：HEAD `013e4ac` 已 push；Slice 1b 四檔未 commit ＋ 真機 A/B 未跑。
+- **5090 Tier 1**：registry `OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；watchdog cron 無新事件。
+
+---
+
 ## 現況 sync（2026-09-20 06:5x）
 
 - **JARVIS 線**：HUD 0.4.13 已 build／部署；`hud/main.js`＋`hud/package.json` 未 commit（等 SK 真機驗收）；語音／mic 線 **HOLD**（等新 mic）；jarvis-pc HEAD `feature/hermes-alerts-mcp` ahead 42 未 push。
