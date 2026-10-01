@@ -19,11 +19,19 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）⑪ **DJ2 聊天欄紅字修法**（①改 TP jar 5 bytes｛只減半｝／②自家 client mod 過濾顯示｛要起 1.12.2 build 環境｝／③改 Cleanroom jar｛脆｝）；⑫ **MayaCraft ping 報告已出**（等 SK send 畀 server admin）
+- **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）⑪ **DJ2 聊天欄紅字修法**（①改 TP jar 5 bytes｛只減半｝／②自家 client mod 過濾顯示｛要起 1.12.2 build 環境｝／③改 Cleanroom jar｛脆｝） → **SK 揀 ②＋(i) 全清淨**；jar 已 build＋已放入 instance（待 SK 重啟驗收）；⑫ **MayaCraft ping 報告已出**（等 SK send 畀 server admin）
 - **下一步（優先序）**：① DJ2 紅字修法（等 SK 揀 ①／②／③）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔曾歸檔一次：09-22 段落搬走）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-01 18:2x（Discord；DJ2 聊天欄紅字 — 自家 client mod 已 build，待 SK 重啟驗收）
+
+- **做法（SK 揀 ② 自家 client mod ＋ (i) 全清淨）**：Mixin 攔 `GuiNewChat.func_146227_a`（＝`printChatMessage`，SRG 名由官方 mcp_stable-39-1.12 methods.csv 親核；`[CHAT]` log 喺 `printChatMessageWithOptionalDeletion` 內 ⇒ 攔最外層＝畫面＋log 一齊清）。
+- **交付**：`Documents\MC_Patches\dj2-chatfilter\`（PLAN.md／src／stubs／res／build.py）→ `dist\dj2-chatfilter-0.1.0.jar`（**2,948 bytes、sha16 `fb41fe1f118396c2`**）已放入 DJ2 `minecraft\mods\`。
+- **實作坑（實測）**：① 一定要用 Cleanroom 自帶 **JDK 25**（`~/.cleanroom/java/zulu25…`）——Cleanroom／MixinBooter 的 class file 係 v69，JDK 17 讀唔到；② javac 要 `-encoding UTF-8`（否則 Big5 判 CJK 註釋做 unmappable）；③ stub 類**必須**分開 output dir，否則會被掃入 jar（build.py 已有 assert 防呆）；④ 註冊用 `FMLCorePlugin`＋`MixinConfigs`（形狀跟 Fugue／EMT）＋ `IEarlyMixinLoader`。
+- **驗收（待 SK）**：重啟 game → 按 T 5 次 → ① 聊天欄零紅字 ② `latest.log` `grep -c "single player mode"` = 0 ③ `cleanmix.log` 有 APPLY 行 ④ 正對照（其他聊天訊息照出）。**還原＝刪 `mods\dj2-chatfilter-0.1.0.jar`**。
+
 
 ## 今日完成（2026-10-01）
 - jarvis-pc 當日 commit 1 個（最新：e69b5c1 docs(handoff): 10-01 DJ2 chat-spam root cause (Cleanroom chat ）
