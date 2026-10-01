@@ -27,10 +27,10 @@
 
 ## 2026-10-01 18:2x（Discord；DJ2 新 crash 查證——NFR×TiCon，唔關 chat filter 事）
 
-- SK 報「game just crashed」→ 親核 `crash-reports/crash-2026-10-01_18.07.28-client.txt`（187.6KB）：`java.lang.StackOverflowError: Rendering screen`，stack = `slimeknights.tconstruct.library.client.CustomFontRenderer.wrapFormattedStringToWidth` **自我遞歸 184 層** ↔ `FontRenderer.sizeStringToWidth` 嘅 NFR hook（`handler$zpj000$neofontrende$sfr$onSizeStringToWidth` → `StructuredTextRuntime.currentEngine` → `NeofontrenderConfig.brilliantTextBindings`）。
+- SK 報「game just crashed」（**觸發畫面 = TiCon 工具站 GUI**，SK 18:4x 確認）→ 親核 `crash-reports/crash-2026-10-01_18.07.28-client.txt`（187.6KB）：`java.lang.StackOverflowError: Rendering screen`，stack = `slimeknights.tconstruct.library.client.CustomFontRenderer.wrapFormattedStringToWidth` **自我遞歸 184 層** ↔ `FontRenderer.sizeStringToWidth` 嘅 NFR hook（`handler$zpj000$neofontrende$sfr$onSizeStringToWidth` → `StructuredTextRuntime.currentEngine` → `NeofontrenderConfig.brilliantTextBindings`）。
 - **唔關 chat filter**：crash report 0 次提及 `dj2chatfilter`（該 session 喺 18:04 放 jar 之前開；18:08 新 session 才有載入）。
 - **chat filter 初步驗收中**：`cleanmix.log` 有 `APPLY dj2chatfilter.mixins.json:GuiNewChatMixin from mod dj2chatfilter -> net.minecraft.client.gui.GuiNewChat`；新 session（18:08–18:11）`[CHAT]` 只有 1 行（JourneyMap），`single player mode` **0 次**（正對照成立）。待 SK 按 T 再確認。
-- **NFR 背景**：Revo Font 0.6.1（`neofontrender`，作者 AndreaFrederica；issue tracker `github.com/AndreaFrederica/NeoFontRender/issues`）；config `config/neofontrender.toml`（`engine = "cosmic"`、`[compat.tinkersantique] enabled = true`）＋ `config/neofontrender-mixins.toml`（逐 mixin 開關，`MixinFontRenderer = true`）。可能修法：① 關 tinkersantique compat ② engine 改 sfr／vanilla ③ 關 MixinFontRenderer ④ 報 upstream。等 SK 揀。
+- **NFR 背景**：Revo Font 0.6.1（`neofontrender`，作者 AndreaFrederica；issue tracker `github.com/AndreaFrederica/NeoFontRender/issues`）；config `config/neofontrender.toml`（`engine = "cosmic"`、`[compat.tinkersantique] enabled = true`）＋ `config/neofontrender-mixins.toml`（逐 mixin 開關，`MixinFontRenderer = true`）。可能修法：① 關 tinkersantique compat ② engine 改 sfr／vanilla ③ 關 MixinFontRenderer ④ 報 upstream。等 SK 揀。 **上游實況（Hermes 親查 GitHub API 2026-10-01）**：NFR 0.6.1（2026-09-29 發佈）已經係最新 release；issue tracker 活躍但**冇一條 Tinkers 相關**（近期：#75 游戏崩溃／#74 VintageFix+JourneyMap／#72 Resume Game crash／#68 Cleanroom modlist menu／#66 Cleanroom Command Suggestion）→ 呢單未有人報；TiCon 側 config 亦冇字體開關。**下一步（待 SK go）：試 `[compat.tinkersantique] enabled = false`（改前備份 neofontrender.toml）。**
 
 
 ## 2026-10-01 18:2x（Discord；DJ2 聊天欄紅字 — 自家 client mod 已 build，待 SK 重啟驗收）
@@ -39,6 +39,7 @@
 - **交付**：`Documents\MC_Patches\dj2-chatfilter\`（PLAN.md／src／stubs／res／build.py）→ `dist\dj2-chatfilter-0.1.0.jar`（**2,948 bytes、sha16 `fb41fe1f118396c2`**）已放入 DJ2 `minecraft\mods\`。
 - **實作坑（實測）**：① 一定要用 Cleanroom 自帶 **JDK 25**（`~/.cleanroom/java/zulu25…`）——Cleanroom／MixinBooter 的 class file 係 v69，JDK 17 讀唔到；② javac 要 `-encoding UTF-8`（否則 Big5 判 CJK 註釋做 unmappable）；③ stub 類**必須**分開 output dir，否則會被掃入 jar（build.py 已有 assert 防呆）；④ 註冊用 `FMLCorePlugin`＋`MixinConfigs`（形狀跟 Fugue／EMT）＋ `IEarlyMixinLoader`。
 - **驗收（待 SK）**：重啟 game → 按 T 5 次 → ① 聊天欄零紅字 ② `latest.log` `grep -c "single player mode"` = 0 ③ `cleanmix.log` 有 APPLY 行 ④ 正對照（其他聊天訊息照出）。**還原＝刪 `mods\dj2-chatfilter-0.1.0.jar`**。
+- **✅ 已驗收（2026-10-01 18:4x）**：SK 回報「red text is gone」；Hermes 親核重啟後 session（18:08 起）`latest.log` 含 `single player mode` = **0 行**（同期只有 1 行 `[CHAT]`＝JourneyMap 提示，證明其他聊天訊息照出、冇誤攔）。
 
 
 ## 今日完成（2026-10-01）
