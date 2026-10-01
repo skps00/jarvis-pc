@@ -36,6 +36,7 @@
 - 交付 `Documents\PC_Troubleshoot\maya-ping\2026-10-01-MayaCraft延遲量測-報告.pdf`（2 頁、sha16 `6711e29d14b73437`；md 同步；raw 樣本喺 `raw\`）。問題交去請 admin 查伺服器前面嘅 TCP 層（ICMP 例外）＋ TPS／GC／NIC。**未解 ⑫ 等 SK send 後回報。**
 - **SK 2026-10-01 13:5x：佢自己就係 MayaCraft 其中一個 admin**（唔使 send 文件出去）→ 追加兩個實驗：① **同時段**量（45s）ICMP 45 包 24–25ms／零丟包 vs TCP 31/136＝**23% 變 235ms**，慢嘅每一刻 ICMP 都係 24–25ms；② **慢嘅比例同連接速率無關**（1/s＝32%、10/s＝24%、1/s＝20%、4/s＝32%）＝**時間性週期**（每幾秒一段 ~1s），唔係 per-source rate limit。⇒ 指向伺服器側 TCP 處理／排隊，非線路，亦非 SK 部機。
 - **SK 13:5x 補充：佢唔係 owner、冇 SSH** —— server 係台灣朋友嘅（對方用 AI 管）。⇒ 交付改成**診斷請求訊息** `Documents\PC_Troubleshoot\maya-ping\給server管理員-診斷請求.md`（A 主機 VM／CPU steal＋PSI、B TCP 掉包／backlog／限速、C 網卡、D 反方向＋第三方 probe 腳本），SK 直接 paste 畀對方。**未解 ⑫ 等對方回 A–D 輸出。**
+- **SK 13:5x 再補：server 環境＝Unraid 實體機（家用）＋裏面一個 VM 跑 MC**。⇒ 診斷訊息改成 Unraid 版 `給server管理員-診斷請求.md`（A 先答 3 條：.40 係 host 定 VM／:443 係邊個服務／LAN 對照；B host：steal、docker stats、NIC EEE/drop、br0＋conntrack、dmesg、iptables/nft、virsh dumpxml、mover/mdstat；C guest：PSI、nstat（ListenDrops／SynRetrans／BacklogDrop）；D probe 腳本）。判讀更新：慢值穩定 235ms ＝ +210ms ≈ **一次 TCP 重傳**（Linux min RTO 200ms）⇒ 懷疑間歇性丟 TCP 包，ICMP 例外；:443 都中 ⇒ 指向 host／bridge／NIC／CPE，唔係 guest 程式。
 ## 2026-10-01 13:2x（Discord；SK「read hand off」→ drift 複核，零新工作）
 
 - 兩份 HANDOFF 都讀完（jarvis-pc STATE＋近 3 日、MC repo STATE）；MC 線自 09-22 冇動（HEAD `013e4ac` 同 `origin/main` 一致；Slice 1b code 4 檔仍 dirty）。
