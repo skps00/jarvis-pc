@@ -25,6 +25,15 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 2026-10-01 19:2x（Discord；抖音「搵新收藏」— 被驗證碼擋，掃描工具已升級 headless）
+
+- **做咗**：grep 09-13／09-20／09-27 掃描＋vault，抽出 SK 問「同 Strata 片類似」嘅 4 條收藏並全部 ASR 實讀＋上游核實：`58953`（Qwen3.8 27B→5.9GB = PrismML Bonsai 2 ternary；長鏈 agent 只剩 ~75%）、`6932`（4G 跑 70B = MoE offload 宣傳版）、`4302`（8G 跑 35B 快 Ollama 2–4× 真相 = llama.cpp CPU-offload，傳播數字打折）、`3967`（新聞匯總，只記錄）。寫入 `Hermes_Vault\03_收藏吸收\` 4 檔 ＋ MOC 3 行；`PENDING_PROPOSALS.md` 加「本地 MoE offload 引擎試用對比（llama.cpp --n-cpu-moe／KTransformers 19.5K★ vs Strata 8 日新）⏳ 等 SK」。
+- **新工具（已入 skill）**：`douyin-tiktok-content/scripts/douyin_fav_headless_scan.py` — headless=new Chrome ＋ CDP(websockets) 靜默掃收藏，SK `using`／打機中都跑得（零窗口零搶焦點）；stdout `title_is_captcha`＋`body_len` 即判 CAPTCHA。SKILL.md＋`references/douyin-favorites-browser.md` 已更新（headless 首選、可見 browser 只做 fallback）。
+- **⚠️ Blocker**：今次掃唔到新收藏 — 抖音出「验证码中间页」滑塊（`douyin_scan_20261001/shot_fav.png` 實錘）。根因＝**cookies 09-27 export 已過期（壽命 2–3 日）**。待 SK 二選一：(a) 重新 export `~/.config/yt-dlp/cookies.txt`（之後全 headless 零干擾）；(b) 開可見 browser 喺副螢幕、SK drag 一次拼圖（等佢唔打機時）。
+- **片源核實**：YouTube `JD8_r5UDylc`（Tech-Practice）= **贊助廣告**（片頭推 agieverywhere.com hosted API）＋Strata demo；標題「200t/s」係創作者 headline 非獨立測試。Strata（`Niko1221/Strata`）3,699★ MIT、2026-09-24 上線（8 日大）、最新 0.1.31、主作者 1 人（260 commits）＋9 貢獻者、65 open issues、release 只有 `strata-windows-x64.zip`（源碼可自建）。官方 bench（5070 12GB）：Q2_0 93／IQ2_XS 79／IQ3_S 53 t/s；社群（#307）4090 IQ2_XS 106／IQ3_XXS 98 t/s。
+
+
+
 ## 2026-10-01 18:2x（Discord；DJ2 新 crash 查證——NFR×TiCon，唔關 chat filter 事）
 
 - SK 報「game just crashed」（**觸發畫面 = TiCon 工具站 GUI**，SK 18:4x 確認）→ 親核 `crash-reports/crash-2026-10-01_18.07.28-client.txt`（187.6KB）：`java.lang.StackOverflowError: Rendering screen`，stack = `slimeknights.tconstruct.library.client.CustomFontRenderer.wrapFormattedStringToWidth` **自我遞歸 184 層** ↔ `FontRenderer.sizeStringToWidth` 嘅 NFR hook（`handler$zpj000$neofontrende$sfr$onSizeStringToWidth` → `StructuredTextRuntime.currentEngine` → `NeofontrenderConfig.brilliantTextBindings`）。
