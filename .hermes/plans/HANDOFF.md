@@ -35,6 +35,7 @@
 - SK 報遊戲內 tab ping 235ms、AFK 都仍然 200+（截圖 4 格綠）。Hermes 親量：ICMP 20 包（1000 bytes）**25–26ms、零丟包**；Minecraft status ping（客戶端量，同 server list 同尺）20 次有 **16 次 26ms**；但 **TCP 連線有 15–20% 樣本 234–258ms —— 同一主機 `:443` 同 `:5601` 都有**；對照 HiNet 24ms／Cloudflare 2ms 正常（tracert 11 跳、尾站 25ms）。
 - 交付 `Documents\PC_Troubleshoot\maya-ping\2026-10-01-MayaCraft延遲量測-報告.pdf`（2 頁、sha16 `6711e29d14b73437`；md 同步；raw 樣本喺 `raw\`）。問題交去請 admin 查伺服器前面嘅 TCP 層（ICMP 例外）＋ TPS／GC／NIC。**未解 ⑫ 等 SK send 後回報。**
 - **SK 2026-10-01 13:5x：佢自己就係 MayaCraft 其中一個 admin**（唔使 send 文件出去）→ 追加兩個實驗：① **同時段**量（45s）ICMP 45 包 24–25ms／零丟包 vs TCP 31/136＝**23% 變 235ms**，慢嘅每一刻 ICMP 都係 24–25ms；② **慢嘅比例同連接速率無關**（1/s＝32%、10/s＝24%、1/s＝20%、4/s＝32%）＝**時間性週期**（每幾秒一段 ~1s），唔係 per-source rate limit。⇒ 指向伺服器側 TCP 處理／排隊，非線路，亦非 SK 部機。
+- **SK 13:5x 補充：佢唔係 owner、冇 SSH** —— server 係台灣朋友嘅（對方用 AI 管）。⇒ 交付改成**診斷請求訊息** `Documents\PC_Troubleshoot\maya-ping\給server管理員-診斷請求.md`（A 主機 VM／CPU steal＋PSI、B TCP 掉包／backlog／限速、C 網卡、D 反方向＋第三方 probe 腳本），SK 直接 paste 畀對方。**未解 ⑫ 等對方回 A–D 輸出。**
 ## 2026-10-01 13:2x（Discord；SK「read hand off」→ drift 複核，零新工作）
 
 - 兩份 HANDOFF 都讀完（jarvis-pc STATE＋近 3 日、MC repo STATE）；MC 線自 09-22 冇動（HEAD `013e4ac` 同 `origin/main` 一致；Slice 1b code 4 檔仍 dirty）。
