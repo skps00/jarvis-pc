@@ -4,8 +4,10 @@
 > 本檔＝已完成／歷史記錄，**按完成日期由新到舊排**；要搵某一日 → 用下面索引或 grep。
 > 更舊（2026-08）見同目錄 `HANDOFF_2026-08-*.md`。
 
-## 索引（新→舊，共 50 段）
+## 索引（新→舊，共 52 段）
 
+- **2026-09-24** — 2026-09-24 00:3x（Discord；session handoff：Slice 1 code 寫好、未 commit 未驗收）
+- **2026-09-23** — 今日完成（2026-09-23）
 - **2026-09-22** — 今日完成（2026-09-22）
 - **2026-09-21** — 今日完成（2026-09-21）
 - **2026-09-20** — 2026-09-20 06:5x（Discord；SK「read hand off」→ drift 複核）
@@ -58,6 +60,42 @@
 - **2026-08-31** — 今日完成（2026-08-31）
 
 ---
+
+## 2026-09-24 00:3x（Discord；session handoff：Slice 1 code 寫好、未 commit 未驗收）
+- **做咗**：plan v4（`f7f754e`）→ 經 **cursor-agent** 實作 Slice 1（**4 個檔未 commit**）：`shell_app.py`（新增 `_ensure_control_http` 無條件起 HTTP server ＋ 5 秒 self-probe ＋ 失敗老實寫 `hud_error.log`、唔自動重試；`_ensure_alerts_mcp` 只 gate poller）｜`hud/main.js`（health 改為要 `body.ok===true && service==='jarvis'`；`clampSettingsPatch` 鎖 8765）｜`src/jarvis/settings.py`（clamp 鎖 8765）｜`hud/settings.html`（欄位 readonly ＋ 鎖定提示）。
+- **自驗（Hermes 親跑，非照抄 agent）**：`node --check`＋`py_compile` OK；50 個相關測試全過（settings/shell_app/mcp_alerts_http/alert_piper_gate）；`eval_gate --lock` RC=0；diff 逐行對計劃一致。
+- **未 commit**（按規矩：驗收通過才 commit）；**patch 存底** `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`（`git apply --check --reverse` 驗證吻合）；還原＝`git checkout -- hud/main.js hud/settings.html src/jarvis/settings.py src/jarvis/shell_app.py`（HEAD `f37b4f4`）。
+- **下次做（等 SK 揀窗口）**：① 窗口 1（開 HUD 15–20 分鐘）：行為驗證（`alert_voice=false` spawn serve → 8765 LISTEN）＋驗收 #1–#4／#6／#7／#10 ＋ U1／U2 量測；② 打包換版（skill `scripts\swap_hud_version.ps1`）；③ 窗口 2（HUD 關）：Slice 2 monitor 桶化＋`OFF` 語意＋#8／#9；④ 全套 532 測試 ＋ `eval_gate --all`。
+- **SK 未反對＝照建議行嘅 3 條**：`OFF` 語意（HUD 關住唔通知）／`/settings` 解密面常開接受／MCP 工具（含 `jarvis_speak`）恢復可用。
+- **披露＋待辦**：① review subagent 曾喺 20:39 寫入 skill `jarvis-hud-electron-editing-pitfalls\\SKILL.md`（超出我唯讀指示，內容同 plan v4 一致、已核）；② skill `cursor-cli-integration` 已補「長 instructions 唔可以當 CLI 參數傳（命令列太長→偽成功 exit 0）」坑；③ `settings.py` 凍結後留低無害多餘 try/except → 下次落 cursor 順手清。
+
+## 今日完成（2026-09-23）
+- **側車重啟循環修復：plan v1→v4**（R1 2:8 → R2 4:6 → R3 3:7 → **中立裁判 4:6 裁 `v3_adequate=true`**）；4 條必修（起 server 後 self-probe／凍結 port 8765／驗收 #3#4 加「改值→kill→確認仍 LISTEN」／monitor 加 `OFF` 語意）已入 v4，拆 Slice 1／2。⚠️ **此條寫於 23:0x（當時 code 未改）；23:2x 之後已實作 Slice 1 code，見上一個 section。** 檔 `.hermes\plans\2026-09-23_1500-jarvis-sidecar-restart-loop-fix.md`；commit `3e8bfe8`(v2)→`250b033`(v3)→`f7f754e`(v4)。
+- **plan 產出嘅新發現**：① 8765 唔止 health，仲係 Electron 設定視窗嘅讀寫口 → `alert_voice=false` 期間加密欄位顯示成 `dpapi:` 亂碼＋儲存繞過單一 writer；② port 硬編碼**共 6 處**（`main.js:90/573/674`、`hermes\config.yaml:254`、`jarvis_sidecar_health.py:15`、`swap_hud_version.ps1`）→ 裁定**凍結 8765**；③ 更正舊記錄：cron `6a98a79be95f` **只報告、唔會自動救** sidecar；④ 換版真工具＝skill 內 `scripts\swap_hud_version.ps1`（71 行，唔喺 repo）。
+- **等 SK 拍板**：驗收窗口 ×2（窗口 1 開 HUD 15–20 分鐘、窗口 2 HUD 關 ≥35 分鐘）＋ 3 條小決定（`OFF` 語意／`/settings` 解密面常開／MCP 工具恢復可用）。
+- jarvis-pc 當日 commit 1 個（最新：9b907f9 docs(handoff): STAR 卡改真實資料＋CV 30% 誠信修正（§21））
+- 領先 remote 15 個 commit（未 push）
+
+- 本機清理（SK 選 A）：刪註冊表空關聯 `HKCU\...\FileExts\.bak-20260916_093251`（無 UserChoice、未綁 Store）；Startup 舊備份 `Hermes_Gateway.vbs.bak-20260916_093251` 移去 `%LOCALAPPDATA%\hermes\backups\`（sha256 6a4fbd74537f 一致）。還原＝`reg import backups\reg\HKCU-FileExts-.bak-20260916_093251-20260923.reg` ＋ 移返 Startup。開機啟動不受影響。
+- 面試準備（Copilot 題庫整合）：SK 提供 Copilot 16 題 → 改寫成 30 秒口語併入 `MS_DCT_Prep\英文口語稿-30秒版.md`（未覆蓋嘅 10 條新題：1.5–1.9／2.4–2.5／3.4–3.6／4.5–4.6）＋guide §20 同步＋cheat sheet 加「8 題必背＋Safety>SOP>Compliance>Technical」；重建 PDF（guide **47 頁**、速查卡 **2 頁**，0 markdown leftovers）。原始版存 `Copilot題庫-16題-原始版-20260923.md`。⚠️ 未照抄兩處：薪金（用舊老闆版 28–29k，唔跟 Copilot 唔講數字）＋`a mistake` 題需 SK 確認真實素材。
+- 情報落地（SK 更正）：**面試官出題自己都用 Copilot**（SK 9/23 由老闆轉述）——同舊老闆 9/18 逐字稿 12:30 原話一致（「我哋冇 sample…in-time 會搵 Copilot 幫手做嘢」）→ guide 新增 **§16.4**、30 秒稿頂加註（題目覆蓋以 Copilot 16 題為主線，答案結構用 Safety>SOP>Compliance／STAR(R)）；重建 PDF（guide 頁數見下、速查卡 2 頁）。
+- 面試準備修正（SK 答）：**CMI 電源故障事實＝先上報、之後自己查一輪** → 「太遲上報」版作廢，3.4 mistake 題改「自己查太耐／冇邊查邊交證據」版（+ 純假設式 fallback）；重建 PDF（guide 47 頁、速查卡 2 頁）。**薪金題 SK 傾向 B（唔講數字）但未定** → 我建議「B 開場 + 報 28–29k」混合版（檔內現行 1.8），等 SK 一句確認。
+- 面試準備（SK 要求）：**所有縮寫要詳細中英對照**（面試係全球公司）→ 新增 `MS_DCT_Prep\術語中英對照表.md`（A 職位流程／B 安全合規／C 硬件機房／D 我哋文件用字；每條＝全寫＋中文＋一句人話＋可直接講嘅英文句）＋併入 guide **附錄 C**（guide 47→**52 頁**；速查卡保持 **2 頁**，加了指向一行）。⚠️ **NDT／PCN 全寫未經確認 → 明確標示唔亂填**。
+- 面試材料整理（SK 指示「直接更新兩份 PDF、唔好整咁多檔案」）：PDF 統一成 **兩份**（`Microsoft面試準備包-DCT.pdf` 52 頁、`Microsoft面試速查卡-DCT.pdf` 2 頁，**去日期**）→ 刪舊 4 個 PDF（含重複抄本）＋今日兩個散檔（內容已內嵌 §20／附錄 C）＋html／預覽圖中間產物，共 21 檔（32→13）；`build_pdf.py` 中間 HTML 改寫去 `%TEMP%`。內容已驗證（附錄 C／§16.4／mistake 新版 全在 PDF 內）。
+- 面試軟技巧（SK 舊老闆評語：加 joke／笑容／興趣）：我**親手抽 9/9 錄影 9 幀（2:00–26:00）睇表情 → 笑容 0/9、多數望螢幕唔係鏡頭**；已寫入準備包新增 **§22（笑容／幽默／興趣）**＋速查卡新增「😊 3 件事」；PDF＝準備包 **55 頁**、速查卡 **2 頁**（CSS 微調 font 8.5pt/line 1.28 保住 2 頁）。
+- 面試決定（SK 授權）：**薪金題定案＝講 28,000 單一數字**（SK 原本想 26–27k，我列舊老闆內線依據：grade 2 約 29k 幾、第一級 23–24k、HR 控制數 → 佢採用建議）。已寫入兩份 PDF（準備包 55 頁、速查卡 2 頁）。「砌機」句改 `I've built my own PCs before`（SK 確認：砌過機，但唔係 5090 嗰部）。下一步＝模擬 panel（我扮 Mike/Elena/Owen 逐題問）。
+- 面試風格修正（SK 轉述：示範句 "hard sell"）：§1.1 自我介紹改**平實版**（講做過咩、唔講口號）＋新增「避免 hard sell」對照表（❌ 自我形容 → ✅ 具體事實），並寫入 guide §16.1 第 7 點（老闆原話「唔使黑 sell 自己」）。PDF＝準備包 **56 頁**、速查卡 2 頁。
+- 照讀稿（SK：「簡單啲，直接整份稿畀我照住讀」）：新增 `照讀稿-DCT.md` → 第三份 PDF **`Microsoft面試照讀稿-DCT.pdf`（7 頁，大字 13pt、平實版、25 題、含幽默句／救命句）**；build_pdf.py 加 READ_CSS。三份 PDF 定案：準備包 56 頁（全資料）／照讀稿 7 頁（照讀）／速查卡 2 頁（考前 10 分鐘）。
+- Copilot 第二輪回覆（`Documents\interview.txt`）核對：**採用**自我介紹階段結構（壓成 45–55 秒完整版）、新題 `Tell me about the HKEX project`、萬用救命句；**棄用**薪金（又係唔講數字，與定案 28,000 衝突）、mistake（與事實不符）、Why Microsoft（hard sell 措辭）→ 準備包新增 **附錄 D** 記錄判斷。PDF：照讀稿 8 頁、準備包 56 頁、速查卡 2 頁。
+- 事實修正（SK 澄清）：離開 CMI **唔係合約完結，係 SK 自己辭職**（12 小時班＋來回 3–4 小時車程不可持續）→ 全文改（照讀稿新增 `Why did you leave your last job?` 題、自我介紹結尾／長做題／hard sell 對照表／速查卡尖問題行／guide §17 示範＋附錄 D 加事實修正）；Copilot 嘅 "contract finished" 措辭已標示為與事實不符。PDF：照讀稿 9 頁、準備包 56 頁、速查卡 2 頁。
+- 系統診斷（SK：鍵盤打字隨機延遲，打機時更明顯）：實測發現 **TRCC.exe（Thermalright）即時 49% 一核**（已退出）、**Surfshark.AntivirusService 即時 100% 一核**（服務狀態 Stopped 但進程係孤兒；有自我保護 kill 唔到）；`jarvis serve` 亦 100% 一核（待查）。已將兩個 Surfshark 服務設 **Disabled+Stopped**（還原：`%LOCALAPPDATA%\hermes\backups\restore_surfshark_services.ps1`，記錄 surfshark_services_2026-09-23.txt）；⚠️ 孤兒進程要**重啟電腦**才清得走。USB 選擇性暫停＋鍵鼠「允許關閉省電」仍未改（待 SK）。
+- 鍵盤隨機延遲：查出**時間線主因 = Microsoft GameInput**（`C:\Program Files\Microsoft GameInput` 建立 2026-09-20，SK 話該日前後才開始；有 4 個進程 = Redist+本體兩份），網上多來源（r/FortniteBR、r/EASportsFC、r/Minecraft）指 GameInput 服務衝突造成輸入延遲。已 UAC elevated **Stop+Disable `GameInputRedistService`／`GameInputSvc`**（驗證 alive=0，可還原：`%LOCALAPPDATA%\hermes\backups\restore_gameinput_services.ps1`，記錄 gameinput_services_2026-09-23.txt）。另 Chrome Remote Desktop `chromoting` 服務 9/22 裝（Running，未動）。剩餘 CPU 食客：TRCC 51%（由排程 `TRCCAppStartup` 啟動）、Discord 33%、`jarvis serve` ~32%。
+- 鍵盤延遲續：已 elevated 關 **USB 選擇性暫停**（AC/DC=0）＋對鍵盤 VID_258A／Razer VID_1532 全部介面 ＋ RZVIRTUAL 取消「允許關閉省電」（True→False，14 項驗證）；並 **kill TRCC.exe** 做對照測試（省 51% 一核；散熱器 LCD 會熄，重開 `C:\Program Files\TRCCCAP\TRCC.exe`）。還原：`backups\restore_usb_power_2026-09-23.ps1`（記錄 usb_power_2026-09-23.txt）。SK 反饋：停 GameInput 後「still, but better」。剩餘：SteelSeriesSonar 12%、Discord、`jarvis serve` 29%。
+
+- **MC／packai a+b（09-20）**：plan v3.1 過 review（R3 8:2）→ cursor 實作 → Hermes 親驗（compile RC=0／53 檢查綠／python 124 檔 1 已知紅／5 條負控）→ FTB 沙盒 4 輪真機（世界生成三類 ＋ 必答清單）＋ 跨包 UniversIO 7/7；**code 未 commit，等 SK**。詳 `super_minecraft_AI_player/.hermes/plans/HANDOFF.md`。
+- **MC a+b（09-20 後續）**：code review 捉到 P0（gap 判定被 marker 自我命中 ⇒ b 對 a no-op），Hermes 親手 RED→修→NC 紅→還原綠→真機一輪；另修 P1×2、留 P1×4 待辦；docs commit `ae70d74`；**code 未 commit**（等 SK 揀 (1) 只 commit 本批 ／ (2) 累積到版本）。
+- **MC a+b（09-4x）**：SK 揀 A → 累積批次 commit `f325c4e`（135 檔，唔 push）；commit 前掃 secrets 全清、runtime `logs/` 故意排除（未入 .gitignore，建議下次加）；UniversIO 最終版 jar 覆核 7/7 全綠。
+- **11:1x packai 測試範圍**：新增兩個沙盒（Star Technology／ATM8，皆 1.19.2 Forge）＋登記文件 `docs/TEST_SCOPE.md`；jar `b5ffe2761cea`；遊戲內 smoke 待 Gate 轉 idle。
 
 ## 今日完成（2026-09-22）
 - jarvis-pc 當日無新 commit
