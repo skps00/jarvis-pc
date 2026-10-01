@@ -38,6 +38,7 @@
 - **SK 13:5x 補充：佢唔係 owner、冇 SSH** —— server 係台灣朋友嘅（對方用 AI 管）。⇒ 交付改成**診斷請求訊息** `Documents\PC_Troubleshoot\maya-ping\給server管理員-診斷請求.md`（A 主機 VM／CPU steal＋PSI、B TCP 掉包／backlog／限速、C 網卡、D 反方向＋第三方 probe 腳本），SK 直接 paste 畀對方。**未解 ⑫ 等對方回 A–D 輸出。**
 - **SK 13:5x 再補：server 環境＝Unraid 實體機（家用）＋裏面一個 VM 跑 MC**。⇒ 診斷訊息改成 Unraid 版 `給server管理員-診斷請求.md`（A 先答 3 條：.40 係 host 定 VM／:443 係邊個服務／LAN 對照；B host：steal、docker stats、NIC EEE/drop、br0＋conntrack、dmesg、iptables/nft、virsh dumpxml、mover/mdstat；C guest：PSI、nstat（ListenDrops／SynRetrans／BacklogDrop）；D probe 腳本）。- **SK 14:0x 定調：唔准叫對方跑腳本，只可以叫佢「試」**（對方用 AI 管 server、唔想畀一堆指令）。⇒ 交付改成 `Documents\PC_Troubleshoot\maya-ping\給伺服器主人-測試請求.md`（6 條隨手試：①佢自己入遊戲睇 tab 幾多 ②LAN 另一部機對照 ③停其他 Docker／VM 10 分鐘 ④睇 mover／parity ⑤重啟 VM/host ⑥換 LAN 線／熄 EEE ＋問 .40 係 host 定 VM、:443 係咩服務）；舊嘅指令版搬去 `raw\診斷清單-備用（唔會發出去）.md` 留底。
 - **SK 14:0x 再補：對方「用 AI 管 server」＝一部 Hermes**（唔係人）⇒ 訊息改用 agent handoff 格式（目標／我量到嘅事實／請你測試優先／可選唯讀檢查／紅線：未經老闆同意唔好停服務或改設定／問 .40 係 host 定 VM＋:443 服務），檔名不變（覆蓋）。
+- **SK 14:0x：「no ip」** ⇒ 訊息內**所有 IP 位址抽走**（只留端口號 5601／443；玩家寫「香港玩家 SK」、伺服器寫「你部 server／Minecraft 端口 5601」）。⚠️ 待 SK 確認意思：唔想訊息出 IP，定係指「VM 冇 public IP（經 host／router 轉發）」。
 - 判讀更新：慢值穩定 235ms ＝ +210ms ≈ **一次 TCP 重傳**（Linux min RTO 200ms）⇒ 懷疑間歇性丟 TCP 包，ICMP 例外；:443 都中 ⇒ 指向 host／bridge／NIC／CPE，唔係 guest 程式。
 ## 2026-10-01 13:2x（Discord；SK「read hand off」→ drift 複核，零新工作）
 
