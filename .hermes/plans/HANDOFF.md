@@ -7,8 +7,8 @@
 - **現狀（2026-09-30 19:3x 改寫；全部 Hermes 親核）**
  - **MS DCT 面試：四場全部完成**（Mike 9/28；Elena＋Dhaval 9/29；**Owen 9/30 11:00＝最後一場**，59:58 已轉錄）→ `Documents\MS_DCT_Prep\records\`：`面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes）＋`-情報摘要.md`（10,342 bytes）；今日 focus＝technical knowledge；role 實際＝**70–80% hands on**（SK 原答 remote support 被即場修正）；Owen Lee＝前 Microsoft 香港 DC site operation manager（Mike Wong report 佢）。**冇下一輪；下星期有 conclusion**（10/1、10/2 係其他人面試）。枱面檔＝`面試速查-中英對照.pdf`（7 頁）＋`今日唸稿-20260929.pdf`。
  - **DJ2-Cleanroom（玩家支援；09-30 收線）**：① Actinium 0.0.11 版可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）② `使用說明.txt` 加【版本選擇：要 FPS 定要光影】（108 行；sha16 `7cef1cc4d2858c46`）③ 裝 **NeoFontRender 0.6.1＋ModularUI 3.2.0-nfr.2**（sha256 對官方 digest；**SmoothFont 已移除** → 根因＝Actinium 接管字體令 SmoothFont 自我停用）④ resource pack 錯版已移除：DJ2 用 `Modernity-f3-3.10.3.zip`（f1 版 pack_format 1 → GUI／格子對唔上）；**文檔／打包交咗另一個 AI，Hermes 只做測試**（16:11–19:10 連續玩、零 crash）⑤ 遊戲 ping 266ms **結案**＝join 後暫態（load 完 51ms；路徑 26ms 實測正常；間歇 +240ms 尖峰只出現喺「SK ↔ 該 host」，SK 部機已排除）。⑥ **10-01 凌晨：聊天欄紅字根因查到**（Cleanroom 建議系統 → TP `checkPermission`；每次問＝2 行＝本地＋伺服器；修法三選項等 SK 揀）。
- - **Git**：jarvis-pc `feature/hermes-alerts-mcp` HEAD `26701c4`；**未 push 95**（vs origin/feature，未 fetch）、**未 merge 151**（vs origin/main）；**未 commit 4 檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py` ＝ Slice 1）。
- - **JARVIS ONE**：09-29 07:3x 親核冇行（要開先問 SK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
+ - **Git**：jarvis-pc `feature/hermes-alerts-mcp` HEAD `e69b5c1`；**未 push 100**、**未 merge 156**（截至 10-01 13:2x；其後 docs commit 各 +1）；**未 commit 4 檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py` ＝ Slice 1）。
+ - **JARVIS ONE**：10-01 13:2x 親核**行緊**（Electron＋sidecar、8765/8770/8771 LISTEN、`/health` ok）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
  - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**；還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**等 SK 揀驗收窗口 1／2**（窗口 1＝開 HUD 15–20 分鐘；窗口 2＝HUD 關 ≥35 分鐘；打包換版夾喺兩窗之間）。
  - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在 registry；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）行緊、無新事件。
  - **CS2 幀時 spike**：未做＝MSAA 4X→2X（只可遊戲內改）、Steam overlay 關 → 之後 A/B 量 frametime（工具／報告 `Documents\PC_Troubleshoot\cs2-perf\`）。LPI：0-15＝V-Cache CCD。
@@ -24,6 +24,18 @@
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔曾歸檔一次：09-22 段落搬走）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-10-01）
+- jarvis-pc 當日 commit 1 個（最新：e69b5c1 docs(handoff): 10-01 DJ2 chat-spam root cause (Cleanroom chat ）
+- 未 commit 檔案 4 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 100 個 commit（未 push）
+
+## 2026-10-01 13:2x（Discord；SK「read hand off」→ drift 複核，零新工作）
+
+- 兩份 HANDOFF 都讀完（jarvis-pc STATE＋近 3 日、MC repo STATE）；MC 線自 09-22 冇動（HEAD `013e4ac` 同 `origin/main` 一致；Slice 1b code 4 檔仍 dirty）。
+- **捉到 4 處過時句（全部已改）**：① HEAD 寫 `26701c4`、實為 `e69b5c1` ② 未 push 寫 95、實為 100（親核 `git ls-remote`，remote tip `be003f46` 係 HEAD 祖先）③ 未 merge 寫 151、實為 156 ④ 「JARVIS 冇行」係 09-29 舊況，實況 10-01 13:2x 行緊。
+- SK 部機現況：`sk_activity.json` = `using`（前景 Prism Launcher）→ 今次零 GUI 操作。
+
 ## 2026-10-01 01:4x–3:1x（Discord；DJ2 聊天欄紅字「single player mode」根因）
 
 - **症狀**：開有聊天輸入嘅畫面（T／JourneyMap 全螢幕／睡覺畫面）聊天欄出紅字。SK 實測：按 T ＝ **2 行**、打「/」＝ **4 行**。
