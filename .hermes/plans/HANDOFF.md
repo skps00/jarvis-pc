@@ -25,6 +25,14 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 2026-10-01 18:2x（Discord；DJ2 新 crash 查證——NFR×TiCon，唔關 chat filter 事）
+
+- SK 報「game just crashed」→ 親核 `crash-reports/crash-2026-10-01_18.07.28-client.txt`（187.6KB）：`java.lang.StackOverflowError: Rendering screen`，stack = `slimeknights.tconstruct.library.client.CustomFontRenderer.wrapFormattedStringToWidth` **自我遞歸 184 層** ↔ `FontRenderer.sizeStringToWidth` 嘅 NFR hook（`handler$zpj000$neofontrende$sfr$onSizeStringToWidth` → `StructuredTextRuntime.currentEngine` → `NeofontrenderConfig.brilliantTextBindings`）。
+- **唔關 chat filter**：crash report 0 次提及 `dj2chatfilter`（該 session 喺 18:04 放 jar 之前開；18:08 新 session 才有載入）。
+- **chat filter 初步驗收中**：`cleanmix.log` 有 `APPLY dj2chatfilter.mixins.json:GuiNewChatMixin from mod dj2chatfilter -> net.minecraft.client.gui.GuiNewChat`；新 session（18:08–18:11）`[CHAT]` 只有 1 行（JourneyMap），`single player mode` **0 次**（正對照成立）。待 SK 按 T 再確認。
+- **NFR 背景**：Revo Font 0.6.1（`neofontrender`，作者 AndreaFrederica；issue tracker `github.com/AndreaFrederica/NeoFontRender/issues`）；config `config/neofontrender.toml`（`engine = "cosmic"`、`[compat.tinkersantique] enabled = true`）＋ `config/neofontrender-mixins.toml`（逐 mixin 開關，`MixinFontRenderer = true`）。可能修法：① 關 tinkersantique compat ② engine 改 sfr／vanilla ③ 關 MixinFontRenderer ④ 報 upstream。等 SK 揀。
+
+
 ## 2026-10-01 18:2x（Discord；DJ2 聊天欄紅字 — 自家 client mod 已 build，待 SK 重啟驗收）
 
 - **做法（SK 揀 ② 自家 client mod ＋ (i) 全清淨）**：Mixin 攔 `GuiNewChat.func_146227_a`（＝`printChatMessage`，SRG 名由官方 mcp_stable-39-1.12 methods.csv 親核；`[CHAT]` log 喺 `printChatMessageWithOptionalDeletion` 內 ⇒ 攔最外層＝畫面＋log 一齊清）。
