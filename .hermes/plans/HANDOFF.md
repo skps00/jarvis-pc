@@ -20,10 +20,22 @@
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
 - **未解（等 SK 決）**：① JARVIS Slice 1 驗收窗口 1／2 ② Slice 1 打包換版 ③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）⑪ **DJ2 聊天欄紅字修法**（①改 TP jar 5 bytes｛只減半｝／②自家 client mod 過濾顯示｛要起 1.12.2 build 環境｝／③改 Cleanroom jar｛脆｝） → **SK 揀 ②＋(i) 全清淨**；jar 已 build＋已放入 instance（待 SK 重啟驗收）；⑫ **MayaCraft ping 報告已出**（等 SK send 畀 server admin）
-- **下一步（優先序）**：① DJ2 紅字修法（等 SK 揀 ①／②／③）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **下一步（優先序）**：① DJ2 自家 mod 驗收：`dj2-wrapfix`（Tinkers GUI crash）＋`dj2-chatfilter`（紅字）→ 重啟後睇 cleanmix.log APPLY ＋ 實測（10-02）② JARVIS Slice 1 窗口 1 → 打包換版 → 窗口 2 ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 2 次：09-22 段落；2026-10-01 搬 09-23／09-24 段落）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-02 11:0x–11:3x（Discord；DJ2 Tinkers GUI crash → 自家 client mod 修正，待 SK 重啟驗收）
+- **根因實錘**：`StackOverflowError: Rendering screen`；crash report `Screen name`＝`GuiToolStation`／`GuiToolForge`（同一基地座標 x≈-122.7 z≈169.3）。TConstruct `CustomFontRenderer.func_78280_d`＝vanilla 式遞歸，NFR `MixinFontRenderer`（@Inject HEAD cancellable）攔 `func_78259_e`（sizeStringToWidth）回 0 → `s1 == str` → 自呼 1015 層爆 stack。5 次：10-01 18:07、10-02 03:54:15／03:54:33、10:57:51、11:02:53（11:00 重啟後新 session）。
+- **`[fix] cjkLineBreak=false` 已試＝無效**（重啟後照爆、stack 一模一樣；`sizeToWidth`／`graphemeBoundaries` 0 次）→ **已還原 `true`**（config sha16 `4ac4635638c81402`＝改前原值）。
+- **交付（C）**：`Documents\MC_Patches\dj2-wrapfix\`（PLAN.md／stubs／src／res／build.py）→ `mods\dj2-wrapfix-0.1.0.jar`（4,372 bytes、sha16 `c06f01f2a735bea7`）＝`@Redirect` TConstruct `func_78280_d` 內嘅 `func_78259_e`（SRG；owner 由真 jar constant pool 核實），回 ≤0 時夾到「至少前進一個碼點」＋stall 記錄（`dj2wrapfix-stall.log`、≤40 條）。**待 SK 重啟驗收**：`cleanmix.log` 要有 `APPLY dj2wrapfix.mixins.json:CustomFontRendererMixin … -> slimeknights.tconstruct.library.client.CustomFontRenderer`；還原＝刪 jar。
+- **順帶**：dj2-chatfilter 喺 11:00 session 已載入（early loader ✓）、`single player mode` 紅字 0 次。
+- 診斷全文：`Documents\PC_Troubleshoot\dj2-optimization\REPORT.md`。
+
+## 今日完成（2026-10-02）
+- jarvis-pc 當日無新 commit
+- 未 commit 檔案 5 個：hud/main.js, hud/settings.html, src/jarvis/settings.py
+- 領先 remote 113 個 commit（未 push）
 
 ## 2026-10-01 19:2x（Discord；抖音「搵新收藏」— 被驗證碼擋，掃描工具已升級 headless）
 
