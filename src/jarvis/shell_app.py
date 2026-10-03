@@ -6,11 +6,13 @@ Hermes owns chat/voice. This shell = desktop alerts eyes + Approve companion.
 from __future__ import annotations
 
 import hashlib
+import json
 import queue
 import re
 import sys
 import threading
 import time
+import urllib.request
 import tkinter as tk
 from typing import Any
 from tkinter import messagebox, scrolledtext, ttk
@@ -264,6 +266,34 @@ def _resolve_input_device(dev: int | str | None) -> int | None:
     return dev
 
 
+def probe_control_http(port: int, deadline_s: float = 5.0) -> bool:
+    """True 只當我哋自己嘅 control server 應答。
+
+    TCP connect 唔夠：任何佔住個 port 嘅程式都會過。判準同 Electron 一致：
+    HTTP 200 + body {"ok": true, "service": "jarvis"}。
+    注意（已知限制）：冒牌程式只要回一樣嘅 payload 一樣會過 —— 呢個係同 Electron
+    同一把尺，比單靠 TCP connect 嚴，但唔係安全邊界。
+    """
+    deadline = time.monotonic() + deadline_s
+    url = f"http://127.0.0.1:{port}/health"
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=0.5) as resp:
+                if int(getattr(resp, "status", 0) or 0) != 200:
+                    raise OSError("non-200")
+                body = json.loads(resp.read().decode("utf-8"))
+            if (
+                isinstance(body, dict)
+                and body.get("ok") is True
+                and body.get("service") == "jarvis"
+            ):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(0.25)
+    return False
+
+
 class JarvisShell:
     """Companion panel + tray; hotkey shows the panel."""
 
@@ -512,7 +542,7 @@ class JarvisShell:
         threading.Thread(target=self._probe_control_http, args=(port,), daemon=True).start()
 
     def _probe_control_http(self, port: int) -> None:
-        """Confirm the control server really LISTENs.
+        """Confirm our control /health payload (not mere TCP LISTEN).
 
         serve_in_thread() returns immediately, so a bind failure happens inside its worker
         thread and never reaches the caller's try/except — logging "[ok]" unconditionally
@@ -520,22 +550,20 @@ class JarvisShell:
         auto-retry (a busy port is nearly always a human/misconfig state; silently retrying
         would just become another restart loop).
         """
-        import socket
-
-        deadline = time.monotonic() + 5.0
-        while time.monotonic() < deadline:
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
-                    self._ui_queue.put(
-                        ("log", f"[ok] alerts MCP http://127.0.0.1:{port}/mcp（Hermes peek）")
-                    )
-                    return
-            except OSError:
-                time.sleep(0.25)
+        if probe_control_http(port, 5.0):
+            self._ui_queue.put(
+                ("log", f"[ok] alerts MCP http://127.0.0.1:{port}/mcp（Hermes peek）")
+            )
+            return
         self._ui_queue.put(
-            ("log", f"[fail] control http {port} 5 秒內未見 LISTEN（可能 bind 衝突）— 唔會自動重試")
+            (
+                "log",
+                f"[fail] control http {port} 5 秒內未見我哋自己嘅 /health（可能 bind 衝突或冒牌 listener）— 唔會自動重試",
+            )
         )
-        self._log_control_http_probe_failure(f"no LISTEN on 127.0.0.1:{port} within 5s")
+        self._log_control_http_probe_failure(
+            f"no own /health payload on 127.0.0.1:{port} within 5s"
+        )
 
     def _log_control_http_probe_failure(self, reason: str) -> None:
         """Append one line to %APPDATA%/Jarvis/hud_error.log (never raise)."""
