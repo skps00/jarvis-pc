@@ -359,11 +359,13 @@ def _clamp(s: Settings) -> Settings:
     except (TypeError, ValueError):
         s.alert_llm_timeout_s = 3.0
     s.alert_llm_timeout_s = max(1.0, min(10.0, s.alert_llm_timeout_s))
+    # 2026-09-23: FROZEN at 8765 — hardcoded in main.js health/settings, Hermes MCP url,
+    # jarvis_sidecar_health.py, swap_hud_version.ps1; changing silently breaks them.
     try:
         s.alerts_mcp_port = int(getattr(s, "alerts_mcp_port", 8765))
     except (TypeError, ValueError):
         s.alerts_mcp_port = 8765
-    s.alerts_mcp_port = max(1024, min(65535, s.alerts_mcp_port))
+    s.alerts_mcp_port = 8765
     s.alerts_mcp_token = str(getattr(s, "alerts_mcp_token", "") or "").strip()
     if isinstance(s.aec_enabled, str):
         s.aec_enabled = s.aec_enabled.lower() not in ("0", "false", "off", "no", "")

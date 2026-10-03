@@ -429,8 +429,9 @@
       <input type="text" id="alert_extra" placeholder="chrome,notepad">
     </div>
     <div class="field">
-      <label for="alerts_mcp_port">Alerts MCP Port</label>
-      <input type="number" id="alerts_mcp_port" min="1024" max="65535" step="1" value="8765">
+      <label for="alerts_mcp_port">Alerts MCP Port（固定 8765）</label>
+      <input type="number" id="alerts_mcp_port" min="1024" max="65535" step="1" value="8765" readonly>
+      <small>已鎖定：此埠同時被 Hermes MCP／監控腳本／換版工具使用，改咗會靜靜斷開。</small>
     </div>
     <div class="field span2">
       <label for="alerts_mcp_token">Alerts MCP Token</label>

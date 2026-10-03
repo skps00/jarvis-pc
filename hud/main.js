@@ -82,14 +82,23 @@ let sidecarRespawnTimer = null; // pending 5s exit respawn timer (cleared on sto
 let crashLoopNotified = false;  // notify once per crash-loop episode
 
 function sidecarRunning() {
-  // H3 (2026-08-29): HTTP /health (sidecar MCP has a real health endpoint) instead of bare TCP —
-  // anything listening on 8765 (stale MCP, wrong process) no longer counts as healthy.
+  // H3 (2026-08-29): HTTP /health (sidecar MCP has a real health endpoint) instead of bare TCP.
+  // 2026-09-23: also require the payload to be OUR sidecar — a bare 200 from any other
+  // listener on 8765 must not count as healthy.
   return new Promise((resolve) => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 1500);
+    let done = false;
+    const finish = (up) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(up);
+    };
     fetch('http://127.0.0.1:8765/health', { signal: ctrl.signal })
-      .then((r) => { clearTimeout(timer); resolve(r.ok); })
-      .catch(() => { clearTimeout(timer); resolve(false); });
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => finish(!!(body && body.ok === true && body.service === 'jarvis')))
+      .catch(() => finish(false));
   });
 }
 
@@ -647,9 +656,11 @@ function clampSettingsPatch(obj) {
     out.tts_volume = Math.max(0.1, Math.min(3.0, v));
   }
   if ('alerts_mcp_port' in out) {
-    let v = parseInt(out.alerts_mcp_port, 10);
-    if (Number.isNaN(v)) v = 8765;
-    out.alerts_mcp_port = Math.max(1024, Math.min(65535, v));
+    // 2026-09-23: FROZEN at 8765. This port is hardcoded in six places (main.js health +
+    // settings:load/save, Hermes config.yaml jarvis-alerts MCP url, hermes
+    // scripts/jarvis_sidecar_health.py, skill swap_hud_version.ps1 health check) — changing
+    // it silently breaks them, so any patch value is forced back to 8765.
+    out.alerts_mcp_port = 8765;
   }
   if ('alert_gpu_poll_s' in out) {
     let v = parseFloat(out.alert_gpu_poll_s);

@@ -484,32 +484,81 @@ class JarvisShell:
                 )
         except Exception:
             pass
+        self._ensure_control_http(cfg)
         self._ensure_alerts_mcp(cfg)
 
     def _on_alert_event(self, ev) -> None:
         """Background alert → UI queue (speak on Tk drain)."""
         self._ui_queue.put(("alert", ev))
 
-    def _ensure_alerts_mcp(self, cfg: Settings) -> None:
-        """Start loopback HTTP alerts MCP + ~2s Hermes TTS poller when hermes sink on."""
-        if not bool(getattr(cfg, "alert_voice", True)):
-            return
-        if str(getattr(cfg, "alert_tts", "hermes") or "").lower() != "hermes":
-            return
+    def _ensure_control_http(self, cfg: Settings) -> None:
+        """Loopback control HTTP (health / settings / MCP) — NOT gated by alert switches.
+
+        Electron uses GET /health as its sidecar liveness probe and GET/POST /settings as
+        its settings channel, so this server's lifetime must not depend on optional alert
+        features. Starting it from _ensure_alerts_mcp() made alert_voice=False look like a
+        dead sidecar (90s kill/respawn loop, 2026-09-23).
+        """
         try:
             from jarvis.mcp_alerts_http import resolve_token, serve_in_thread
 
             port = int(getattr(cfg, "alerts_mcp_port", 8765) or 8765)
             tok = resolve_token(str(getattr(cfg, "alerts_mcp_token", "") or "") or None)
             serve_in_thread(host="127.0.0.1", port=port, token=tok)
-            self._ui_queue.put(
-                (
-                    "log",
-                    f"[ok] alerts MCP http://127.0.0.1:{port}/mcp（Hermes peek）",
-                )
-            )
         except Exception as exc:  # noqa: BLE001
-            self._ui_queue.put(("log", f"[fail] alerts MCP：{exc}"))
+            self._ui_queue.put(("log", f"[fail] control http 啟動失敗：{exc}"))
+            self._log_control_http_probe_failure(f"start exception: {exc}")
+            return
+        threading.Thread(target=self._probe_control_http, args=(port,), daemon=True).start()
+
+    def _probe_control_http(self, port: int) -> None:
+        """Confirm the control server really LISTENs.
+
+        serve_in_thread() returns immediately, so a bind failure happens inside its worker
+        thread and never reaches the caller's try/except — logging "[ok]" unconditionally
+        would be a false success. Probe up to 5s; on failure log honestly and DO NOT
+        auto-retry (a busy port is nearly always a human/misconfig state; silently retrying
+        would just become another restart loop).
+        """
+        import socket
+
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                    self._ui_queue.put(
+                        ("log", f"[ok] alerts MCP http://127.0.0.1:{port}/mcp（Hermes peek）")
+                    )
+                    return
+            except OSError:
+                time.sleep(0.25)
+        self._ui_queue.put(
+            ("log", f"[fail] control http {port} 5 秒內未見 LISTEN（可能 bind 衝突）— 唔會自動重試")
+        )
+        self._log_control_http_probe_failure(f"no LISTEN on 127.0.0.1:{port} within 5s")
+
+    def _log_control_http_probe_failure(self, reason: str) -> None:
+        """Append one line to %APPDATA%/Jarvis/hud_error.log (never raise)."""
+        import os as _os
+        from pathlib import Path as _Path
+
+        try:
+            p = _Path(_os.environ.get("APPDATA", "")) / "Jarvis" / "hud_error.log"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open("a", encoding="utf-8") as fh:
+                fh.write(f"[{time.strftime('%Y-%m-%dT%H:%M:%S')}] control-http: {reason}\n")
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _ensure_alerts_mcp(self, cfg: Settings) -> None:
+        """Alert behaviour only (TTS poller). The HTTP server lifetime lives in
+        _ensure_control_http() — both switches below gate alerts, not the sidecar's
+        liveness endpoint.
+        """
+        if not bool(getattr(cfg, "alert_voice", True)):
+            return
+        if str(getattr(cfg, "alert_tts", "hermes") or "").lower() != "hermes":
+            return
         self._ensure_alert_poller()
 
     def _ensure_alert_poller(self) -> None:
