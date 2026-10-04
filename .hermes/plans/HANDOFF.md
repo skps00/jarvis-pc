@@ -4,7 +4,7 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-04 11:5x 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-05 02:1x 改寫；全部 Hermes 親核）**
  - **新 session 自動讀 handoff＝已上線（2026-10-04）**：shell hook `pre_llm_call` → `%LOCALAPPDATA%\hermes\agent-hooks\session_brief.py`，每個新 session 第一個 turn 注入 brief（HANDOFF STATE＋jarvis-pc／packai git＋activity＋DS 時段），每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。細節見本檔 2026-10-04 section。
  - **Git（jarvis-pc）**：`feature/hermes-alerts-mcp` HEAD `77ed31c`（Slice 1b＋Slice 2 docs）；**未 push 121**；**未 merge dev→main**；未 commit＝`HANDOFF.md`（本檔）＋`uv.lock`。
  - **JARVIS ONE**：**0.4.14 已上線**（Slice 1 換版 `2a9e8f6`、Slice 1b＋Slice 2 `44211b8`、窗口 1 驗收通過）；剩窗口 2 **#8**（bogus python spawn 負控；要 SK AFK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
@@ -15,16 +15,26 @@
  - **cursor 指針「變泥」線（未解）**：10-04 02:2x–02:3x 掛咗記錄器等 SK 打「now」；**11:35 SK 重啟部機 → 儀器已死**（無殘留進程，只剩 `%TEMP%\compose*.csv`）；未再開。
  - **求職線**：面試已完成、等結論（詳情／內幕只留本機 `Documents\MS_DCT_Prep\`，唔入可公開文件）。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
+ - **X3D CCD 派工（10-05 已修＋自動化）**：實測 V-Cache 96MB CCD = LPI 0-15（48MB 隨機讀 17.5 ns）vs LPI 16-31（91.6 ns）；game 由 cron `game-vcache-pin` 自動綁 `0x0000FFFF`（MC 實測 1%low 41.6→108.7、0.1%low 10.4→42、最差 frame 1702→152 ms）；還原＝config `game_vcache_pin.json` `enabled:false`）
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
 - **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）
-- **下一步（優先序）**：① 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **下一步（優先序）**：① V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+
+## 2026-10-05 01:45–02:15（Discord；MC 卡 → 追到 X3D CCD 派工問題，已修＋已自動化）
+- 症狀：SK「MC 好卡／fps 由 900+ 跌到 300+」；實測 GPU 只 8–15%（唔關顯卡）→ 遊戲係 CPU 單線程樽頸。
+- 量法：Java 48MB pointer-chase ＋ `start /affinity`（低優先權、無 console 窗）→ **V-Cache 96MB CCD = LPI 0-15（17.5 ns/hop）**；32MB CCD = LPI 16-31（91.6 ns，5.2x 慢）。打機時全部嘢（連 game）實測落 LPI 16-31。
+- 修法：game process affinity 綁 `0x0000FFFF`（live 綁，唔使重開 game）。FrameView per-frame CSV 實測（02:02–02:09 vs 02:09 之後）：**avg 318→406 fps、1% low 41.6→108.7、0.1% low 10.4→42、最差 frame 1702 ms→152 ms**；同一個 CSV 見到遊戲用量由 `CPUCoreUtil[16-31]` 搬去 `[0-15]`。
+- 部署：`hermes\scripts\game_vcache_pin.py` ＋ `hermes\config\game_vcache_pin.json` ＋ cron `game-vcache-pin`（`* * * * *`、`no_agent`、deliver=local；log `hermes\logs\game_vcache_pin.log`）。還原＝config `"enabled": false` 或停 cron `2fd47bb47bd3`。
+- 新 skill：`x3d-vcache-ccd-pinning`（量法／修法／坑：VBS 下 CPUID＋GLPIEx 誤報「2×96MB」、PresentMon 非 admin 靜靜 RC=1、FrameView `Documents\FrameView\` CSV 點讀）。
+- 未做：SK 體感覆核；CS2 用同一 pin 做 A/B（併入 `cs2-perf` 閘 5）；1% low 仲偏低（下一步查 heap 貼 93%、Defender 咬 1 核、chunk 重建風暴 84 次/session）。
 
 ## 2026-10-04 11:35–11:5x（Discord；SK「read hand off + make it auto」→ 新 session 自動讀 handoff 已上線）
 - **做咗（SK 揀「both」）**：
