@@ -42,6 +42,9 @@
 - jarvis-pc 當日無新 commit
 - 未 commit 檔案 1 個：uv.lock
 - 領先 remote 121 個 commit（未 push）
+- 修 `douyin_fav_persistent_scan.py`：scan 模式冇 navigate→誤報 LOGIN_REQUIRED；另加 `__main__` teardown 自動清 automation Chrome（實測 671 items、`killed_leftover_chrome:[6]`、之後 0 殘留）。
+- Hermes 新 session 自動 brief：gateway 11:48:51 註冊 shell hook、11:49:30 首個 INJECT（4625 字、每 session 一次）；重啟乾淨（`Previous gateway exited cleanly`）。
+- Nous Portal OAuth 11:56 重新登入成功（credential 返嚟）；但 `upstage/solar-pro4:free` 免費期結束（HTTP 404）→ 兩個 cron agent（`jarvis-session-handoff`／`jarvis-daily-self-review`）改 `meituan/longcat-2.5-preview:free`（實測 tool call OK）；jobs.json 備份 `backups\cron-jobs.json.bak-20261004-120204`。
 
 ## 2026-10-03 20:3x–20:5x（JARVIS Slice 1b ＋ Slice 2 —— 已實作、已實測、已 commit）
 - **Slice 1 code commit `2a9e8f6`**（0.4.14 五檔）；**Slice 1b／Slice 2 commit `44211b8`**；cron `jarvis-sidecar-health` 已 resume（20:53 next）。
