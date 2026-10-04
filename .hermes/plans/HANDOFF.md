@@ -4,26 +4,44 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-09-30 19:3x 改寫；全部 Hermes 親核）**
- - **MS DCT 面試：四場全部完成**（Mike 9/28；Elena＋Dhaval 9/29；**Owen 9/30 11:00＝最後一場**，59:58 已轉錄）→ `Documents\MS_DCT_Prep\records\`：`面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes）＋`-情報摘要.md`（10,342 bytes）；今日 focus＝technical knowledge；role 實際＝**70–80% hands on**（SK 原答 remote support 被即場修正）；Owen Lee＝前 Microsoft 香港 DC site operation manager（Mike Wong report 佢）。**冇下一輪；下星期有 conclusion**（10/1、10/2 係其他人面試）。枱面檔＝`面試速查-中英對照.pdf`（7 頁）＋`今日唸稿-20260929.pdf`。
- - **DJ2-Cleanroom（玩家支援；09-30 收線）**：① Actinium 0.0.11 版可連 mayacraft.net（10:28:58 開機→10:30:44 入服、零 mixin 錯誤）② `使用說明.txt` 加【版本選擇：要 FPS 定要光影】（108 行；sha16 `7cef1cc4d2858c46`）③ 裝 **NeoFontRender 0.6.1＋ModularUI 3.2.0-nfr.2**（sha256 對官方 digest；**SmoothFont 已移除** → 根因＝Actinium 接管字體令 SmoothFont 自我停用）④ resource pack 錯版已移除：DJ2 用 `Modernity-f3-3.10.3.zip`（f1 版 pack_format 1 → GUI／格子對唔上）；**文檔／打包交咗另一個 AI，Hermes 只做測試**（16:11–19:10 連續玩、零 crash）⑤ 遊戲 ping 266ms **結案**＝join 後暫態（load 完 51ms；路徑 26ms 實測正常；間歇 +240ms 尖峰只出現喺「SK ↔ 該 host」，SK 部機已排除）。⑥ **10-01 凌晨：聊天欄紅字根因查到**（Cleanroom 建議系統 → TP `checkPermission`；每次問＝2 行＝本地＋伺服器；修法三選項等 SK 揀）。 ⑦ **10-03 冶煉爐 crash（朋友 client）→ 自家 `dj2-fixes-1.1.1` 兜底**：slot 越界 cancel＋即刻閂 GUI、null tank 唔畫（上游 #4081 Won't Fix）；已裝 SK instance（sha 親核）、**朋友要自己裝**；jar `Documents\MC_Patches\dj2-fixes\dist\`。
- - **Git**：jarvis-pc `feature/hermes-alerts-mcp` HEAD `e69b5c1`；**未 push 100**、**未 merge 156**（截至 10-01 13:2x；其後 docs commit 各 +1）；**未 commit 4 檔**（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py` ＝ Slice 1）。
- - **JARVIS ONE**：10-01 13:2x 親核**行緊**（Electron＋sidecar、8765/8770/8771 LISTEN、`/health` ok）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
- - **Slice 1（側車重啟循環修復）＝ code 寫好、自驗過、未 commit、未換版**；還原＝`git checkout -- <4 檔>`；patch 存底 `%LOCALAPPDATA%\hermes\backups\jarvis-sidecar-slice1-uncommitted-20260923.patch`。**✅ 10-03 已換版 `JARVIS-ONE-0.4.14.exe`（commit `2a9e8f6`）＋ 窗口 1 通過；Slice 1b（self-probe payload 判準）＋ Slice 2（monitor 桶化，`44211b8`）亦已完成同實測**（報告 `plans\2026-10-03_slice1-窗口1-驗收報告.md`）；剩窗口 2 兩項（#8 bogus-python、#9 屬未寫嘅 Slice 2）＋ SK 主觀；**4 檔＋`hud/package.json` 未 commit（等 SK 批）**。
+- **現狀（2026-10-04 11:5x 改寫；全部 Hermes 親核）**
+ - **新 session 自動讀 handoff＝已上線（2026-10-04）**：shell hook `pre_llm_call` → `%LOCALAPPDATA%\hermes\agent-hooks\session_brief.py`，每個新 session 第一個 turn 注入 brief（HANDOFF STATE＋jarvis-pc／packai git＋activity＋DS 時段），每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。細節見本檔 2026-10-04 section。
+ - **Git（jarvis-pc）**：`feature/hermes-alerts-mcp` HEAD `77ed31c`（Slice 1b＋Slice 2 docs）；**未 push 121**；**未 merge dev→main**；未 commit＝`HANDOFF.md`（本檔）＋`uv.lock`。
+ - **JARVIS ONE**：**0.4.14 已上線**（Slice 1 換版 `2a9e8f6`、Slice 1b＋Slice 2 `44211b8`、窗口 1 驗收通過）；剩窗口 2 **#8**（bogus python spawn 負控；要 SK AFK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
+ - **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 7 個檔未 commit**（`AskReplyScrub.java`／測試／log 等）＋**真機 A/B 未跑**。
+ - **DJ2-Cleanroom（玩家支援）**：自家 `dj2-fixes-1.1.1` 防呆已驗收（10-03 四個 APPLY、8 鐘零 crash）；朋友部機**要自己裝**（jar 喺 `Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）**待 SK 眼睇**；聊天欄紅字 filter 已裝待驗。
  - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在 registry；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）行緊、無新事件。
- - **CS2 幀時 spike**：未做＝MSAA 4X→2X（只可遊戲內改）、Steam overlay 關 → 之後 A/B 量 frametime（工具／報告 `Documents\PC_Troubleshoot\cs2-perf\`）。LPI：0-15＝V-Cache CCD。
- - **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 4 檔未 commit**＋**真機 A/B 未跑**。
+ - **CS2 卡頓**：`cs2-perf\PLAN-v2.1-2026-10-03.md`（六閘＋閘 -1，裁判判 v2_adequate、唔應再開新一輪）；未做＝閘 0（SK 親手 FrameView 2×10 分鐘）＋MSAA 4X→2X＋關 Steam overlay。LPI：0-15＝V-Cache CCD。
+ - **cursor 指針「變泥」線（未解）**：10-04 02:2x–02:3x 掛咗記錄器等 SK 打「now」；**11:35 SK 重啟部機 → 儀器已死**（無殘留進程，只剩 `%TEMP%\compose*.csv`）；未再開。
+ - **MS DCT 面試**：四場完成（Owen 9/30 最後一場）；**等結論**（原講下星期）。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① ~~Slice 1 窗口 1／打包換版／commit~~ ✅ 10-03（`2a9e8f6`＋`44211b8`）② 窗口 2 **#8**（bogus python spawn 負控；要搬 `host.json` ＋ dev instance＝HUD 會閃 ⇒ **要 SK AFK 才做**）③ **測試隔離 ii 實作**（已批准未開工）④ **packai Slice 1b 真機 A/B** ⑤ Slice 1c／Slice 2 正式 plan ⑥ **dev → main 合併**（PR 定直接 merge）⑦ **反方 reviewer R1 報告未消化**（subagent session `20260927_231610_3d99d0`，11.3k 字：LD1–LD6）⑧ **CS2 為何仍落 LPI 16-31** ⑨ JARVIS 要唔要開返 ⑩ **DJ2 客戶端測試待 SK 眼睇**（字體／GUI／光影三項；文檔＋v1.3 打包已交另一個 AI）⑪ **DJ2 聊天欄紅字修法**（①改 TP jar 5 bytes｛只減半｝／②自家 client mod 過濾顯示｛要起 1.12.2 build 環境｝／③改 Cleanroom jar｛脆｝） → **SK 揀 ②＋(i) 全清淨**；jar 已 build＋已放入 instance（待 SK 重啟驗收）；⑫ **MayaCraft ping 報告已出**（等 SK send 畀 server admin） ⑬ ~~DJ2 冶煉爐防呆~~ **✅ 10-03 驗收通過**（11:36 重開 → 四個 APPLY：`TileHeatingStructureMixin` 11:36:53、`GuiUtilMixin` 12:51:20；mods 只剩 1.1.1；玩到 19:33 零 crash）。朋友講「好似冇再爆」⇒ 暫唔派 jar。 ⑭ **CS2：反方 R1 已消化** → `cs2-perf\PLAN-v2-2026-10-03.md`（六閘）＋ 中立裁判（`deleg_ae9225ef`，報告 `cs2-perf\JUDGE-2026-10-03.md`）判 **v1 正方 1.5 : 反方 4.5**、**`v2_adequate = true`（綁 C1 先量 baseline／C2 pin 前乾淨重測 V-Cache／C3 Tier1 唔碰）**、**唔應再開新一輪** → 已套用裁判 D1–D10 出 `cs2-perf\PLAN-v2.1-2026-10-03.md`（六閘＋閘 -1）。裁判禁做：改 registry（Tier1）／BIOS／Defender／DDU 換 driver／刪 RTSS／碰 `cs2_video.txt`；閘 0 要 SK 親手用 FrameView 錄 2×10 分鐘。Hermes 另親核 `DefaultPowerSchemeValues` 真存在（平衡 AC 都 100% ⇒ 換電源計劃救唔到）。 ⑮ ~~Slice 1 換版~~ **✅ 10-03 已上線 0.4.14 ＋ 窗口 1 通過**（Q2 常開面＝SK 接受；Q3 OFF 語意＝同意）⑯ **新脆弱位**：sidecar self-probe 用 TCP connect ⇒ 冒牌 listener 騙得到（實測唔會寫 `hud_error.log`）→ 建議改 HTTP＋payload 判準。
-- **下一步（優先序）**：① ~~DJ2 自家 mod 驗收~~ **✅ 10-02/10-03 已完成**（crash 修好、APPLY 全在、8 鐘零 crash）② Slice 1：~~commit~~✅ 10-03 → Slice 2 ✅ 已上（見下）；剩窗口 2 **#8** ③ packai Slice 1b 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 剩兩樣 → A/B ⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
-- **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次：09-22 段落；2026-10-01 搬 09-23／09-24 段落；**2026-10-03 搬 09-24～09-30 全部段落**，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
+- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）
+- **下一步（優先序）**：① 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-04 11:35–11:5x（Discord；SK「read hand off + make it auto」→ 新 session 自動讀 handoff 已上線）
+- **做咗（SK 揀「both」）**：
+  - `%LOCALAPPDATA%\hermes\agent-hooks\session_brief.py`（純 stdlib，0.08–0.31 s）：讀 HANDOFF STATE 區塊＋近 3 日 section 標題＋jarvis-pc／packai git（branch／HEAD／未 push／未 commit 頭 5 個）＋`sk_activity.json`＋DS 時段 → 以 `{"context": ...}` 注入（Hermes 只會 append 去 user message，唔會動 system prompt／cache）。每個 `session_id` 只注入一次（`state\session_brief_seen.json`，原子寫）；log `logs\session_brief.log`（256 KB 自動輪替）；platform 白名單 discord／cli／tui／desktop／telegram（cron、api_server（JARVIS 語音線）唔注入）；有 `parent_session_id`＝子 session 唔注入。
+  - `config.yaml` 加 `hooks: pre_llm_call`（timeout 15；**command 要明寫 interpreter**，Windows `Popen` 唔會自動找）＋ allowlist 已批（`shell-hooks-allowlist.json`）；備份 `backups\config.yaml.bak-20261004-114002`。
+  - home `AGENTS.md` 加「### 開 session 自動讀（SK 2026-10-04）」（備份 `backups\AGENTS.md.bak-20261004-114426`）。
+- **實測（Hermes 親跑）**：`hermes hooks doctor` 全綠（exec／allowlist／mtime／synthetic JSON 0.079 s）；`hermes hooks test pre_llm_call` → exit=0、0.08–0.31 s、parsed wire shape 有 `context`。負控：HANDOFF＋repo 都唔存在 → 照出（`(no repo)`、無 STATE、366 字）✓；state 檔損壞 → 照注入 ✓；無 `session_id`／壞 JSON → `{}` ✓；`platform=cron` → NOOP ✓；第二次同 session → NOOP（dedupe）✓；brief 約 6.7–6.9 KB。
+- **實測捉到兩個真 bug（已修）**：① `_run` 用 `.strip()` 食咗 `git status --porcelain` 第一行前導空格 → 第一個檔名被切（`code_change_log.md`→`ode_change_log.md`）→ 改 `.rstrip()`；② Hermes wire shape 只有 `session_id／tool_name／tool_input／cwd／extra` — `platform`／`parent_session_id` 喺 `extra` 內 → 原版會永遠 NOOP，靠 `hermes hooks test` 捉到。
+- **生效**：hook 只喺 gateway 啟動時註冊 → 隱藏 helper `agent-hooks\gw_restart_hook.cmd`（＋180 s、restart 後自驗 `gateway status`、失敗 fallback 用 Startup `Hermes_Gateway.vbs` 重開）於 11:48:44 跑；log `logs\gw_restart_run3.log`。
+- **坑（新）**：用 write_file 寫 `.cmd` 係 **LF** 行尾 → cmd.exe 會誤讀註釋行（`'m' 不是內部或外部命令`）→ `.cmd` 一律 CRLF＋ASCII。
+- jarvis-pc：本次 commit＝docs(HANDOFF) 一個。
+
+
+## 今日完成（2026-10-04）
+- jarvis-pc 當日無新 commit
+- 未 commit 檔案 1 個：uv.lock
+- 領先 remote 121 個 commit（未 push）
 
 ## 2026-10-03 20:3x–20:5x（JARVIS Slice 1b ＋ Slice 2 —— 已實作、已實測、已 commit）
 - **Slice 1 code commit `2a9e8f6`**（0.4.14 五檔）；**Slice 1b／Slice 2 commit `44211b8`**；cron `jarvis-sidecar-health` 已 resume（20:53 next）。
