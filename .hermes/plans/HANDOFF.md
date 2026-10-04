@@ -28,6 +28,14 @@
 <!-- STATE:END -->
 
 
+
+## 2026-10-05 02:30–03:05（Discord；X3D 隔離＋最高權限 task；TRCC 例外）
+- 隔離上線：遊戲 pin CCD0（LPI 0-15）；50–52 個噪音進程（Discord／Chrome／Steam／Wallpaper Engine／SteelSeries）pin CCD1（16-31）；dwm／audio／Defender／svchost／python 硬性唔郁；遊戲全關自動還原。
+- 最高權限：`install_game_pin_task.cmd` → scheduled task `JARVIS-GameVCachePin`（同 user、RunLevel Highest、AtLogOn、`pythonw game_vcache_pin.py --loop 10`，heartbeat `state\game_vcache_pin_loop.json`）；undo＝`uninstall_game_pin_task.cmd`；Hermes cron `game-vcache-pin` 保留做 watchdog。
+- 坑（已入 skill x3d-vcache-ccd-pinning）：PS `RestartInterval` 會令 task XML 註冊失敗；ctypes `GetCurrentProcess` 要設 restype 否則 OpenProcessToken 回 err 6；SeDebugPrivilege 要明確開。
+- **例外**：TRCC.exe（Thermaltake RGB）即使 elevated＋SeDebugPrivilege 都改唔到 affinity（AccessDenied）→ 建議打機時關咗佢（純 RGB 控制）。
+- 未做：SK 用 FrameView 對「隔離前後」1% low；heap 12G→18G（方案 A，等 SK 話）。
+
 ## 2026-10-05 01:45–02:15（Discord；MC 卡 → 追到 X3D CCD 派工問題，已修＋已自動化）
 - 症狀：SK「MC 好卡／fps 由 900+ 跌到 300+」；實測 GPU 只 8–15%（唔關顯卡）→ 遊戲係 CPU 單線程樽頸。
 - 量法：Java 48MB pointer-chase ＋ `start /affinity`（低優先權、無 console 窗）→ **V-Cache 96MB CCD = LPI 0-15（17.5 ns/hop）**；32MB CCD = LPI 16-31（91.6 ns，5.2x 慢）。打機時全部嘢（連 game）實測落 LPI 16-31。
