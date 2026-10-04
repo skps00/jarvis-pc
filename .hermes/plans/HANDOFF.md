@@ -13,7 +13,7 @@
  - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在 registry；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）行緊、無新事件。
  - **CS2 卡頓**：`cs2-perf\PLAN-v2.1-2026-10-03.md`（六閘＋閘 -1，裁判判 v2_adequate、唔應再開新一輪）；未做＝閘 0（SK 親手 FrameView 2×10 分鐘）＋MSAA 4X→2X＋關 Steam overlay。LPI：0-15＝V-Cache CCD。
  - **cursor 指針「變泥」線（未解）**：10-04 02:2x–02:3x 掛咗記錄器等 SK 打「now」；**11:35 SK 重啟部機 → 儀器已死**（無殘留進程，只剩 `%TEMP%\compose*.csv`）；未再開。
- - **MS DCT 面試**：四場完成（Owen 9/30 最後一場）；**等結論**（原講下星期）。
+ - **求職線**：面試已完成、等結論（詳情／內幕只留本機 `Documents\MS_DCT_Prep\`，唔入可公開文件）。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
@@ -174,22 +174,18 @@
 - **測試現況（log 實證）**：今日 16:11 起連續玩到 **19:10**（約 3 小時）、**零新 crash report**（最後一個係 10:13:11，喺換版之前）→ 今日改動（NeoFontRender 0.6.1＋ModularUI、移走 SmoothFont、resource pack 改 f3、Actinium 0.0.11）**未見任何回歸**。
 - **待 SK 眼睇 3 項**：① 字體有冇變 NeoFontRender（光滑感）② 物品欄 GUI／格子對唔對齊（f3 pack）③ 若行 B 版，光影著唔著。
 - `REMAINING_WORK.md` 已加 09-30 sync；STATE 已改寫（commit `532f889`）。
-- **ping 最後定位（21:2x Hermes 親核）**：SK 遊戲 session 仍 `Established`（javaw PID 45212→114.34.59.40:5601）。同一部 host：**:443 連續 6 次 27ms 穩定**；**:5601 六次有兩次 235–236ms**（+208ms）→ **懲罰係遊戲端口專屬**（該 host 嘅防護／回源層），ICMP 3/3 25–26ms 零丟包、SK 部機排除。已停止再探測（避免觸發對方 rate limit）。
+- **ping 最後定位（21:2x Hermes 親核）**：SK 遊戲 session 仍 `Established`（javaw PID 45212→mayacraft 主機:5601）。同一部 host：**:443 連續 6 次 27ms 穩定**；**:5601 六次有兩次 235–236ms**（+208ms）→ **懲罰係遊戲端口專屬**（該 host 嘅防護／回源層），ICMP 3/3 25–26ms 零丟包、SK 部機排除。已停止再探測（避免觸發對方 rate limit）。
 - **21:5x AFK 實測（SK 截圖）**：靜止一段時間後 ping 回落 **26ms** ＝我實測路徑值 → 高 ping 同「活動量」掛鈎（chunk／封包爆發經遊戲端口排隊），ping 線收結、唔再探測。
 
 
 
-## 2026-09-30 12:0x（Discord；SK「done, read it」→ Owen 場面試轉錄）
+## 2026-09-30 12:0x（Discord；SK「done, read it」→ 面試錄音轉錄收尾）
 
 - **錄影親核**：`Videos\2026-09-30 10-54-45.mp4` 701,449,772 bytes、`ffprobe` **3598.15s = 59:58**；OBS log `2026-09-30 10-52-29.txt`（Recording Start 10:54:46／Stop 11:54:44）；開檔前後 stat 一致（已收檔）。
-- **音源**：mic `SteelSeries Sonar - Microphone` ＋ `耳機 (2- Arctis Nova 7)` 混成一條 AAC stereo（唔可分開）→ 16 kHz mono wav 115 MB。
-- **兩引擎**：SenseVoice 30 秒分塊（**120 塊／110 有聲／0 錯**，rtf≈0.003）＋ faster-whisper `small` **全檔 3 進程**（**1,529 行**，part0 137／part1 804／part2 588）。
-- **出檔（腳本 render，非手抄）**：`MS_DCT_Prep\records\面試-20260930-1100-Owen-逐字稿.md`（48,225 bytes，含誤聽對照表）＋`面試-20260930-1100-Owen-情報摘要.md`（10,342 bytes）。
-- **內容**：Owen Lee（前 Microsoft 香港 DC **site operation manager**；Mike Wong report 佢）主持；今日 focus＝**technical knowledge**；自我介紹用英文（08:41→11:29，實測 168 秒＝2:48），其餘廣東話。技術題＝server 著唔返／機櫃電源（DGX 6×PSU）／CPU-RAM-HDD-SSD 症狀／新機上 rack 步驟／駁線種類（「答得最好嘅一條」）／no POST troubleshooting／換 RAM 後仍報 error；判斷題＝現場同 procedure 有出入、換 PDU 會斷兩邊電 → SK 答「先問人、唔對路停低、black and white 記錄」，Owen 評「絕對正確」。
-- **修正**：SK 第 1 題把 role 理解成 remote support／跟 case → Owen 用 3 分鐘修正（70–80% hands on、一至五 9–6＋**每季一星期 standby**，after hours 做 first POC）。
-- **〔判讀〕**：ASR 把 Owen 叫 SK 嘅 `angel/Angelo` 當成 **Andrew**（whisper [08:11] 聽到 `Andrew`）；「cost me around 15-60 hours per day」應為 **15–16 小時**（兩引擎同聽錯，物理不可能）。
+- **音源**：mic ＋ 耳機混成一條 AAC stereo（唔可分開）→ 16 kHz mono wav 115 MB。
+- **兩引擎**：SenseVoice 30 秒分塊（**120 塊／110 有聲／0 錯**，rtf≈0.003）＋ faster-whisper `small` 全檔 3 進程（**1,529 行**）。
+- **出檔（腳本 render，非手抄）**：逐字稿＋情報摘要 → 本機 `Documents\MS_DCT_Prep\records\`（48,225／10,342 bytes）。**內容含面試官身分／評語 ⇒ 依規則唔入可公開文件**。
 - **未做**：(c) 中文玩家回覆、(b) A/B FPS 量測（SK：b later、interview first、a ignore）。
-
 ## 2026-09-30 10:3x（Discord；DJ2-Cleanroom Actinium 版收口）
 
 - **使用說明.txt**：加【版本選擇：要 FPS 定要光影】一節（A 版 Nothirium 組／B 版 Actinium 0.0.11 對照表、切換步驟、兩條紅線、實測記錄、Actinium 已知小問題）＋Actinium 官方下載連結（包 zip 冇跟呢個 jar）→ 108 行、UTF-8 無 BOM、LF、sha16 `7cef1cc4d2858c46`；改前備份 `hermes\backups\dj2-actinium-test1-20260930\使用說明.txt.before-20260930-1034`。
@@ -197,7 +193,7 @@
 - **Skill**：`cleanroom-modpack-crash-triage`（software-development）已建＋補 `## When to Use`。
 - **GUI／slot 對唔上（SK 2026-09-30 15:1x 貼圖問）＝用錯 resource pack 版本**：DJ2 開住 `Modernity-**f1**-3.10.3.1.zip`（pack_format 1；`options.txt` 有 `incompatibleResourcePacks` 證明遊戲自己 flag 佢唔相容）；作者 Modrinth 元數據 f1-3.10.3.1 = **1.12.2 False**、f3-3.10.3 = **1.12.2 True**。實測：把 1.12.2 格線（x8/y84、18px pitch）疊上兩版 inventory.png → f1 明顯偏（工藝 2×2 位置亦唔同），f3 對正；兩版 GUI 差 3.9% 像素。已下載正確版 `Modernity-f3-3.10.3.zip`（Modrinth、sha512 核對）入 DJ2 resourcepacks（未啟用）；**等 SK 決定要唔要 Hermes 改 options.txt（停 f1／開 f3）**。另一 pack `2.2.0_plain_Jappafied_Modded.zip` 無 GUI 圖、唔關事。
 - **錯版已移除（SK 2026-09-30 16:10 叫 Hermes 做）**：`Modernity-f1-3.10.3.1.zip` 由 DJ2 `minecraft\resourcepacks` 移去 `…\hermes\backups\dj2-actinium-test1-20260930\removed-packs\`（可還原）；`options.txt` 已備份（`options.txt.before-20260930-161050`，改後 byte-identical）；SK 自己已切換，現況 `resourcePacks:["2.2.0_plain_Jappafied_Modded.zip","Modernity-f3-3.10.3.zip"]`、`incompatibleResourcePacks:[]`、`guiScale:0`。全 instances 掃描：冇其他 f1 殘留（NovaEngineering 用 f3-3.10.2＋Adjunct／Extra addons）。
-- **遊戲 ping 266ms 查證（SK 2026-09-30 16:2x–16:5x）**：MayaCraft 主機＝**台灣台北 114.34.59.40（Chunghwa AS3462）**。**路徑健康**：tracert 11 hop 25ms、ICMP 31/31 25ms 零 spike、單發 TCP 26ms、LAN 1ms、1.1.1.1 2ms、HiNet 168.95.1.1:443 24ms 零 spike、無 VPN（6 個 OpenVPN adapter 全 Disconnected）、Ethernet 5GbE Up。**但 Minecraft 應用層 ping（25 次）中位 93ms、7/25（28%）跳 700–756ms**；同 IP 換 port 一樣跳 → 屬「SK ↔ server」之間 TCP 層間歇延遲（不是 server 對所有人）。**推翻早前「server 端限流」結論**（SK 朋友同為香港但 25ms）。仍在查：ISP 路由（路徑 HKBN 112.118→PCCW→中華）、NIC 三個可疑設定（**節能乙太網路 EEE＝開啟、Selective Suspend＝開啟、流量控制 Rx&Tx 開啟**）、join 後大量 chunk 下載。顯示來源：**Universal Tweaks `UTGuiPlayerTabOverlayMixin`** 讀 `func_178853_c`（=getResponseTime，server keep-alive 量值）→ 真數據非顯示 bug。
+- **遊戲 ping 266ms 查證（SK 2026-09-30 16:2x–16:5x）**：MayaCraft 主機＝**台灣台北 mayacraft 主機（Chunghwa AS3462）**。**路徑健康**：tracert 11 hop 25ms、ICMP 31/31 25ms 零 spike、單發 TCP 26ms、LAN 1ms、1.1.1.1 2ms、HiNet 168.95.1.1:443 24ms 零 spike、無 VPN（6 個 OpenVPN adapter 全 Disconnected）、Ethernet 5GbE Up。**但 Minecraft 應用層 ping（25 次）中位 93ms、7/25（28%）跳 700–756ms**；同 IP 換 port 一樣跳 → 屬「SK ↔ server」之間 TCP 層間歇延遲（不是 server 對所有人）。**推翻早前「server 端限流」結論**（SK 朋友同為香港但 25ms）。仍在查：ISP 路由（路徑 HKBN 112.118→PCCW→中華）、NIC 三個可疑設定（**節能乙太網路 EEE＝開啟、Selective Suspend＝開啟、流量控制 Rx&Tx 開啟**）、join 後大量 chunk 下載。顯示來源：**Universal Tweaks `UTGuiPlayerTabOverlayMixin`** 讀 `func_178853_c`（=getResponseTime，server keep-alive 量值）→ 真數據非顯示 bug。
 - **ping 續查（SK 2026-09-30 17:0x 貼 server-list 圖）**：SK **未入遊戲時 server list 顯示 26ms**（同我 TCP 量度 25–26ms 一致）→ 路徑正常。未入遊戲嘅 idle 期再量（每 0.35s 一次、13 次）：game host min25/med26/**max242**，對照 HiNet 24/24/25 → 「+240ms 間歇懲罰」只發生喺「SK ↔ 呢個 host」。實測上傳 20.6 Mbit/s、下載測試被 CF 403 擋（未量）。**關鍵未解**：in-game 數字係 **server 用 keep-alive 量**、server list 數字係 **client 量** → 要問 SK 朋友 25ms 係喺邊度睇。
 - **ping 結案（SK 2026-09-30 17:1x）**：**入到遊戲、load 完之後 tab list ＝ 51ms 綠色**（圖證）→ 之前 266ms 係**join 後大量 chunk／資料下載期間嘅暫態**，唔係故障。結論：路徑 26ms（server list 實測）＋ in-game 51ms 正常；唔需要任何改動。若再見高數字 → 等 2–3 分鐘俾佢載完，仍高先 relog／試 VPN 對比 ISP path。
 - **ping 再查（SK 2026-09-30 17:2x：朋友 in-game 都係 25ms、SK 常見 200+）**：排除法完成 —— **SK 部機冇事**（5ms sleep overshoot 1940 樣本 max **0.6ms**、total CPU 5–8%、LAN 1ms、無 cFos/Killer/GameFirst/加速軟件；只有 ms_pacer/ms_l2bridge 標準 binding）。**尖峰只出現喺 game host**：15 次 TCP :5601 有 **4 次連續（約 1.5 秒窗口）236–248ms**，同一時間 HiNet 168.95.1.1 = 24–25ms 零尖峰；114.34.59.0/24 其他 IP 唔通（filtered）。→ 結論：**server 側／該 host 網絡嘅 1–2 秒週期性尖峰**（唔係 SK 網絡）。下一步靠 SK：同時段朋友對比、VPN 換出口測試、必要時出報告畀 server 管理員。
