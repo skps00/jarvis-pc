@@ -15,19 +15,26 @@
  - **cursor 指針「變泥」線（未解）**：10-04 02:2x–02:3x 掛咗記錄器等 SK 打「now」；**11:35 SK 重啟部機 → 儀器已死**（無殘留進程，只剩 `%TEMP%\compose*.csv`）；未再開。
  - **求職線**：面試已完成、等結論（詳情／內幕只留本機 `Documents\MS_DCT_Prep\`，唔入可公開文件）。
  - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
- - **X3D CCD 派工（10-05 已修＋自動化）**：實測 V-Cache 96MB CCD = LPI 0-15（48MB 隨機讀 17.5 ns）vs LPI 16-31（91.6 ns）；game 由 cron `game-vcache-pin` 自動綁 `0x0000FFFF`（MC 實測 1%low 41.6→108.7、0.1%low 10.4→42、最差 frame 1702→152 ms）；還原＝config `game_vcache_pin.json` `enabled:false`）
+ - **X3D CCD 派工（10-05 已修＋自動化）**：實測 V-Cache 96MB CCD = LPI 0-15（48MB 隨機讀 17.5 ns）vs LPI 16-31（91.6 ns）；game 由 cron `game-vcache-pin` 自動綁 `0x0000FFFF`（MC 實測 1%low 41.6→108.7、0.1%low 10.4→42、最差 frame 1702→152 ms）；還原＝config `game_vcache_pin.json` `enabled:false`）；10-05 03:2x 起改由**最高權限排程 task** `JARVIS-GameVCachePin`（每 10 秒、開機自動、elevated＋SeDebugPrivilege；heartbeat `state\game_vcache_pin_loop.json`）主導，Hermes cron `game-vcache-pin`（`2fd47bb47bd3`）留做 watchdog；**遊戲全關自動還原已實測通過**（51 進程逐個還原 32 LPI）
 - **唔准郁（硬限制）**
  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）
-- **下一步（優先序）**：① V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定
+- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）⑬ **TRCC.exe 綁唔到**（Thermaltake RGB；elevated＋SeDebugPrivilege 仍 AccessDenied → 建議打機時關咗佢）⑭ **heap 12G→18G（方案 A）等 SK** ⑮ 要唔要「開 game 自動關 TRCC」小工具（等 SK）
+- **下一步（優先序）**：① V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定 ⑧ X3D 收尾：SK FrameView 覆核隔離前後 1% low ＋ heap 12→18G 決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
 
+
+## 2026-10-05 03:05–03:30（Discord；handoff 收尾核實）
+- 自動還原**實測有效**：MC 關閉後下一個 tick 將 51 個被隔離進程逐個還原 32 LPI（log 有 `RESTORE ... -> all 32 LPIs`；state `games_running=False, isolated=0, pinned=0`）。
+- 最高權限 loop 健在：heartbeat 03:21:29、`elevated=true`、`debug_priv=True priv_err=0`、`games=False iso=0 changed=0 skip=[]`；task `JARVIS-GameVCachePin` 存在（`schtasks /query` 已核）。
+- 隔離名單（遊戲運行時實測）＝51 個：Chrome 26／steamwebhelper 8／Wallpaper Engine 7／Discord 6／SteelSeries 3／Steam 1；dwm／audio／Defender／svchost／python 硬性排除。
+- TRCC.exe 最終結論：**綁唔到**（另加 `p.info['name']` 讀唔到嘅 fallback 後再試仍無效）→ 唔再花時間，改為建議 SK 打機時關咗佢。
+- 未做：① SK 用 FrameView 錄「隔離前後」對 1% low ② heap 12G→18G（方案 A，等 SK 話）③ 「開 game 自動關 TRCC」小工具（等 SK 話）。
 
 ## 2026-10-05 02:30–03:05（Discord；X3D 隔離＋最高權限 task；TRCC 例外）
 - 隔離上線：遊戲 pin CCD0（LPI 0-15）；50–52 個噪音進程（Discord／Chrome／Steam／Wallpaper Engine／SteelSeries）pin CCD1（16-31）；dwm／audio／Defender／svchost／python 硬性唔郁；遊戲全關自動還原。
