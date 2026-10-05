@@ -4,9 +4,11 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-05 02:1x 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-06 02:15 改寫；全部 Hermes 親核）**
+- **MC heap 真相（10-06 實測，jcmd 親核）**：DJ2 遊戲真 heap＝**8G**（G1GC、`-Xms8G -Xmx8G -XX:+AlwaysPreTouch -XX:+UseCompactObjectHeaders`，出自 Cleanroom `instances\DJ2-Cleanroom-Client-v1.2\minecraft\config\relauncher.json` 嘅 `args`）；Prism `MaxMemAlloc=12288` 只交到 wrapper（PID 48960）＝**從來冇生效**。工作管理員 10.4GB＝成個進程實體記憶體（8G heap 全 pre-touch 常駐＋約 2.3G heap 以外：code cache 68MB／metaspace／119 thread／NVIDIA driver）。要加 heap＝改 `relauncher.json`（8G→12G 仍可用 G1；18G 要 ZGC）。
+- **pack 配方普查（10-06；artifact `docs/research/artifacts/2026-10-06-pack-recipe-census.json`＋腳本 `_pack_recipe_census.py`，packai repo **未 commit**）**：嚴格規則只認 `data|assets/<ns>/recipes?/*.json`。ATM8 46,423 配方／219 ns／**584 種 recipe type**；E9E 19,206／94／300；StarTech 18,985／69／173；NWFC 10,859／66／127（＋KubeJS 70,475 行＝runtime 生成，靜態數係下界）；**DJ2(1.12.2) 5,314／83／27，位置係舊格式 `assets/<ns>/recipes/` → 推翻「1.12.2 冇 data-driven 配方」**。v1 曾誤收 `advancements/recipes/**`（ATM8 誤報 62,221）→ 已收緊＋bsdtar 交叉核對（alchemy 5,749／Mekanism 4,094 兩邊一致）。
  - **新 session 自動讀 handoff＝已上線（2026-10-04）**：shell hook `pre_llm_call` → `%LOCALAPPDATA%\hermes\agent-hooks\session_brief.py`，每個新 session 第一個 turn 注入 brief（HANDOFF STATE＋jarvis-pc／packai git＋activity＋DS 時段），每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。細節見本檔 2026-10-04 section。
- - **Git（jarvis-pc）**：`feature/hermes-alerts-mcp` HEAD `77ed31c`（Slice 1b＋Slice 2 docs）；**未 push 121**；**未 merge dev→main**；未 commit＝`HANDOFF.md`（本檔）＋`uv.lock`。
+ - **Git（jarvis-pc）**：`feature/hermes-alerts-mcp` HEAD `77ed31c`→`6391b00`（X3D 隔離 docs）；**未 push**；**未 merge dev→main**；未 commit＝`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`（HANDOFF 本檔 10-06 已 commit）。
  - **JARVIS ONE**：**0.4.14 已上線**（Slice 1 換版 `2a9e8f6`、Slice 1b＋Slice 2 `44211b8`、窗口 1 驗收通過）；剩窗口 2 **#8**（bogus python spawn 負控；要 SK AFK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
  - **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 7 個檔未 commit**（`AskReplyScrub.java`／測試／log 等）＋**真機 A/B 未跑**。
  - **DJ2-Cleanroom（玩家支援）**：自家 `dj2-fixes-1.1.1` 防呆已驗收（10-03 四個 APPLY、8 鐘零 crash）；朋友部機**要自己裝**（jar 喺 `Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）**待 SK 眼睇**；聊天欄紅字 filter 已裝待驗。
@@ -21,13 +23,24 @@
  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）⑬ **TRCC.exe 綁唔到**（Thermaltake RGB；elevated＋SeDebugPrivilege 仍 AccessDenied → 建議打機時關咗佢）⑭ **heap 12G→18G（方案 A）等 SK** ⑮ 要唔要「開 game 自動關 TRCC」小工具（等 SK）
-- **下一步（優先序）**：① V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定 ⑧ X3D 收尾：SK FrameView 覆核隔離前後 1% low ＋ heap 12→18G 決定
+- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 reviewer R1 未消化**（subagent `20260927_231610_3d99d0`，LD1–LD6）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）⑬ **TRCC.exe 綁唔到**（Thermaltake RGB；elevated＋SeDebugPrivilege 仍 AccessDenied → 建議打機時關咗佢）⑭ **DJ2 heap 等 SK 決定**（真值 **8G** 唔係 12G——Prism 設定被 Cleanroom relauncher 蓋；加唔加、加到 12G（G1 得）／18G（要 ZGC）） ⑮ 要唔要「開 game 自動關 TRCC」小工具（等 SK）⑯ **SK 10-06「use on pack AI」意圖未確認**（我猜係「10-05 ①配方普查＋②SOP 收 skill」；SK 叫停→下次開場先問，唔准照猜）
+- **下一步（優先序）**：① **開場先問清 SK「use on pack AI」指邊樣**（字體引擎／Java25+Cleanroom／harvest tooltip／F3 診斷／DJ2 做樣本——唔准猜落去）② V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定 ⑧ X3D 收尾：SK FrameView 覆核隔離前後 1% low ＋ heap 12→18G 決定
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 2026-10-06 01:45–02:15（Discord；DJ2 heap 疑雲查清＋pack 配方普查；SK 叫停 hand off）
+- SK 貼 MC F3（`Mem 82% 6744/8192MB`／`Allocated 100% 8192MB`／`Off-Heap +606MB`）＋工作管理員（Zulu PID 44660＝10,456MB）問「what???」。
+- 親核（jcmd PID 44660）：`UseG1GC`、Max/MinHeapSize 8G、committed 8G、used ≈6.8G（87%）；process WS 10.26GB、peak 24.29GB、code cache 68MB、119 threads → **兩個數字都真**：F3＝Java heap 上限；工作管理員＝成個進程實體記憶體（唔係漏記憶體）。
+- 發現：Prism `MaxMemAlloc=12288` 只到 wrapper，真 heap 由 Cleanroom `relauncher.json` `args` 決定＝**8G**（同 memory 舊條目一致，但呢次係第一次量到真值）。
+- 普查（SK「use on pack AI」→ 我讀成做 10-05 嗰兩件：①靜態配方普查 ②SOP 收 skill）：**①做完**（數字見 STATE）；**②未開**。全程只讀檔（無開 GUI／無改 config／無 commit）。
+- 中途自我更正一次：v1 把 `advancements/recipes/**` 當配方 → 收緊規則重跑＋bsdtar 交叉核對。
+- SK 叫 **stop → hand off**；意圖未確認（記入 STATE 未解 ⑯）。
 
 
+## 今日完成（2026-10-05）
+- jarvis-pc 當日 commit 3 個（最新：6391b00 docs(handoff): X3D isolation verified end-to-end (auto-restore）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 3 個 commit（未 push）
 
 ## 2026-10-05 03:05–03:30（Discord；handoff 收尾核實）
 - 自動還原**實測有效**：MC 關閉後下一個 tick 將 51 個被隔離進程逐個還原 32 LPI（log 有 `RESTORE ... -> all 32 LPIs`；state `games_running=False, isolated=0, pinned=0`）。
