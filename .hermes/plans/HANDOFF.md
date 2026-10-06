@@ -28,6 +28,14 @@
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-10-06）
+- jarvis-pc 當日 commit 3 個（最新：34109fe docs(handoff): STATE git line without churning sha）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 6 個 commit（未 push）
+- 【#1 測試隔離 ii 完成】隔離實錘：真 settings.json／voice_status.json mtime 零變、state.db 767→767；pytest 550 passed/0 failed；eval_gate --all 綠 HASH 9307fc48192e0e8b；未 commit（等 SK）
+- 【#1 脆弱位已修（SK：即刻修）】F1 settings cache 加 path key（負控實證：暫時還原 F1 → F3 test 即紅 `assert 0.31 == 0.42`；還原後綠）／F2 conftest 每 test 重設 pristine settings／F3 新增負控 test；全量 pytest 551 passed/0 failed、eval_gate --all 綠 HASH 9307fc48192e0e8b。
+
 ## 2026-10-06 01:45–02:15（Discord；DJ2 heap 疑雲查清＋pack 配方普查；SK 叫停 hand off）
 - SK 貼 MC F3（`Mem 82% 6744/8192MB`／`Allocated 100% 8192MB`／`Off-Heap +606MB`）＋工作管理員（Zulu PID 44660＝10,456MB）問「what???」。
 - 親核（jcmd PID 44660）：`UseG1GC`、Max/MinHeapSize 8G、committed 8G、used ≈6.8G（87%）；process WS 10.26GB、peak 24.29GB、code cache 68MB、119 threads → **兩個數字都真**：F3＝Java heap 上限；工作管理員＝成個進程實體記憶體（唔係漏記憶體）。
