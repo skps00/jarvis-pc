@@ -307,16 +307,28 @@ if (gotLock) {
 // 遊戲中自動隱藏（HUD 只桌面顯示）：每 5 秒查活動狀態
 const ACTIVITY_SCRIPT = path.join(process.env.LOCALAPPDATA || '', 'hermes', 'scripts', 'activity_monitor.py');
 let actTimer = null;
+const ACTIVITY_LOG_MAX_BYTES = 10 * 1024 * 1024;
+function appendActivityLog(text) {
+  const fs = require('fs');
+  const alog = path.join(require('os').tmpdir(), 'jarvis_hud_activity.log');
+  try {
+    if (fs.existsSync(alog) && fs.statSync(alog).size > ACTIVITY_LOG_MAX_BYTES) {
+      const bak = alog + '.1';
+      try { fs.rmSync(bak, { force: true }); } catch (e) {}
+      fs.renameSync(alog, bak);
+    }
+  } catch (e) { /* 輪替失敗唔可以影響 HUD */ }
+  try { fs.appendFileSync(alog, text); } catch (e) { /* 寫唔到都唔可以 throw */ }
+}
 function checkActivity() {
   execFile(PYTHON, [ACTIVITY_SCRIPT], { windowsHide: true, timeout: 6000, env: { ...process.env, PYTHONPATH: '' } }, (err, stdout) => {
-    const alog = path.join(require('os').tmpdir(), 'jarvis_hud_activity.log');
     try {
       // activity 檢查失敗 → 保守：唔郁 HUD 可見性（遊戲中唔會因為 check 失敗而彈 HUD）
-      if (err) { require('fs').appendFileSync(alog, new Date().toISOString() + ' ERR:' + err.message + '\n'); return; }
-      if (!stdout) { require('fs').appendFileSync(alog, new Date().toISOString() + ' NOOUT\n'); return; }
+      if (err) { appendActivityLog(new Date().toISOString() + ' ERR:' + err.message + '\n'); return; }
+      if (!stdout) { appendActivityLog(new Date().toISOString() + ' NOOUT\n'); return; }
       const line = stdout.trim().split('\n').pop();
       const data = JSON.parse(line);
-      require('fs').appendFileSync(alog, new Date().toISOString() + ' state=' + data.state + ' game=' + data.game + '\n');
+      appendActivityLog(new Date().toISOString() + ' state=' + data.state + ' game=' + data.game + '\n');
       const hidden = data.state === 'playing' || data.fullscreen === true;
       if (win && !win.isDestroyed() && win.isVisible() === hidden) {
         if (hidden) win.hide(); else win.show();
