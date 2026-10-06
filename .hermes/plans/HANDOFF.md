@@ -4,28 +4,28 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-06 02:15 改寫；全部 Hermes 親核）**
-- **MC heap 真相（10-06 實測，jcmd 親核）**：DJ2 遊戲真 heap＝**8G**（G1GC、`-Xms8G -Xmx8G -XX:+AlwaysPreTouch -XX:+UseCompactObjectHeaders`，出自 Cleanroom `instances\DJ2-Cleanroom-Client-v1.2\minecraft\config\relauncher.json` 嘅 `args`）；Prism `MaxMemAlloc=12288` 只交到 wrapper（PID 48960）＝**從來冇生效**。工作管理員 10.4GB＝成個進程實體記憶體（8G heap 全 pre-touch 常駐＋約 2.3G heap 以外：code cache 68MB／metaspace／119 thread／NVIDIA driver）。要加 heap＝改 `relauncher.json`（8G→12G 仍可用 G1；18G 要 ZGC）。
-- **pack 配方普查（10-06；artifact `docs/research/artifacts/2026-10-06-pack-recipe-census.json`＋腳本 `_pack_recipe_census.py`，packai repo **未 commit**）**：嚴格規則只認 `data|assets/<ns>/recipes?/*.json`。ATM8 46,423 配方／219 ns／**584 種 recipe type**；E9E 19,206／94／300；StarTech 18,985／69／173；NWFC 10,859／66／127（＋KubeJS 70,475 行＝runtime 生成，靜態數係下界）；**DJ2(1.12.2) 5,314／83／27，位置係舊格式 `assets/<ns>/recipes/` → 推翻「1.12.2 冇 data-driven 配方」**。v1 曾誤收 `advancements/recipes/**`（ATM8 誤報 62,221）→ 已收緊＋bsdtar 交叉核對（alchemy 5,749／Mekanism 4,094 兩邊一致）。
- - **新 session 自動讀 handoff＝已上線（2026-10-04）**：shell hook `pre_llm_call` → `%LOCALAPPDATA%\hermes\agent-hooks\session_brief.py`，每個新 session 第一個 turn 注入 brief（HANDOFF STATE＋jarvis-pc／packai git＋activity＋DS 時段），每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。細節見本檔 2026-10-04 section。
- - **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`，10-06 三個 docs(handoff) commit（最新兩個 `abd2837`／`f5bb15c`）；**未 push**；**未 merge dev→main**；未 commit＝`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`。
- - **JARVIS ONE**：**0.4.14 已上線**（Slice 1 換版 `2a9e8f6`、Slice 1b＋Slice 2 `44211b8`、窗口 1 驗收通過）；剩窗口 2 **#8**（bogus python spawn 負控；要 SK AFK）；⚠️ 一個 app 正常 4 個同名進程，唔好 kill 主進程。
- - **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 7 個檔未 commit**（`AskReplyScrub.java`／測試／log 等）＋**真機 A/B 未跑**。
- - **DJ2-Cleanroom（玩家支援）**：自家 `dj2-fixes-1.1.1` 防呆已驗收（10-03 四個 APPLY、8 鐘零 crash）；朋友部機**要自己裝**（jar 喺 `Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）**待 SK 眼睇**；聊天欄紅字 filter 已裝待驗。
- - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在 registry；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）行緊、無新事件。
- - **CS2 卡頓**：`cs2-perf\PLAN-v2.1-2026-10-03.md`（六閘＋閘 -1，裁判判 v2_adequate、唔應再開新一輪）；未做＝閘 0（SK 親手 FrameView 2×10 分鐘）＋MSAA 4X→2X＋關 Steam overlay。LPI：0-15＝V-Cache CCD。
- - **cursor 指針「變泥」線（未解）**：10-04 02:2x–02:3x 掛咗記錄器等 SK 打「now」；**11:35 SK 重啟部機 → 儀器已死**（無殘留進程，只剩 `%TEMP%\compose*.csv`）；未再開。
- - **求職線**：面試已完成、等結論（詳情／內幕只留本機 `Documents\MS_DCT_Prep\`，唔入可公開文件）。
- - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
- - **X3D CCD 派工（10-05 已修＋自動化）**：實測 V-Cache 96MB CCD = LPI 0-15（48MB 隨機讀 17.5 ns）vs LPI 16-31（91.6 ns）；game 由 cron `game-vcache-pin` 自動綁 `0x0000FFFF`（MC 實測 1%low 41.6→108.7、0.1%low 10.4→42、最差 frame 1702→152 ms）；還原＝config `game_vcache_pin.json` `enabled:false`）；10-05 03:2x 起改由**最高權限排程 task** `JARVIS-GameVCachePin`（每 10 秒、開機自動、elevated＋SeDebugPrivilege；heartbeat `state\game_vcache_pin_loop.json`）主導，Hermes cron `game-vcache-pin`（`2fd47bb47bd3`）留做 watchdog；**遊戲全關自動還原已實測通過**（51 進程逐個還原 32 LPI）
+- **現狀（2026-10-07 01:40 改寫；全部 Hermes 親核）**
+- **JARVIS ONE＝0.4.15 已上線（10-07 01:35 換版）**：`SWAP_RC=0`、五進程、`8642/8765/8770/8771` LISTEN、零可見 console 窗、3 個 `.lnk` 已指新版。累計驗收：Slice 1（0.4.14）＋窗口 2 **#8 spawn 負控（10-06 通過）**＋**Slice B log 輪替（已落地＋生產實證）**。輪替實證：舊 100 MB log 自動轉 `.log.1`、新 `.log` 由 364 B 重新寫（第一次寫入即輪替）；備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`。
+- **alert shadow 現況（10-07 實測，重要）**：`alert_policy_mode=shadow` 但 **`alert_voice=false`**（09-22 語音 HOLD）→ `shell_app.py:586` 直接 return → **alert poller 從未啟動** → `shadow_ledger.jsonl` 最後一筆 **2026-09-22 19:07**、heartbeat 停 10-04 ⇒ **#9 真機驗收做唔到，同「等新 mic」綁死**（升 enforce 前必須重跑三個情境）。
+- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**4 個 commit 未 push**（`9789191` HUD 輪替／`0bcf8de` #11 detect_trend／`974242d` HoloMat 計畫／`19aebcf` HANDOFF）；PR **#13** 開咗（feature→main）；未 commit＝`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`。
+- **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（10-05 03:2x 起；已核實執行中，javaw×3 affinity＝`0xffff`）；**Hermes cron `game-vcache-pin` 已於 10-07 刪除**（重複路徑、唔 elevated、`priv_err 1300` 每 tick 報 error；排程工作已完全覆蓋）。還原＝config `game_vcache_pin.json` `enabled:false`。
+- **MC heap 真相（10-06 jcmd 親核）**：DJ2 真 heap＝**8G**（G1GC，出自 Cleanroom `relauncher.json`）；Prism `MaxMemAlloc=12288` 從來冇生效。**SK 10-06 定案：維持 8G，唔改。**
+- **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 7 個檔未 commit** ＋ **真機 A/B 未跑**（要開 MC）。
+- **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 防呆已驗收；朋友部機自己裝（`Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）待 SK 眼睇；聊天欄紅字 filter 已裝待重啟驗收。
+- **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）無新事件。
+- **CS2 卡頓**：`cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`、唔再開新輪）；未做＝閘 0（SK 親手 FrameView 2×10 分鐘）＋MSAA 4X→2X＋關 Steam overlay。LPI 0-15＝V-Cache CCD。
+- **HoloMat HUD 插件化**：計畫已寫 `.hermes\plans\2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task；**未開工，要 SK 批**；3 個待決：carousel vs 自由擺位／副螢幕／熱重載）。
+- **新 session 自動讀 handoff＝已上線（2026-10-04）**：`hooks.pre_llm_call` → `agent-hooks\session_brief.py`，每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。
+- **求職線**：面試已完成、等結論（內幕只留 `Documents\MS_DCT_Prep\`）。
+- **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
 - **唔准郁（硬限制）**
- - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
- - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
- - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
- - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① 窗口 2 **#8**（要 SK AFK）② **測試隔離 ii 實作**（已批准未開工）③ **packai Slice 1b 真機 A/B** ＋ commit ④ Slice 1c／Slice 2 正式 plan ⑤ **dev → main 合併**（PR 定直接 merge）⑥ **反方 R1 → 已閉環**（10-03 中立裁判 `cs2-perf\JUDGE-2026-10-03.md` 逐條判 LD1–LD6：反方 4.5／正方 1.5、判 v2_adequate＝true；CS2 線下一步＝閘 0 由 SK 親錄）⑦ **CS2 LPI 16-31** ⑧ JARVIS 要唔要開返 ⑨ **DJ2 客戶端三項待 SK 眼睇** ⑩ **MayaCraft ping 報告待 SK 送出** ⑪ **DJ2 聊天欄紅字**（jar 已 build＋已入 instance，待 SK 重啟驗收）⑫ **cursor 凍線**（要 SK 講「now」重開儀器）⑬ **TRCC.exe 綁唔到**（Thermaltake RGB；elevated＋SeDebugPrivilege 仍 AccessDenied → 建議打機時關咗佢）⑭ **DJ2 heap 等 SK 決定**（真值 **8G** 唔係 12G——Prism 設定被 Cleanroom relauncher 蓋；加唔加、加到 12G（G1 得）／18G（要 ZGC）） ⑮ 要唔要「開 game 自動關 TRCC」小工具（等 SK）⑯ **SK 10-06「use on pack AI」意圖未確認**（我猜係「10-05 ①配方普查＋②SOP 收 skill」；SK 叫停→下次開場先問，唔准照猜）
-- **下一步（優先序）**：① **開場先問清 SK「use on pack AI」指邊樣**（字體引擎／Java25+Cleanroom／harvest tooltip／F3 診斷／DJ2 做樣本——唔准猜落去）② V-Cache pin 體感覆核 ＋ CS2 同一 pin A/B ② 等 gateway 重啟確認 hook 生效（log `hermes\logs\gw_restart_run3.log`）② DJ2 三項（SK 眼睇，最快）③ JARVIS：packai Slice 1b commit ＋ 真機 A/B ④ 反方 R1 → 三段式（≥8:2）⑤ CS2 閘 0（SK 親錄）⑥ 測試隔離 ii（plan → review）⑦ dev→main 合併決定 ⑧ X3D 收尾：SK FrameView 覆核隔離前後 1% low ＋ heap 12→18G 決定
-- **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
+  - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
+  - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
+  - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
+  - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
+- **未解（等 SK 決）**：① **push 4 個 commit** ② **PR #13 要唔要 merge 入 main** ③ packai Slice 1b 真機 A/B＋commit（要開 MC）④ CS2 閘 0（SK 親錄）⑤ CS2 LPI 16-31 ⑥ DJ2 客戶端三項眼睇＋紅字 filter 重啟驗收 ⑦ MayaCraft ping 報告送出 ⑧ cursor 凍線（SK 講「now」）⑨ TRCC 綁唔到／要唔要「開 game 自動關」⑩ HoloMat 3 個設計問題 ⑪ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑫ `web_search` backend（keyless Exa）掛咗要修
+- **下一步（優先序）**：① push（等 SK 一句）② packai Slice 1b（要開 MC）③ **#9／#5 等新 mic** ④ HoloMat 3 個設計問題 ⑤ CS2 閘 0
+- **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 ## 今日完成（2026-10-07 凌晨；接 10-06 session）
