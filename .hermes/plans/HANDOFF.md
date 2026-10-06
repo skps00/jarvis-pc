@@ -28,6 +28,14 @@
 - **歸檔索引**：已完成記錄喺 `plans/archive/HANDOFF-2026-09.md`（主檔歸檔 3 次；最近 2026-10-03 搬 09-24～09-30 段落，備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+## 今日完成（2026-10-07 凌晨；接 10-06 session）
+
+- 【#4 Slice B log 輪替】build 0.4.15 完成（BUILD_RC=0、asar 實證有 appendActivityLog、sha256 head a9a3d447…）；舊 100MB log 備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`；**未換版，等 SK**。
+- 【cron 清理】刪走重複 Hermes cron `game-vcache-pin`（唔 elevated、priv_err 1300）；真正做嘢＝Windows 排程 `\JARVIS-GameVCachePin`（已核實執行中，javaw×3 pinned 0xffff）。
+- 【#11】`detect_sustained_high()` 新增；修死碼：`--days` 預設 7→30（`_CLI_DEFAULT_DAYS`）＋抽 `_build_parser()`＋guard test；pytest **561 passed/0 failed**；真 artifact `days_analyzed=30`；`--fingerprint` → NONE。
+- 【#11 pass-2 修完】span 連續性（baseline+recent 全 span 要連續，防斷日後用陳年 baseline）＋抽 `sustained_high_details()` 去重；負控 RED→GREEN；pytest **562 passed/0 failed**。
+- 【#12】HoloMat HUD 插件化計畫：`.hermes/plans/2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task＋3 個待 SK 決定問題）。
+- 【踩到】18:00 提醒 job 冇發到（scheduler 遲過 120s grace → 被移除）；`web_search` backend（keyless Exa）掛。
 
 ## 今日完成（2026-10-06）
 - jarvis-pc 當日 commit 3 個（最新：34109fe docs(handoff): STATE git line without churning sha）
