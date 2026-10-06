@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import tkinter as tk
@@ -31,26 +32,34 @@ def test_settings_window_builds_five_tabs() -> None:
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
             path = tmp / "settings.json"
-            with mock.patch.multiple(
-                settings_mod,
-                SETTINGS_DIR=tmp,
-                SETTINGS_PATH=path,
-            ):
-                invalidate_settings_cache()
-                settings_mod.save_settings(Settings())
-                parent = SimpleNamespace(root=root)
-                with (
-                    mock.patch.object(tk.Toplevel, "grab_set"),
-                    mock.patch.object(tk.Toplevel, "focus_force"),
-                    mock.patch("jarvis.brain._load_dotenv", return_value=None),
+            prev = os.environ.get("JARVIS_SETTINGS_DIR")
+            os.environ["JARVIS_SETTINGS_DIR"] = str(tmp)
+            try:
+                with mock.patch.multiple(
+                    settings_mod,
+                    SETTINGS_DIR=tmp,
+                    SETTINGS_PATH=path,
                 ):
-                    win = SettingsWindow(parent)
-                    win.win.withdraw()
-                    kids = win.win.winfo_children()
-                    notebooks = [c for c in kids if isinstance(c, ttk.Notebook)]
-                    assert notebooks, "expected Notebook tabs"
-                    nb = notebooks[0]
-                    assert nb.index("end") == 5
-                    win.win.destroy()
+                    invalidate_settings_cache()
+                    settings_mod.save_settings(Settings())
+                    parent = SimpleNamespace(root=root)
+                    with (
+                        mock.patch.object(tk.Toplevel, "grab_set"),
+                        mock.patch.object(tk.Toplevel, "focus_force"),
+                        mock.patch("jarvis.brain._load_dotenv", return_value=None),
+                    ):
+                        win = SettingsWindow(parent)
+                        win.win.withdraw()
+                        kids = win.win.winfo_children()
+                        notebooks = [c for c in kids if isinstance(c, ttk.Notebook)]
+                        assert notebooks, "expected Notebook tabs"
+                        nb = notebooks[0]
+                        assert nb.index("end") == 5
+                        win.win.destroy()
+            finally:
+                if prev is None:
+                    os.environ.pop("JARVIS_SETTINGS_DIR", None)
+                else:
+                    os.environ["JARVIS_SETTINGS_DIR"] = prev
     finally:
         root.destroy()
