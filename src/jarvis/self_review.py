@@ -20,12 +20,17 @@ import argparse
 import json
 import os
 import re
+import statistics
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 _TAIL_LINES = 2000
 _TREND_WINDOW = 3  # consecutive days of degradation before flagging
+# 生產入口 `--fingerprint` 唔會帶 --days ⇒ 呢個 default 就係實際分析窗口。
+# 必須 >= _SUSTAINED_BASELINE_DAYS + _SUSTAINED_MIN_DAYS，否則 sustained-high
+# 規則永遠唔夠 baseline 日數 ⇒ 靜靜變死碼（2026-10-07 實測中招）。
+_CLI_DEFAULT_DAYS = 30
 _EXPIRES_DAYS = 7
 
 # self_monitor.log summary line, e.g.:
@@ -160,6 +165,67 @@ def detect_trend(
     return degraded >= window - 1
 
 
+_SUSTAINED_RATIO = 10.0
+_SUSTAINED_MIN_DAYS = 2
+_SUSTAINED_BASELINE_DAYS = 14
+
+
+def sustained_high_details(
+    days: list[dict[str, object]],
+    metric: str,
+    ratio: float = _SUSTAINED_RATIO,
+    min_days: int = _SUSTAINED_MIN_DAYS,
+    baseline_days: int = _SUSTAINED_BASELINE_DAYS,
+) -> tuple[bool, dict[str, object]]:
+    """Return (fires, details). details 有: ratio, min_days, baseline_days, baseline_median,
+    baseline_max, recent(list), baseline(list). 唔觸發時 details 仍要齊（用返算得出嘅值）。"""
+    details: dict[str, object] = {
+        "ratio": ratio,
+        "min_days": min_days,
+        "baseline_days": baseline_days,
+        "baseline_median": 0.0,
+        "baseline_max": 0.0,
+        "recent": [],
+        "baseline": [],
+    }
+    if len(days) < baseline_days + min_days:
+        return False, details
+    base_slice = days[-(baseline_days + min_days) : -min_days]
+    recent_slice = days[-min_days:]
+    baseline = [_metric_value(d, metric) for d in base_slice]
+    recent = [_metric_value(d, metric) for d in recent_slice]
+    details["baseline"] = baseline
+    details["recent"] = recent
+    if not any(v is None for v in baseline):
+        details["baseline_median"] = statistics.median(baseline)  # type: ignore[arg-type]
+        details["baseline_max"] = max(baseline)  # type: ignore[arg-type]
+    # F1: whole span (baseline + recent) must be calendar-consecutive — gap ⇒ stale baseline
+    if not _consecutive_days(days, baseline_days + min_days):
+        return False, details
+    if any(v is None for v in baseline) or any(v is None for v in recent):
+        return False, details
+    baseline_median = details["baseline_median"]
+    baseline_max = details["baseline_max"]
+    if baseline_median > 0:
+        fires = all(v > ratio * baseline_median for v in recent)  # type: ignore[operator]
+        return fires, details
+    if baseline_median == 0 and baseline_max == 0:
+        fires = all(v > 0 for v in recent)  # type: ignore[operator]
+        return fires, details
+    return False, details
+
+
+def detect_sustained_high(
+    days: list[dict[str, object]],
+    metric: str,
+    ratio: float = _SUSTAINED_RATIO,
+    min_days: int = _SUSTAINED_MIN_DAYS,
+    baseline_days: int = _SUSTAINED_BASELINE_DAYS,
+) -> bool:
+    """True if recent days jumped >=ratio× baseline median (or 0→>0 when baseline never fired)."""
+    return sustained_high_details(days, metric, ratio, min_days, baseline_days)[0]
+
+
 # ---------------------------------------------------------------------------
 # Findings / review building
 # ---------------------------------------------------------------------------
@@ -203,6 +269,38 @@ def build_findings(
                     },
                 }
             )
+        fires, det = sustained_high_details(days, metric)
+        if fires:
+            med = det["baseline_median"]
+            mx = det["baseline_max"]
+            vals = det["recent"]
+            base_d = det["baseline_days"]
+            findings.append(
+                {
+                    "id": f"SUSTAINED-{metric}-{created}",
+                    "type": "trend_issue",
+                    "metric": metric,
+                    "severity": "medium",
+                    "confidence": 0.8,
+                    "source": (
+                        f"self_monitor.log (baseline[{base_d}d] median={med} max={mx} "
+                        f"ratio={_SUSTAINED_RATIO}x; recent={vals})"
+                    ),
+                    "contradicts": [],
+                    "created": created,
+                    "updated": created,
+                    "expires": expires,
+                    "summary": (
+                        f"{metric} step-change (sudden jump then plateau), not gradual "
+                        f"worsening; baseline median={med}, recent={vals}"
+                    ),
+                    "provenance": {
+                        "trust": "verified",
+                        "scope": "log-derived",
+                        "source": "self_monitor.log",
+                    },
+                }
+            )
     return findings
 
 
@@ -235,10 +333,15 @@ def fingerprint(review: dict[str, object]) -> str:
     return "FINDING " + " | ".join(parts)
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="JARVIS self-review trend analysis")
     ap.add_argument("--fingerprint", action="store_true", help="print deterministic fingerprint only")
-    ap.add_argument("--days", type=int, default=7, help="days of log history to analyze")
+    ap.add_argument("--days", type=int, default=_CLI_DEFAULT_DAYS, help="days of log history to analyze")
+    return ap
+
+
+def main() -> int:
+    ap = _build_parser()
     args = ap.parse_args()
 
     base = _jarvis_dir()

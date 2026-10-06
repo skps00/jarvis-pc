@@ -9,16 +9,22 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from jarvis.self_review import (  # noqa: E402
+    _CLI_DEFAULT_DAYS,
+    _SUSTAINED_BASELINE_DAYS,
+    _SUSTAINED_MIN_DAYS,
     _TREND_WINDOW,
+    _build_parser,
     aggregate_by_day,
     build_findings,
     build_review,
+    detect_sustained_high,
     detect_trend,
     fingerprint,
     parse_log,
@@ -130,6 +136,100 @@ def test_trend_flagged_with_consecutive_days():
         {"date": "2026-08-31", "fp": 3, "stt_rtf": 0.3},
     ]
     assert detect_trend(days, "fp") is True
+
+
+# ---------------------------------------------------------------------------
+# CLI default days (production --fingerprint must cover sustained-high window)
+# ---------------------------------------------------------------------------
+
+def test_cli_default_days_covers_sustained_high_window():
+    needed = _SUSTAINED_BASELINE_DAYS + _SUSTAINED_MIN_DAYS
+    assert _CLI_DEFAULT_DAYS >= needed, (
+        f"_CLI_DEFAULT_DAYS={_CLI_DEFAULT_DAYS} < {needed} "
+        "⇒ 唔夠日數 ⇒ sustained-high 永遠唔會喺生產觸發（死碼）"
+    )
+
+
+def test_fingerprint_cli_uses_cli_default_days():
+    assert _build_parser().parse_args(["--fingerprint"]).days == _CLI_DEFAULT_DAYS
+
+
+# ---------------------------------------------------------------------------
+# detect_sustained_high (step-change + plateau)
+# ---------------------------------------------------------------------------
+
+def _seq_days(values: list, metric: str = "fp", start: str = "2026-08-01") -> list[dict]:
+    d0 = datetime.strptime(start, "%Y-%m-%d")
+    out: list[dict] = []
+    for i, v in enumerate(values):
+        rec = {
+            "date": (d0 + timedelta(days=i)).strftime("%Y-%m-%d"),
+            "fp": 0.0,
+            "stt_rtf": 0.3,
+            "stt_miss": 0.0,
+            "err": 0.0,
+        }
+        rec[metric] = v
+        out.append(rec)
+    return out
+
+
+def test_sustained_high_10x_jump():
+    days = _seq_days([10] * 14 + [500, 500], metric="err")
+    assert detect_sustained_high(days, "err") is True
+
+
+def test_sustained_high_false_when_only_one_day_high():
+    days = _seq_days([10] * 14 + [10, 500], metric="err")
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_sustained_high_false_when_only_5x():
+    days = _seq_days([10] * 14 + [50, 50], metric="err")
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_sustained_high_zero_baseline_then_nonzero():
+    days = _seq_days([0] * 14 + [50000, 50000], metric="err")
+    assert detect_sustained_high(days, "err") is True
+
+
+def test_sustained_high_false_when_still_zero():
+    days = _seq_days([0] * 14 + [0, 0], metric="err")
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_sustained_high_false_when_baseline_none():
+    days = _seq_days([10] * 14 + [500, 500], metric="err")
+    days[0]["err"] = None
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_sustained_high_false_when_days_not_consecutive():
+    days = _seq_days([10] * 14 + [500, 500], metric="err")
+    last = datetime.strptime(str(days[-1]["date"]), "%Y-%m-%d")
+    days[-1]["date"] = (last + timedelta(days=2)).strftime("%Y-%m-%d")
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_sustained_high_false_when_gap_between_baseline_and_recent():
+    """baseline 14d normal + 1 calendar gap + recent 2d high → must not fire (stale baseline)."""
+    days = _seq_days([10] * 14 + [500, 500], metric="err")
+    for d in days[-2:]:
+        dt = datetime.strptime(str(d["date"]), "%Y-%m-%d")
+        d["date"] = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    assert detect_sustained_high(days, "err") is False
+
+
+def test_build_findings_sustained_vs_monotonic():
+    created = "2026-08-16 09:00:00"
+    high = _seq_days([10] * 14 + [500, 500], metric="err")
+    ids = [f["id"] for f in build_findings(high, created)]
+    assert "SUSTAINED-err-2026-08-16" in ids
+
+    slow = _seq_days(list(range(1, 17)), metric="fp")
+    ids2 = [f["id"] for f in build_findings(slow, created)]
+    assert not any(str(i).startswith("SUSTAINED-") for i in ids2)
 
 
 # ---------------------------------------------------------------------------
