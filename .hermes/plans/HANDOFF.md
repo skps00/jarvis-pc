@@ -23,11 +23,16 @@
   - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
   - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
   - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC 綁唔到／要唔要「開 game 自動關」⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧ DJ2 郁動掉幀＝Litematica（等 SK 遊戲內 M,R 驗證）｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 0（watcher 等 SK 今晚開 game）
+- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④（10-07 SK「no」＝唔做）TRCC 自動關 ⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧（10-07 SK「ignore」）DJ2 郁動掉幀＝Litematica：**等 SK 遇到先講**，Hermes 唔主動追｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 0（watcher 等 SK 今晚開 game）
 - **下一步（優先序）**：① 等 SK 今晚開 CS2 → watcher 自動跑閘 0 ② CS2 LPI 16-31／MSAA 4X→2X＋關 Steam overlay ③ **#9／#5 等新 mic** ④ HoloMat 3 個設計問題（等 SK）⑤ PR #13 將來 review＋merge
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-07 16:4x（Discord；主線待辦重整 ＋ Unlight side quest 研究存檔）
+- **SK 決定**：TRCC「開 game 自動關」＝**唔做**；DJ2 Litematica 掉幀＝**唔追**（SK 遇到先講）。
+- **主線待辦**（等 SK 揀）：② PR #13 review＋merge ⑤ cursor 凍線診斷；① CS2 閘 0 等 SK 今晚開 game；③ CS2 調優等閘 0 數據；④ HoloMat 等 SK 答 3 條；⑦ #9／#5 等新 mic。
+- **side quest（Unlight:Revive 自動化）已完成研究、存檔、暫停**：`Documents\side-quest-money\research\2026-10-07-unlight-revive-{automation,feasibility}.md`（SK：「ignore it, back to main quest」；決定性證據＝MIT 工具 `UnlightPlugin/ulr-companion` 用 CDP 連 Steam 客戶端；遊戲＝Phaser 3.87；開 debug port `--remote-debugging-port=59222`）。
 
 ## 2026-10-07 16:15（Discord；求職線：兩通教練電話逐字稿＋離職證明 email＋HR 講稿）
 - **兩條片＝兩通教練電話**（唔係遊戲片）：`Videos\2026-10-07 10-52-53.mp4`（67 分）＋`2026-10-07 13-09-01.mp4`（64 分）→ 4 個檔：`MS_DCT_Prep\records\教練通話-20261007-1052-{逐字稿,重點摘要}.md`、`教練通話2-20261007-1309-{逐字稿,重點摘要}.md`（SenseVoice 30s chunk＋whisper 窗口交叉核對；人工數目 ASR 兩個引擎都聽錯，SK 親耳定案＝HK$29,000）。
