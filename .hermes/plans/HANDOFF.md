@@ -32,6 +32,7 @@
 ## 2026-10-07 16:4x（Discord；主線待辦重整 ＋ Unlight side quest 研究存檔）
 - **SK 決定**：TRCC「開 game 自動關」＝**唔做**；DJ2 Litematica 掉幀＝**唔追**（SK 遇到先講）。
 - **主線待辦**（等 SK 揀）：② PR #13 review＋merge ⑤ cursor 凍線診斷；① CS2 閘 0 等 SK 今晚開 game；③ CS2 調優等閘 0 數據；④ HoloMat 等 SK 答 3 條；⑦ #9／#5 等新 mic。
+- **② PR #13 code review 完成**（Hermes 親做）：verdict＝**Request changes**（2 warning：W1 `settings_ui.py` 仍用舊 `SETTINGS_PATH`／`SETTINGS_DIR` 常數 → UI 會指錯目錄；W2 `tools/jarvis_sidecar_health.py` 將「列進程失敗」當 `OFF` → 靜靜蓋住真故障）＋4 suggestion；證據＝live `/health` payload 實測吻合、新測試 19 passed、改動測試 74 passed（1 紅＝環境缺 numpy，main 同樣紅）；報告 `.hermes\plans\2026-10-07_pr13-code-review.md`。**未貼上 GitHub、未改 code**（等 SK）。
 - **side quest（Unlight:Revive 自動化）已完成研究、存檔、暫停**：`Documents\side-quest-money\research\2026-10-07-unlight-revive-{automation,feasibility}.md`（SK：「ignore it, back to main quest」；決定性證據＝MIT 工具 `UnlightPlugin/ulr-companion` 用 CDP 連 Steam 客戶端；遊戲＝Phaser 3.87；開 debug port `--remote-debugging-port=59222`）。
 
 ## 2026-10-07 16:15（Discord；求職線：兩通教練電話逐字稿＋離職證明 email＋HR 講稿）
