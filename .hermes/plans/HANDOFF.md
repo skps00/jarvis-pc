@@ -16,7 +16,7 @@
 - **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。未做＝MSAA 4X→2X＋關 Steam overlay。LPI 0-15＝V-Cache CCD。
 - **HoloMat HUD 插件化**：計畫已寫 `.hermes\plans\2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task；**未開工，要 SK 批**；3 個待決：carousel vs 自由擺位／副螢幕／熱重載）。
 - **新 session 自動讀 handoff＝已上線（2026-10-04）**：`hooks.pre_llm_call` → `agent-hooks\session_brief.py`，每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。
-- **求職線**：面試已完成、等結論（內幕只留 `Documents\MS_DCT_Prep\`）。
+- **求職線**：已入最後階段（panel discussion 下星期）；教練通話逐字稿＋摘要＝`Documents\MS_DCT_Prep\records\教練通話-20261007-1052-*`（**內幕只留該處，本檔唔寫細節**）。
 - **語音／mic 線 HOLD**（等新 mic）；Hermes `compression.micro_compact=true`。
 - **唔准郁（硬限制）**
   - 打機／用緊電腦：**零彈窗、零搶焦點**（先讀 `state/sk_activity.json`）；GUI 窗一律第二副螢幕；Chrome 主動開＝`bg_launch.py --minimized`
@@ -28,6 +28,13 @@
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-07 16:15（Discord；求職線：兩通教練電話逐字稿＋離職證明 email＋HR 講稿）
+- **兩條片＝兩通教練電話**（唔係遊戲片）：`Videos\2026-10-07 10-52-53.mp4`（67 分）＋`2026-10-07 13-09-01.mp4`（64 分）→ 4 個檔：`MS_DCT_Prep\records\教練通話-20261007-1052-{逐字稿,重點摘要}.md`、`教練通話2-20261007-1309-{逐字稿,重點摘要}.md`（SenseVoice 30s chunk＋whisper 窗口交叉核對；人工數目 ASR 兩個引擎都聽錯，SK 親耳定案＝HK$29,000）。
+- **離職證明 email 定稿**（寄 Primetech HR Miracle Lau，Cc Dan Pun）：`MS_DCT_Prep\records\離職證明-索取email-20261007.md`；含逐項核對表（在職期 2025-10-02→2026-04-08、Fujitsu Staff no. C88323），全部對真 Gmail＋duty report PDF（PDF 存 `records\入職文件\`）。
+- **HR 電話講稿**：`MS_DCT_Prep\records\HR電話講稿-20261007.txt`（人工 29k 英文原句、保密講法、文件清單、掛線後 3 件事）。
+- **工具 bug 已修**：skill `local-recording-transcription` 嘅 `whisper_windows.py` 寫死 STEM／WINDOWS（會靜靜跑錯錄音）→ 改成食 `WS_STEM`／`WS_WINDOWS` 環境變數。
+- **HANDOFF 只留 pointer**（求職內幕／人事細節一律唔入本檔）。
 
 ## 2026-10-07 12:0x（Discord；push 兩 repo、packai Slice 1b 真機驗收通過、CS2 閘 0 watcher）
 - **push（SK 一句「go」）**：jarvis-pc `feature/hermes-alerts-mcp` 6 個 commit → origin（`cdb5a1f..fcfb49b`）；packai `main` `013e4ac..815c5cb`。push 前掃 secrets：兩邊 `git diff/show` grep（`sk-…`／`api_key`／`bearer`／`password`／`dpapi:`）＝0 hit。PR #13 已含該 6 個 commit（merge 延後，SK：「future」）。
