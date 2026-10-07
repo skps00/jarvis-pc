@@ -7,13 +7,13 @@
 - **現狀（2026-10-07 01:40 改寫；全部 Hermes 親核）**
 - **JARVIS ONE＝0.4.15 已上線（10-07 01:35 換版）**：`SWAP_RC=0`、五進程、`8642/8765/8770/8771` LISTEN、零可見 console 窗、3 個 `.lnk` 已指新版。累計驗收：Slice 1（0.4.14）＋窗口 2 **#8 spawn 負控（10-06 通過）**＋**Slice B log 輪替（已落地＋生產實證）**。輪替實證：舊 100 MB log 自動轉 `.log.1`、新 `.log` 由 364 B 重新寫（第一次寫入即輪替）；備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`。
 - **alert shadow 現況（10-07 實測，重要）**：`alert_policy_mode=shadow` 但 **`alert_voice=false`**（09-22 語音 HOLD）→ `shell_app.py:586` 直接 return → **alert poller 從未啟動** → `shadow_ledger.jsonl` 最後一筆 **2026-09-22 19:07**、heartbeat 停 10-04 ⇒ **#9 真機驗收做唔到，同「等新 mic」綁死**（升 enforce 前必須重跑三個情境）。
-- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**5 個 commit 未 push**（`9789191` HUD 輪替／`0bcf8de` #11／`974242d` HoloMat 計畫／`19aebcf`+`6e2723d` HANDOFF）；PR **#13** 開咗（feature→main）；未 commit＝`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`。
+- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**已 push（10-07 12:0x，origin＝HEAD `fcfb49b`）**；PR **#13** 已更新（含該 6 個 commit；**merge 延後**＝SK 10-07：「after that review and merge in future」）；未 commit＝`HANDOFF.md`（改動中）＋`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（10-05 03:2x 起；已核實執行中，javaw×3 affinity＝`0xffff`）；**Hermes cron `game-vcache-pin` 已於 10-07 刪除**（重複路徑、唔 elevated、`priv_err 1300` 每 tick 報 error；排程工作已完全覆蓋）。還原＝config `game_vcache_pin.json` `enabled:false`。
 - **MC heap 真相（10-06 jcmd 親核）**：DJ2 真 heap＝**8G**（G1GC，出自 Cleanroom `relauncher.json`）；Prism `MaxMemAlloc=12288` 從來冇生效。**SK 10-06 定案：維持 8G，唔改。**
-- **packai（MC 主線）**：HEAD `013e4ac` 已 push；**Slice 1b 7 個檔未 commit** ＋ **真機 A/B 未跑**（要開 MC）。
+- **packai（MC 主線）**：**Slice 1b 已 commit＋push（`815c5cb`，main，10-07）**；真機 A/B **通過**（rewrite 真機生效：raw「脚本索引」→ 玩家 body「脚本资料」）；未覆蓋＝Tetra MODIFIED 零件行／火盆 self-drop 句（沙盒結構限制）。**坑**：沙盒 `mods/` 原有 09-19 舊 flagged jar → 頭兩輪跑舊 code（已移走；舊 jar 喺 `%TEMP%\packai_stale_jar_20261007\`）。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 防呆已驗收；朋友部機自己裝（`Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）待 SK 眼睇；聊天欄紅字 filter 已裝待重啟驗收。
 - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）無新事件。
-- **CS2 卡頓**：`cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`、唔再開新輪）；未做＝閘 0（SK 親手 FrameView 2×10 分鐘）＋MSAA 4X→2X＋關 Steam overlay。LPI 0-15＝V-Cache CCD。
+- **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。未做＝MSAA 4X→2X＋關 Steam overlay。LPI 0-15＝V-Cache CCD。
 - **HoloMat HUD 插件化**：計畫已寫 `.hermes\plans\2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task；**未開工，要 SK 批**；3 個待決：carousel vs 自由擺位／副螢幕／熱重載）。
 - **新 session 自動讀 handoff＝已上線（2026-10-04）**：`hooks.pre_llm_call` → `agent-hooks\session_brief.py`，每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。
 - **求職線**：面試已完成、等結論（內幕只留 `Documents\MS_DCT_Prep\`）。
@@ -23,11 +23,24 @@
   - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
   - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
   - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① **push 4 個 commit** ② **PR #13 要唔要 merge 入 main** ③ packai Slice 1b 真機 A/B＋commit（要開 MC）④ CS2 閘 0（SK 親錄）⑤ CS2 LPI 16-31 ⑥ DJ2 客戶端三項眼睇＋紅字 filter 重啟驗收 ⑦ MayaCraft ping 報告送出 ⑧ cursor 凍線（SK 講「now」）⑨ TRCC 綁唔到／要唔要「開 game 自動關」⑩ HoloMat 3 個設計問題 ⑪ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑫（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑬ DJ2 郁動掉幀＝Litematica（等 SK 遊戲內 M,R 驗證）
-- **下一步（優先序）**：① push（等 SK 一句）② packai Slice 1b（要開 MC）③ **#9／#5 等新 mic** ④ HoloMat 3 個設計問題 ⑤ CS2 閘 0
+- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC 綁唔到／要唔要「開 game 自動關」⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧ DJ2 郁動掉幀＝Litematica（等 SK 遊戲內 M,R 驗證）｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 0（watcher 等 SK 今晚開 game）
+- **下一步（優先序）**：① 等 SK 今晚開 CS2 → watcher 自動跑閘 0 ② CS2 LPI 16-31／MSAA 4X→2X＋關 Steam overlay ③ **#9／#5 等新 mic** ④ HoloMat 3 個設計問題（等 SK）⑤ PR #13 將來 review＋merge
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-07 12:0x（Discord；push 兩 repo、packai Slice 1b 真機驗收通過、CS2 閘 0 watcher）
+- **push（SK 一句「go」）**：jarvis-pc `feature/hermes-alerts-mcp` 6 個 commit → origin（`cdb5a1f..fcfb49b`）；packai `main` `013e4ac..815c5cb`。push 前掃 secrets：兩邊 `git diff/show` grep（`sk-…`／`api_key`／`bearer`／`password`／`dpapi:`）＝0 hit。PR #13 已含該 6 個 commit（merge 延後，SK：「future」）。
+- **packai Slice 1b 真機 A/B（Hermes 親跑）**：靜態重跑 compile RC=0、harness **58/58**、python 125 檔 1 紅（已知 baseline）、`AskReplyScrub.java` sha 同 09-22 記錄一致；flagged jar `autotest-dev-0.2.3.jar`（sha256 `04eadb7d…f4577`，`javap -c` 證 `proseOrFacts` 真 call `rewriteInternalJargon`）部署沙盒 → harness 3 case（amethyst 17.7s／diamond 17.1s OK、bedrock NO_SAMPLE）＋真 LLM billed 48001＋68481。**生效證據**：`ask-20261007-114346` raw 尾行「脚本索引」vs 玩家 body「脚本资料」；該輪 body 0 jargon、卡 7/7。證據存 `super_minecraft_AI_player\docs\research\artifacts\2026-10-07-slice1b-realmachine\`。
+- **捉到坑**：沙盒 `mods/` 同時有 09-19 舊 flagged jar（`autotest-dev-0.2.3.jar`，無新 pass）→ 頭兩輪真機其實跑舊 code（body 冇改寫）。用 `javap` 排除「冇接線」後追到雙 jar；舊 jar 移去 `%TEMP%\packai_stale_jar_20261007\`，並寫入 skill `minecraft-mod-in-game-autotest` §16。
+- **CS2 閘 0 watcher**：新 cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`，deliver origin，continuity）——SK 開 CS2 → 一句提醒；收 game 有新 FrameView CSV → 自動分析＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其他狀態靜默。
+- 沙盒 game 已關（javaw 清零，零搶焦點）；HANDOFF 未解清單重整。
+
+## 今日完成（2026-10-07）
+- jarvis-pc 當日 commit 6 個（最新：fcfb49b docs(handoff): 2026-10-07 續 — Litematica 掉幀診斷、GC 排除、Tinkers' A）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 6 個 commit（未 push）
+
 ## 今日完成（2026-10-07 凌晨；接 10-06 session）
 
 - 【#4 Slice B log 輪替】build 0.4.15 完成（BUILD_RC=0、asar 實證有 appendActivityLog、sha256 head a9a3d447…）；舊 100MB log 備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`；**未換版，等 SK**。
