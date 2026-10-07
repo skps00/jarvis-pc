@@ -4,16 +4,16 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-07 01:40 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-08 01:1x 改寫；全部 Hermes 親核）**
 - **JARVIS ONE＝0.4.15 已上線（10-07 01:35 換版）**：`SWAP_RC=0`、五進程、`8642/8765/8770/8771` LISTEN、零可見 console 窗、3 個 `.lnk` 已指新版。累計驗收：Slice 1（0.4.14）＋窗口 2 **#8 spawn 負控（10-06 通過）**＋**Slice B log 輪替（已落地＋生產實證）**。輪替實證：舊 100 MB log 自動轉 `.log.1`、新 `.log` 由 364 B 重新寫（第一次寫入即輪替）；備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`。
 - **alert shadow 現況（10-07 實測，重要）**：`alert_policy_mode=shadow` 但 **`alert_voice=false`**（09-22 語音 HOLD）→ `shell_app.py:586` 直接 return → **alert poller 從未啟動** → `shadow_ledger.jsonl` 最後一筆 **2026-09-22 19:07**、heartbeat 停 10-04 ⇒ **#9 真機驗收做唔到，同「等新 mic」綁死**（升 enforce 前必須重跑三個情境）。
-- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**已 push（10-07 12:0x，origin＝HEAD `fcfb49b`）**；PR **#13** 已更新（含該 6 個 commit；**merge 延後**＝SK 10-07：「after that review and merge in future」）；未 commit＝`HANDOFF.md`（改動中）＋`uv.lock`＋untracked `.hermes/plans/2026-10-04_agent-vm-3060-plan.md`。
+- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**已 push（origin tip＝`882ee25`，10-07 11:5x）**；PR **#13** 已更新（含該 6 個 commit；**merge 延後**＝SK 10-07：「after that review and merge in future」）；**未 push 3 個（`a95002e`／`88b301d`／`3aea917`，全部 docs，截至 10-08 01:1x）**、`origin/main..HEAD`＝199；未 commit＝`uv.lock`＋untracked `2026-10-04_agent-vm-3060-plan.md`。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（10-05 03:2x 起；已核實執行中，javaw×3 affinity＝`0xffff`）；**Hermes cron `game-vcache-pin` 已於 10-07 刪除**（重複路徑、唔 elevated、`priv_err 1300` 每 tick 報 error；排程工作已完全覆蓋）。還原＝config `game_vcache_pin.json` `enabled:false`。
 - **MC heap 真相（10-06 jcmd 親核）**：DJ2 真 heap＝**8G**（G1GC，出自 Cleanroom `relauncher.json`）；Prism `MaxMemAlloc=12288` 從來冇生效。**SK 10-06 定案：維持 8G，唔改。**
 - **packai（MC 主線）**：**Slice 1b 已 commit＋push（`815c5cb`，main，10-07）**；真機 A/B **通過**（rewrite 真機生效：raw「脚本索引」→ 玩家 body「脚本资料」）；未覆蓋＝Tetra MODIFIED 零件行／火盆 self-drop 句（沙盒結構限制）。**坑**：沙盒 `mods/` 原有 09-19 舊 flagged jar → 頭兩輪跑舊 code（已移走；舊 jar 喺 `%TEMP%\packai_stale_jar_20261007\`）。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 防呆已驗收；朋友部機自己裝（`Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）待 SK 眼睇；聊天欄紅字 filter 已裝待重啟驗收。
 - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）無新事件。
-- **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。未做＝MSAA 4X→2X＋關 Steam overlay。LPI 0-15＝V-Cache CCD。
+- **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。**閘 0 已完成**（baseline：中位 650 FPS／1% low 235／GPU 81%／CPU 15%，62.7 分鐘；報告（正本）`Documents\PC_Troubleshoot\cs2-perf\BASELINE-2026-10-07-frameview.md`＋cron 自動報告 `gate0-2026-10-07-2355.md`／`gate0-2026-10-08-0136.md`（數字一致））；MSAA＋Steam overlay **已確認關好**；剩＝**動態陰影 A/B**＋**純 CS2 一段（唔開 Minecraft）**（皆等 SK 錄）＋NVIDIA 驅動 3 項（Profile Inspector 待批）。LPI 0-15＝V-Cache CCD。
 - **HoloMat HUD 插件化**：計畫已寫 `.hermes\plans\2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task；**未開工，要 SK 批**；3 個待決：carousel vs 自由擺位／副螢幕／熱重載）。
 - **新 session 自動讀 handoff＝已上線（2026-10-04）**：`hooks.pre_llm_call` → `agent-hooks\session_brief.py`，每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。
 - **求職線**：已入最後階段（panel discussion 下星期）；教練通話逐字稿＋摘要＝`Documents\MS_DCT_Prep\records\教練通話-20261007-1052-*`（**內幕只留該處，本檔唔寫細節**）。
@@ -23,11 +23,20 @@
   - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
   - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
   - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④（10-07 SK「no」＝唔做）TRCC 自動關 ⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧（10-07 SK「ignore」）DJ2 郁動掉幀＝Litematica：**等 SK 遇到先講**，Hermes 唔主動追｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 0（watcher 等 SK 今晚開 game）
-- **下一步（優先序）**：① 等 SK 今晚開 CS2 → watcher 自動跑閘 0 ② CS2 LPI 16-31／MSAA 4X→2X＋關 Steam overlay ③ **#9／#5 等新 mic** ④ HoloMat 3 個設計問題（等 SK）⑤ PR #13 將來 review＋merge
+- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④（10-07 SK「no」＝唔做）TRCC 自動關 ⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧（10-07 SK「ignore」）DJ2 郁動掉幀＝Litematica：**等 SK 遇到先講**，Hermes 唔主動追｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 1（動態陰影 A/B 等 SK 錄）；promo 宣傳片 Round-2 review；朋友求職個案（等朋友答 5 條，報告只留本機 `Documents\job-check\`）
+- **下一步（優先序）**：① promo 宣傳片 Round-2 review（Hermes 可自跑；plan v3 已寫）② NVIDIA Profile Inspector 先做第三方 review（唔裝）③ 朋友求職個案（等朋友答 5 條）④ CS2 閘 1＝動態陰影 A/B（等 SK 錄）⑤ HoloMat 3 條設計問題（等 SK）⑥ PR #13 將來 review＋merge ⑦ #9／#5 等新 mic
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-07 深夜 → 10-08 凌晨（Discord；朋友求職個案風險調查、CS2 閘 0 baseline＋設定審計、promo plan v3）
+- **朋友求職個案（第三方）風險調查**：3 份檔存本機 `Documents\job-check\`（風險評估／查詢稿／新片分析）。**本檔唔寫公司名同行內細節**（本 repo＝public）。
+- **新片＝CS2 6:12＋語音對話（關於見工）**，非遊戲片；ASR 重點：兩位朋友分開見、冇交個人資料、冇簽任何文件 → `job-check\2026-10-07-新片分析-CS2對話.md`。
+- **CS2 閘 0 完成（FrameView 4 次 capture，共 ~70 分鐘）**：主 baseline（62.7 分鐘、2,055,058 frames）＝**中位 650 FPS／平均 583／1% low 235／GPU 81%／CPU 15%（最忙 thread 67%，冇飽和）**；遊戲中 <60 FPS 只 0.03% → 判斷＝**GPU 樽頸但未頂**。**⚠️ 全部錄影期間 Minecraft（javaw.exe）同開** → 數字係全機數，要純 CS2 基準就要另錄一段唔開 Minecraft。報告（正本）`Documents\PC_Troubleshoot\cs2-perf\BASELINE-2026-10-07-frameview.md`＋cron 自動報告 `gate0-2026-10-07-2355.md`／`gate0-2026-10-08-0136.md`（數字一致）。
+- **⚠️ 教訓（已入報告）**：`cs2_video.txt` 唔等於 live 值（09-27 舊檔寫 MSAA 4×，實際 SK 遊戲內已關）→ 要 SK 截圖／遊戲退出後才核。
+- **CS2 設定審計（唯讀）**：MSAA 已關、Steam overlay 已關（SK 確認）；剩低大項＝**動態陰影「全部」**；Windows 側＝HAGS 開／GameDVR 關／MPO 停用／電源高效能／cs2 GPU 偏好高效能／VBS 未見啟用。
+- **NVIDIA 驅動 per-app 3D 設定未核**：存於 `nvdrsdb0.bin`（binary）→ 要 NVIDIA Profile Inspector（未裝，待 SK 批）。
+- **promo 宣傳片**：計畫 v3 已寫（Round 1 review 比分 3:7 → 已逐條修正：背景 pack 世代、錄影工具、觀眾語言、驗收定義）；`super_minecraft_AI_player\docs\promo\PROMO_PLAN-v3-2026-10-07.md`；**Round 2 review 未跑**。
 
 ## 2026-10-07 16:4x（Discord；主線待辦重整 ＋ Unlight side quest 研究存檔）
 - **SK 決定**：TRCC「開 game 自動關」＝**唔做**；DJ2 Litematica 掉幀＝**唔追**（SK 遇到先講）。
