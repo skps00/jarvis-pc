@@ -59,6 +59,21 @@
 ### D5. 出錯唔可以拖死 HUD
 單個 app 讀唔到／語法錯／mount throw → 只跳過該 app ＋ 寫 `%APPDATA%\Jarvis\app_error.log`（帶 app id），HUD 照行。
 
+### D6. 版面模式（SK 2026-10-08：兩者都要，可切換）
+- 預設 **carousel**（一條固定 band，app 自動排隊，零重疊）。
+- `app.json` 可寫 `x`／`y`（自由擺位）；HUD 設定有 **「自動排列 / 自由擺位」** 單選（存 settings，即時生效，唔使重啟）。
+- 自由擺位下仍要**重疊檢查**（SK 硬要求）：新 app 撞位 → 自動讓位（落／右搵空位）＋寫 log；**唔准靜默重疊**。
+
+### D7. 螢幕（SK 2026-10-08：v1 主螢幕 only，v2 兩邊）
+- v1：`app.json` `monitor` 只認 `"primary"`（唔寫＝primary）；其他值 → log 一行跳過。
+- v2：多螢幕（要處理副螢幕 1080×1920 **直向** 同橫向 HUD layout 嘅衝突＋DPI）。
+
+### D8. 熱重載（研究見 §8；建議：v1 手動 reload ＋ dev-only watcher）
+- **默認（生產）**：加／改 app 之後重啟 HUD，或者撳設定面板一粒 **「重新載入 apps」**。
+- **dev-only watcher**（`JARVIS_APPS_WATCH=1`，業界一致做法＝只喺 dev 開）：`fs.watch(apps 目錄)` → **debounce ~700 ms** → 舊 instance `unmount()` → 重讀 `app.js` → `executeJavaScript` 重注入 → `register()`。
+- **fail-loud**：unmount 冇做／重掛 throw → 寫 `app_error.log`（app id ＋ 原因），唔准靜默。
+- 明文：熱重載**唔係沙盒**；widget 自己有責任 `unmount()` 清 listener／interval，否則只會不斷疊。
+
 ## 4. Tasks（bite-sized；每步都要可驗）
 
 **Task 0：寫一份最小 app 做樣板**
@@ -66,7 +81,7 @@
 - 驗證：檔案存在 + `node --check hud/apps/hw-ring/app.js`
 
 **Task 1：main 側 registry（掃目錄 + 讀 manifest）**
-- Modify: `hud/main.js`（新區塊，唔好掂現有 4 頁邏輯）
+- Modify: `hud/main.js`（新區塊，唔好掂現有 4 頁邏輯）；另加 D6 版面模式切換 ＋ D8「重新載入 apps」掣（v1 要做，唔靠重啟）
 - 新增 `resolveAppsDir()`（D1 順序）、`loadAppManifests()`（讀 `app.json`，壞 JSON → 跳過 + log）
 - 驗證：`node --check hud/main.js`；起 dev instance（`JARVIS_OPEN_HOME=1`）→ console 印出掃到幾個 app
 
@@ -104,10 +119,10 @@
 1. **安全（最大）**：任何寫得入 `apps\` 目錄嘅檔＝可執行代碼（同 Obsidian／VS Code 同級信任模型）。v1 接受，但要明文寫低；v2 可換 iframe 沙盒（D3-b）。
 2. **executeJavaScript 唔受 CSP 限制**：方便但等於繞過一層保護；如果將來 HUD 會載 remote content，就要改用 D3-b。
 3. **效能**：HUD 已經係全屏透明 overlay；widget 要用 transform/opacity-only、`pointer-events:none`（SK 2026-09-01 規則：**視覺一定要綁真數據，唔准純裝飾**）。
-4. **未決定（要 SK 答）**：
-   - widget 係唔係要 carousel 形式（照影片）？定係自由擺位（x/y 由 `app.json` 指定）？
-   - app 顯示位置：HUD 主螢幕 only？定係可以指定副螢幕？
-   - 要唔要 v1 就做「熱重載」（改檔即時重掛）？定係要重啟 HUD？
+4. **已定（SK 2026-10-08 答）**（原文三條待決如下，答案見後）：
+   - 原問：carousel（照影片）定自由擺位（x/y 由 `app.json`）？→ **兩者都要，用戶可切換**（SK：「both, user can switch it」）＝ D6。
+   - 原問：HUD 主螢幕 only，抑或可以指定副螢幕？→ **v1 只主螢幕，「兩邊都要」做 v2**（SK：「both, we can done it in v2」）＝ D7。
+   - 原問：v1 要唔要熱重載？→ 先答「**how other work?**」＝ 業界研究（§8）＋ D8 建議。
 5. **範圍控制**：唔改現有 4 頁、唔加第三方依賴、唔抄影片 UI（REMAINING_WORK 邊界）。
 
 ## 7. Non-goals（v1 唔做）
@@ -116,3 +131,22 @@
 - 唔做權限 UI（只用 `app.json` 聲明 + 擋）。
 - 唔做跨機同步。
 - 唔改動 voice／mic 線（HOLD 中）。
+
+
+---
+
+## 8. 業界研究：插件「熱重載」點做（SK 2026-10-08「how other work?」；Hermes 同日查，附一手來源）
+
+| 產品 | 做法 | 出處 |
+|---|---|---|
+| **Obsidian** | Plugin lifecycle＝`onload()`／`onunload()`；官方明文：disable 時**必須喺 `onunload()` 釋放資源**，否則 app 會變不穩定。第三方 `pjeby/hot-reload`（**972★、ISC、未封存、2026-07 仍有更新**）＝ **watch `main.js`／`styles.css` → debounce ~0.75 s → disable → enable**，**只對**含 `.git` 或 `.hotreload` marker 嘅 plugin 目錄生效（＝dev-only gate）。手動路：`app.plugins.disablePlugin(id)` → `enablePlugin(id)`。 | docs.obsidian.md「Anatomy of a plugin」；github.com/pjeby/hot-reload；forum.obsidian.md/t/12185 |
+| **VS Code** | 擴展**冇** hot reload：改完要人手 `Developer: Reload Window`／重啟 Extension Host；社群要求自動化嘅 feature request **2023 開到今日仍然 open**（作者試過 chokidar，結論＝reload 只能人手觸發）。 | github.com/microsoft/vscode#190917（open） |
+| **Electron（一般 app）** | 內建**冇** hot reload；dev-only 用 `electron-reload`／`electron-reloader`（**586★、MIT、未封存、2026-10-07 仍有 push**；renderer 改＝reload 頁、main 改＝重啟 app）；現代做法＝`electron-vite`（Vite HMR）。 | geeksforgeeks「Hot Reload in ElectronJS」；github.com/sindresorhus/electron-reloader |
+| **Chrome extension** | `chrome.runtime.reload()`（等同人手撳「重新載入」）。 | Chrome extension docs |
+
+**三個共識（借得嘅）**：
+1. **gate 落 dev**：Obsidian 要 `.hotreload`／`.git`；Electron reloader 要 `NODE_ENV=development` ⇒ 生產版唔會偷偷熱重載。
+2. **重載 ≠ 只重新執行**：要 `onunload()` 清乾淨，否則疊 listener（同 `Jarvis.register({mount, unmount, tick})` 吻合）。
+3. **debounce 寫檔**：0.7–1 秒，避免寫到一半就掛。
+
+→ **建議**：v1 手動 reload（＋一粒掣）＋ dev-only watcher（`JARVIS_APPS_WATCH=1`）；**唔做**生產版自動熱重載（成本高、風險＝疊 listener，換來只係開發方便）。
