@@ -1,0 +1,8 @@
+{
+  "id": "hw-ring",
+  "name": "負載環",
+  "icon": "◎",
+  "api": ["sensors", "log"],
+  "size": [220, 160],
+  "monitor": "primary"
+}

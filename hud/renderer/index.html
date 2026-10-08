@@ -502,6 +502,26 @@
     pointer-events: none;
   }
 
+  /* HoloMat H1: plugin app cards (registry-generated; do not overlap existing widgets) */
+  #jarvis-apps-root {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 8;
+  }
+  .jarvis-app-card {
+    position: absolute;
+    pointer-events: none;
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 170, 248, 0.35);
+    background: rgba(2, 10, 20, 0.55);
+    box-shadow: 0 0 18px rgba(0, 170, 248, 0.12);
+    color: var(--white);
+    overflow: hidden;
+  }
+  .jarvis-app-card .p-title {
+    font-size: 11px; letter-spacing: 2px; color: var(--blue); margin-bottom: 6px;
+  }
+
 </style>
 </head>
 <body>
@@ -626,7 +646,8 @@
     <div id="replyText">系統正常。有什麼吩咐，先生？</div>
   </div>
 
-
+  <!-- HoloMat H1: app cards mount here (registry injects; do not edit existing elements) -->
+  <div id="jarvis-apps-root" aria-hidden="true"></div>
 
 <script>
   // ==== 背景數據流（Iron Man 風格偽數據，低透明度）====

@@ -53,3 +53,135 @@ contextBridge.exposeInMainWorld('jarvisHud', {
     ipcRenderer.on('hud:interactive', (_e, interactive) => cb(interactive));
   },
 });
+
+// ---- HoloMat H1: Jarvis app API (D4 whitelist) ----
+const _appRegistry = new Map();
+let _layouts = {};
+let _tickTimer = null;
+
+function _ensureTickLoop() {
+  if (_tickTimer) return;
+  _tickTimer = setInterval(() => {
+    _appRegistry.forEach((spec) => {
+      if (typeof spec.tick !== 'function') return;
+      try {
+        const r = spec.tick();
+        if (r && typeof r.catch === 'function') r.catch(() => {});
+      } catch (_) { /* mount isolation */ }
+    });
+  }, 2000);
+}
+
+function _deny(appId, name) {
+  const msg = 'api denied: ' + name + ' (not in app.json api)';
+  console.warn('[Jarvis]', appId, msg);
+  ipcRenderer.send('jarvis:app-error', { id: appId, error: msg });
+  return Promise.reject(new Error(msg));
+}
+
+function _gate(appId, declared, name) {
+  if (name === 'register') return true;
+  const list = Array.isArray(declared) ? declared : [];
+  return list.indexOf(name) !== -1;
+}
+
+function _mountCard(spec, layout) {
+  const id = spec && spec.id;
+  if (!id) return;
+  const root = document.getElementById('jarvis-apps-root');
+  if (!root) return;
+  let el = document.getElementById('jarvis-app-' + id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'jarvis-app-' + id;
+    el.className = 'jarvis-app-card';
+    el.setAttribute('data-app-id', id);
+    root.appendChild(el);
+  }
+  if (layout) {
+    el.style.left = (layout.x || 0) + 'px';
+    el.style.top = (layout.y || 0) + 'px';
+    el.style.width = (layout.w || 220) + 'px';
+    el.style.height = (layout.h || 160) + 'px';
+  }
+  const prev = _appRegistry.get(id);
+  if (prev && typeof prev.unmount === 'function') {
+    try { prev.unmount(); } catch (e) {
+      ipcRenderer.send('jarvis:app-error', { id: id, error: 'unmount: ' + (e && e.message ? e.message : e) });
+    }
+  }
+  try {
+    if (typeof spec.mount === 'function') spec.mount(el);
+  } catch (e) {
+    ipcRenderer.send('jarvis:app-error', { id: id, error: 'mount: ' + (e && e.message ? e.message : e) });
+    return;
+  }
+  _appRegistry.set(id, spec);
+  _ensureTickLoop();
+}
+
+function makeJarvisApi(appId, declared) {
+  const id = appId || '?';
+  const api = declared || [];
+  return {
+    register: (spec) => {
+      const s = Object.assign({}, spec || {}, { id: (spec && spec.id) || id });
+      const layout = _layouts[s.id];
+      _mountCard(s, layout);
+    },
+    sensors: () => {
+      if (!_gate(id, api, 'sensors')) return _deny(id, 'sensors');
+      return ipcRenderer.invoke('jarvis:sensors');
+    },
+    speak: (text) => {
+      if (!_gate(id, api, 'speak')) return _deny(id, 'speak');
+      return ipcRenderer.invoke('jarvis:speak', String(text || ''));
+    },
+    alerts: () => {
+      if (!_gate(id, api, 'alerts')) return _deny(id, 'alerts');
+      return ipcRenderer.invoke('jarvis:alerts');
+    },
+    media: () => {
+      if (!_gate(id, api, 'media')) return _deny(id, 'media');
+      return ipcRenderer.invoke('jarvis:media');
+    },
+    settings: (name) => {
+      if (!_gate(id, api, 'settings')) return _deny(id, 'settings');
+      return ipcRenderer.invoke('jarvis:settings', String(name || ''));
+    },
+    log: (msg) => {
+      if (!_gate(id, api, 'log')) return _deny(id, 'log');
+      return ipcRenderer.invoke('jarvis:log', { id: id, msg: String(msg || '') });
+    },
+  };
+}
+
+contextBridge.exposeInMainWorld('Jarvis', makeJarvisApi('_host', [
+  'sensors', 'speak', 'alerts', 'media', 'settings', 'log',
+]));
+contextBridge.exposeInMainWorld('jarvisBind', (appId, declared) => makeJarvisApi(appId, declared));
+
+ipcRenderer.on('jarvis:apps-layout', (_e, layouts) => {
+  _layouts = layouts || {};
+  Object.keys(_layouts).forEach((id) => {
+    const el = document.getElementById('jarvis-app-' + id);
+    const L = _layouts[id];
+    if (el && L) {
+      el.style.left = (L.x || 0) + 'px';
+      el.style.top = (L.y || 0) + 'px';
+      el.style.width = (L.w || 220) + 'px';
+      el.style.height = (L.h || 160) + 'px';
+    }
+  });
+});
+
+ipcRenderer.on('jarvis:apps-clear', () => {
+  _appRegistry.forEach((spec, id) => {
+    if (spec && typeof spec.unmount === 'function') {
+      try { spec.unmount(); } catch (_) {}
+    }
+    const el = document.getElementById('jarvis-app-' + id);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  });
+  _appRegistry.clear();
+});

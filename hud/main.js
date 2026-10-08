@@ -24,6 +24,7 @@ process.on('uncaughtException', e => {
 });
 const { execFile } = require('child_process');
 const path = require('path');
+const appsReg = require('./apps_registry');
 
 let win = null;
 let hwTimer = null;
@@ -499,6 +500,12 @@ function createWindow() {
   win.setIgnoreMouseEvents(true, { forward: true });
   win.webContents.setZoomFactor(1.0);  // 響應式 vw 設計，不需 zoom
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  // HoloMat H1: inject apps after HUD DOM ready (D3-a)
+  win.webContents.on('did-finish-load', () => {
+    loadAndInjectApps().catch((e) => {
+      try { appsReg.appendAppError('_hud', 'inject: ' + (e && e.message ? e.message : e)); } catch (_) {}
+    });
+  });
 }
 
 // ---- 硬體監控：每 2 秒跑 hw_monitor.py 推給 renderer ----
@@ -507,10 +514,160 @@ function pollHardware() {
     if (err || !stdout) return;
     try {
       const data = JSON.parse(stdout.trim().split('\n').pop());
+      lastHomeHw = data;
       if (win && !win.isDestroyed()) win.webContents.send('hud:hw', data);
       sendHome('hud:hw', data);
     } catch (e) { /* ignore parse noise */ }
   });
+}
+
+// ---- HoloMat H1: app registry (D1–D8) — 唔掂現有 4 頁邏輯 ----
+let appsLayoutMode = 'carousel';
+let appsWatchTimer = null;
+let appsWatcher = null;
+let appsInjected = [];
+
+function readHudAppsLayout() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SETTINGS_JSON, 'utf-8'));
+    const m = String(raw.hud_apps_layout || 'carousel').toLowerCase();
+    return m === 'free' ? 'free' : 'carousel';
+  } catch (e) {
+    return 'carousel';
+  }
+}
+
+function writeHudAppsLayout(mode) {
+  const m = mode === 'free' ? 'free' : 'carousel';
+  appsLayoutMode = m;
+  try {
+    let cur = {};
+    try { cur = JSON.parse(fs.readFileSync(SETTINGS_JSON, 'utf-8')); } catch (e2) {}
+    cur.hud_apps_layout = m;
+    fs.mkdirSync(path.dirname(SETTINGS_JSON), { recursive: true });
+    fs.writeFileSync(SETTINGS_JSON, JSON.stringify(cur, null, 2) + '\n', 'utf-8');
+  } catch (e) {
+    console.log('[apps] write layout fail:', e && e.message ? e.message : e);
+  }
+  return m;
+}
+
+function appsLog(msg) {
+  console.log(msg);
+  try {
+    const p = path.join(process.env.APPDATA || '', 'Jarvis', 'apps_registry.log');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.appendFileSync(p, new Date().toISOString() + ' ' + msg + '\n', 'utf8');
+  } catch (_) {}
+}
+
+/** Existing HUD widgets — layoutApps must avoid these (D6 / zero silent overlap). */
+const HUD_OCCUPIED_SELECTORS = [
+  '.stats', '.levels', '.panel.left', '.panel.right',
+  '.weather', '.greeting', '.clockblock',
+];
+
+async function readHudOccupiedRects() {
+  if (!win || win.isDestroyed()) return [];
+  try {
+    const sels = JSON.stringify(HUD_OCCUPIED_SELECTORS);
+    const rects = await win.webContents.executeJavaScript(
+      '(function(){var s=' + sels + ',o=[],i,el,r;'
+      + 'for(i=0;i<s.length;i++){el=document.querySelector(s[i]);if(!el)continue;'
+      + 'r=el.getBoundingClientRect();if(r.width<=0||r.height<=0)continue;'
+      + 'o.push({x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)});}'
+      + 'return o;})()',
+      true
+    );
+    return Array.isArray(rects) ? rects : [];
+  } catch (e) {
+    appsLog('[apps] occupied rects fail: ' + (e && e.message ? e.message : e));
+    return [];
+  }
+}
+
+async function loadAndInjectApps() {
+  if (!win || win.isDestroyed()) return { ok: false, count: 0 };
+  appsLayoutMode = readHudAppsLayout();
+  const dir = appsReg.resolveAppsDir({ repoDir: path.join(__dirname, 'apps') });
+  const manifests = appsReg.loadAppManifests(dir, appsLog);
+  const bounds = win.getBounds();
+  const occupied = await readHudOccupiedRects();
+  const placed = appsReg.layoutApps(manifests, appsLayoutMode, bounds, appsLog, occupied);
+  appsLog('[apps] dir=' + dir + ' count=' + placed.length + ' mode=' + appsLayoutMode
+    + ' occupied=' + occupied.length);
+
+  const layoutMap = {};
+  for (const m of placed) {
+    layoutMap[m.id] = { x: m.x, y: m.y, w: m.w, h: m.h, name: m.name, icon: m.icon };
+  }
+  try {
+    win.webContents.send('jarvis:apps-clear');
+    win.webContents.send('jarvis:apps-layout', layoutMap);
+  } catch (e) {}
+
+  appsInjected = [];
+  for (const m of placed) {
+    try {
+      if (!fs.existsSync(m.jsPath)) {
+        // static card only — still create shell via empty register
+        const js = '(function(){var J=jarvisBind(' + JSON.stringify(m.id) + ',' + JSON.stringify(m.api) + ');'
+          + 'J.register({id:' + JSON.stringify(m.id) + ',mount:function(el){el.innerHTML='
+          + JSON.stringify('<div class="p-title">' + (m.icon || '') + ' ' + (m.name || m.id) + '</div>')
+          + ';}});})();';
+        await win.webContents.executeJavaScript(js, true);
+        appsInjected.push(m.id);
+        continue;
+      }
+      const src = appsReg.readAppJs(m.jsPath);
+      if (src == null) {
+        appsReg.appendAppError(m.id, 'app.js unreadable');
+        appsLog('[apps] skip ' + m.id + ': app.js unreadable');
+        continue;
+      }
+      const wrapped = '(function(){\n'
+        + 'var Jarvis=jarvisBind(' + JSON.stringify(m.id) + ',' + JSON.stringify(m.api) + ');\n'
+        + src + '\n'
+        + 'if(typeof register==="function"){register(Jarvis);}\n'
+        + '})();';
+      try {
+        await win.webContents.executeJavaScript(wrapped, true);
+        appsInjected.push(m.id);
+      } catch (e) {
+        appsReg.appendAppError(m.id, 'inject/syntax: ' + (e && e.message ? e.message : e));
+        appsLog('[apps] skip ' + m.id + ': ' + (e && e.message ? e.message : e));
+      }
+    } catch (e) {
+      appsReg.appendAppError(m.id, String(e && e.message ? e.message : e));
+      appsLog('[apps] skip ' + m.id + ': ' + (e && e.message ? e.message : e));
+    }
+  }
+  return { ok: true, count: appsInjected.length, ids: appsInjected.slice(), mode: appsLayoutMode, dir: dir };
+}
+
+function applyAppsLayoutMode(mode) {
+  writeHudAppsLayout(mode);
+  return loadAndInjectApps();
+}
+
+function startAppsWatcher() {
+  if (process.env.JARVIS_APPS_WATCH !== '1') return;
+  if (appsWatcher) return;
+  const dir = appsReg.resolveAppsDir({ repoDir: path.join(__dirname, 'apps') });
+  try {
+    if (!fs.existsSync(dir)) return;
+    appsWatcher = fs.watch(dir, { recursive: true }, () => {
+      if (appsWatchTimer) clearTimeout(appsWatchTimer);
+      appsWatchTimer = setTimeout(() => {
+        appsWatchTimer = null;
+        appsLog('[apps] watch reload');
+        loadAndInjectApps().catch(() => {});
+      }, 700);
+    });
+    appsLog('[apps] watcher on ' + dir);
+  } catch (e) {
+    appsLog('[apps] watcher fail: ' + (e && e.message ? e.message : e));
+  }
 }
 
 // ---- IPC ----
@@ -682,6 +839,10 @@ function clampSettingsPatch(obj) {
   if ('mage_enabled' in out) out.mage_enabled = !!out.mage_enabled;
   if ('vc_fail_closed' in out) out.vc_fail_closed = !!out.vc_fail_closed;
   if ('discord_voice_out' in out) out.discord_voice_out = !!out.discord_voice_out;
+  if ('hud_apps_layout' in out) {
+    const m = String(out.hud_apps_layout || 'carousel').toLowerCase();
+    out.hud_apps_layout = m === 'free' ? 'free' : 'carousel';
+  }
   return out;
 }
 
@@ -750,6 +911,63 @@ ipcMain.handle('settings:test-alert', () => new Promise((resolve) => {
   });
 }));
 
+// ---- HoloMat H1: Jarvis app IPC (檔尾集中區) ----
+ipcMain.on('jarvis:app-error', (_e, payload) => {
+  const id = payload && payload.id ? payload.id : '?';
+  const err = payload && payload.error ? payload.error : 'unknown';
+  appsReg.appendAppError(id, err);
+  appsLog('[apps] error ' + id + ': ' + err);
+});
+ipcMain.handle('jarvis:sensors', () => lastHomeHw || {});
+ipcMain.handle('jarvis:speak', (_e, text) => new Promise((resolve) => {
+  const safe = JSON.stringify(String(text || ''));
+  execFile(JARVIS_PY, ['-c', 'from jarvis.mouth import speak; speak(' + safe + ', blocking=True)'], {
+    windowsHide: true,
+    timeout: 30000,
+    env: { ...process.env, PYTHONPATH: JARVIS_PC_DIR + '\\src' },
+  }, (err) => {
+    resolve(err ? { ok: false, error: String(err.message || err) } : { ok: true });
+  });
+}));
+ipcMain.handle('jarvis:alerts', () => {
+  try {
+    const q = path.join(process.env.APPDATA || '', 'Jarvis', 'alerts', 'queue.jsonl');
+    if (!fs.existsSync(q)) return { ok: true, lines: [] };
+    const lines = fs.readFileSync(q, 'utf8').split('\n').filter(Boolean).slice(-5);
+    return { ok: true, lines: lines };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+});
+ipcMain.handle('jarvis:media', () => ({ ok: true, queue: mediaQueue.length }));
+ipcMain.handle('jarvis:settings', (_e, name) => {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SETTINGS_JSON, 'utf-8'));
+    const k = String(name || '');
+    return { ok: true, key: k, value: k ? raw[k] : undefined };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+});
+ipcMain.handle('jarvis:log', (_e, payload) => {
+  const id = payload && payload.id ? payload.id : '?';
+  const msg = payload && payload.msg != null ? payload.msg : '';
+  appsLog('[app:' + id + '] ' + msg);
+  return { ok: true };
+});
+ipcMain.handle('apps:get-layout', () => ({ ok: true, mode: readHudAppsLayout() }));
+ipcMain.handle('apps:set-layout', async (_e, mode) => {
+  const r = await applyAppsLayoutMode(mode);
+  return r;
+});
+ipcMain.handle('apps:reload', async () => {
+  try {
+    return await loadAndInjectApps();
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+});
+
 // ---- 智慧穿透：main 輪詢滑鼠 vs 卡片位置 ----
 let hudRects = [];
 let hudDragging = false;
@@ -810,6 +1028,8 @@ if (gotLock) app.whenReady().then(() => {
   if (process.env.JARVIS_OPEN_HOME === '1') createHomeWindow();
   ensureSidecar();
   createTray();
+  appsLayoutMode = readHudAppsLayout();
+  startAppsWatcher();
   // debug entry points: JARVIS_OPEN_COMPANION=1 / JARVIS_OPEN_SETTINGS=1 / JARVIS_OPEN_HOME=1
   if (process.env.JARVIS_OPEN_COMPANION === '1') createCompanionWindow();
   if (process.env.JARVIS_OPEN_SETTINGS === '1') createSettingsWindow();

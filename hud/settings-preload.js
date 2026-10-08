@@ -9,5 +9,8 @@ contextBridge.exposeInMainWorld('settingsApi', {
   openHermes: () => ipcRenderer.invoke('settings:open-hermes'),
   probeHermes: () => ipcRenderer.invoke('settings:probe-hermes'),
   testAlert: () => ipcRenderer.invoke('settings:test-alert'),
+  getAppsLayout: () => ipcRenderer.invoke('apps:get-layout'),
+  setAppsLayout: (mode) => ipcRenderer.invoke('apps:set-layout', mode),
+  reloadApps: () => ipcRenderer.invoke('apps:reload'),
   close: () => ipcRenderer.send('settings:close'),
 });

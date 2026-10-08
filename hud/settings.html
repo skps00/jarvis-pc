@@ -284,6 +284,31 @@
       </details>
 
       <details class="settings-section">
+        <summary>HUD Apps</summary>
+        <div class="section-body">
+          <div class="field span2">
+            <label>版面模式</label>
+            <div class="check-row" style="gap:16px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                <input type="radio" name="hud_apps_layout" id="hud_apps_layout_carousel" value="carousel" checked>
+                自動排列 (carousel)
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                <input type="radio" name="hud_apps_layout" id="hud_apps_layout_free" value="free">
+                自由擺位
+              </label>
+            </div>
+          </div>
+          <div class="field span2">
+            <div class="btn-row">
+              <button type="button" class="btn" id="btnReloadApps">重新載入 apps</button>
+              <span class="hint-status" id="appsReloadStatus"></span>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings-section">
         <summary>提醒 (Alerts)</summary>
         <div class="section-body">
           <div class="field">
@@ -481,6 +506,7 @@
   const saveStatus = document.getElementById('saveStatus');
   const hermesStatus = document.getElementById('hermesStatus');
   const alertTestStatus = document.getElementById('alertTestStatus');
+  const appsReloadStatus = document.getElementById('appsReloadStatus');
 
   wakeSlider.addEventListener('input', () => {
     wakeVal.textContent = Number(wakeSlider.value).toFixed(2);
@@ -607,6 +633,12 @@
       document.getElementById('discord_voice_out').checked = !!s.discord_voice_out;
       document.getElementById('alertAppsSummary').value = buildAlertAppsSummary(s);
       setHint(alertTestStatus, '', '');
+      try {
+        const lay = await api.getAppsLayout();
+        const mode = (lay && lay.mode === 'free') ? 'free' : 'carousel';
+        document.getElementById('hud_apps_layout_carousel').checked = mode === 'carousel';
+        document.getElementById('hud_apps_layout_free').checked = mode === 'free';
+      } catch (e2) { /* ignore */ }
     } catch (e) {
       setStatus('載入失敗：' + e.message, 'err');
     }
@@ -746,6 +778,30 @@
       else setHint(alertTestStatus, '失敗：' + (res && res.error ? res.error : '未知'), 'err');
     } catch (e) {
       setHint(alertTestStatus, '錯誤：' + e.message, 'err');
+    }
+  });
+
+  async function applyAppsLayoutFromUi() {
+    const mode = document.getElementById('hud_apps_layout_free').checked ? 'free' : 'carousel';
+    setHint(appsReloadStatus, '套用版面…', '');
+    try {
+      const res = await api.setAppsLayout(mode);
+      if (res && res.ok !== false) setHint(appsReloadStatus, '版面已套用 (' + (res.count != null ? res.count : '?') + ')', 'ok');
+      else setHint(appsReloadStatus, '失敗', 'err');
+    } catch (e) {
+      setHint(appsReloadStatus, '錯誤：' + e.message, 'err');
+    }
+  }
+  document.getElementById('hud_apps_layout_carousel').addEventListener('change', applyAppsLayoutFromUi);
+  document.getElementById('hud_apps_layout_free').addEventListener('change', applyAppsLayoutFromUi);
+  document.getElementById('btnReloadApps').addEventListener('click', async () => {
+    setHint(appsReloadStatus, '重新載入中…', '');
+    try {
+      const res = await api.reloadApps();
+      if (res && res.ok) setHint(appsReloadStatus, '已載入 ' + (res.count || 0) + ' 個 app', 'ok');
+      else setHint(appsReloadStatus, '失敗：' + (res && res.error ? res.error : '未知'), 'err');
+    } catch (e) {
+      setHint(appsReloadStatus, '錯誤：' + e.message, 'err');
     }
   });
 
