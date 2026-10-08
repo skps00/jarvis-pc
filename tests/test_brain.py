@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -32,13 +33,23 @@ def _reg():
     return load_registry(ROOT / "config" / "profiles.example.yaml")
 
 
+@contextmanager
 def _isolated_settings(tmp: Path):
     """Point settings.json at a temp dir so AppData keys never leak into tests."""
-    return mock.patch.multiple(
-        settings_mod,
-        SETTINGS_DIR=tmp,
-        SETTINGS_PATH=tmp / "settings.json",
-    )
+    prev = os.environ.get("JARVIS_SETTINGS_DIR")
+    os.environ["JARVIS_SETTINGS_DIR"] = str(tmp)
+    try:
+        with mock.patch.multiple(
+            settings_mod,
+            SETTINGS_DIR=tmp,
+            SETTINGS_PATH=tmp / "settings.json",
+        ):
+            yield
+    finally:
+        if prev is None:
+            os.environ.pop("JARVIS_SETTINGS_DIR", None)
+        else:
+            os.environ["JARVIS_SETTINGS_DIR"] = prev
 
 
 def test_llm_configured_false_without_key():
@@ -300,10 +311,14 @@ def test_engine_ambiguous_brain_then_dry_run():
 
 
 def test_engine_query_with_mocked_llm():
-    with mock.patch("jarvis.engine.llm_configured", return_value=True):
-        with mock.patch("jarvis.brain._chat", return_value="用「開 Chrome」即可。"):
-            # answer_query calls _chat; also need llm_configured in dispatch
-            result = execute_utterance("怎樣開 Chrome？", repair_asr=False)
+    with mock.patch(
+        "jarvis.engine.load_settings",
+        return_value=SimpleNamespace(hermes_enabled=False),
+    ):
+        with mock.patch("jarvis.engine.llm_configured", return_value=True):
+            with mock.patch("jarvis.brain._chat", return_value="用「開 Chrome」即可。"):
+                # answer_query calls _chat; also need llm_configured in dispatch
+                result = execute_utterance("怎樣開 Chrome？", repair_asr=False)
     assert result.ok
     assert any("開 Chrome" in line for line in result.lines)
 

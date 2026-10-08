@@ -82,20 +82,40 @@ let sidecarRespawnTimer = null; // pending 5s exit respawn timer (cleared on sto
 let crashLoopNotified = false;  // notify once per crash-loop episode
 
 function sidecarRunning() {
-  // H3 (2026-08-29): HTTP /health (sidecar MCP has a real health endpoint) instead of bare TCP —
-  // anything listening on 8765 (stale MCP, wrong process) no longer counts as healthy.
+  // H3 (2026-08-29): HTTP /health (sidecar MCP has a real health endpoint) instead of bare TCP.
+  // 2026-09-23: also require the payload to be OUR sidecar — a bare 200 from any other
+  // listener on 8765 must not count as healthy.
   return new Promise((resolve) => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 1500);
+    let done = false;
+    const finish = (up) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(up);
+    };
     fetch('http://127.0.0.1:8765/health', { signal: ctrl.signal })
-      .then((r) => { clearTimeout(timer); resolve(r.ok); })
-      .catch(() => { clearTimeout(timer); resolve(false); });
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => finish(!!(body && body.ok === true && body.service === 'jarvis')))
+      .catch(() => finish(false));
   });
+}
+
+function scheduleSidecarRespawn() {
+  // Shared 5s retry path for exit + spawn error (ENOENT never emits exit).
+  if (sidecarStopping) return;
+  if (sidecarRespawnTimer) clearTimeout(sidecarRespawnTimer);
+  sidecarRespawnTimer = setTimeout(() => {
+    sidecarRespawnTimer = null;
+    sidecarRunning().then((up) => { if (!up) spawnSidecar(); });
+  }, 5000);
 }
 
 function spawnSidecar() {
   if (sidecarStopping) return;
-  if (sidecarProc && !sidecarProc.killed) return;
+  // exitCode===null = still alive; exited/failed child must not block respawn.
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) return;
   // Crash-loop rate limit: ≥3 spawns in 60s → back off 60s, notify once.
   const now = Date.now();
   sidecarRestartTimes = sidecarRestartTimes.filter((t) => now - t < 60000);
@@ -121,15 +141,25 @@ function spawnSidecar() {
   try { fs.closeSync(out); } catch (e) {}  // child dup'd the handle; parent must not leak FDs
   sidecarProc = child;
   sidecarRestartTimes.push(now);
+  child.on('error', (err) => {
+    // Measured (Node 24 / Electron 33 node 20.18.3): spawn ENOENT → pid=undefined,
+    // exitCode=-4058, killed=false, kill() returns false & emits no error; only 'error'+'close', NOT 'exit'.
+    // child 'error' also fires on kill()/IPC failure while process still alive — clear+respawn ONLY when
+    // spawn never succeeded (pid===undefined). Do NOT use err.syscall==='spawn': real value is "spawn <path>".
+    try {
+      fs.appendFileSync(
+        process.env.APPDATA + '\\Jarvis\\hud_error.log',
+        new Date().toISOString() + ' ' + (err && err.stack ? err.stack : String(err)) + '\n'
+      );
+    } catch (_) {}
+    if (child.pid !== undefined) return;
+    if (sidecarProc === child) sidecarProc = null;
+    scheduleSidecarRespawn();
+  });
   child.on('exit', (code, signal) => {
     // Identity-check: only clear our own ref (health-kill of a prior child must not wipe the new one).
     if (sidecarProc === child) sidecarProc = null;
-    if (sidecarStopping) return;
-    if (sidecarRespawnTimer) clearTimeout(sidecarRespawnTimer);
-    sidecarRespawnTimer = setTimeout(() => {
-      sidecarRespawnTimer = null;
-      sidecarRunning().then((up) => { if (!up) spawnSidecar(); });
-    }, 5000);
+    scheduleSidecarRespawn();
   });
 }
 
@@ -142,7 +172,11 @@ function startSidecarHealthCheck() {
       sidecarHealthFails += 1;
       if (sidecarHealthFails >= 3) {
         sidecarHealthFails = 0;
-        if (sidecarProc && !sidecarProc.killed) {
+        if (sidecarProc && sidecarProc.exitCode !== null) {
+          // Already dead — kill() is a no-op; clear + spawn directly.
+          sidecarProc = null;
+          spawnSidecar();
+        } else if (sidecarProc && !sidecarProc.killed) {
           // Let the exit handler own respawn (5s delay → port released, no bind race).
           try { sidecarProc.kill(); } catch (e) {}
         } else {
@@ -155,7 +189,8 @@ function startSidecarHealthCheck() {
 
 async function ensureSidecar() {
   startSidecarHealthCheck();
-  if (sidecarProc && !sidecarProc.killed) return;
+  // exitCode===null = still alive (failed spawn leaves killed=false + non-null exitCode).
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) return;
   const up = await sidecarRunning();
   if (up) return; // already running (watchdog/autostart)
   spawnSidecar();
@@ -165,7 +200,7 @@ function stopSidecar() {
   sidecarStopping = true;
   if (sidecarHealthTimer) { clearInterval(sidecarHealthTimer); sidecarHealthTimer = null; }
   if (sidecarRespawnTimer) { clearTimeout(sidecarRespawnTimer); sidecarRespawnTimer = null; }
-  if (sidecarProc && !sidecarProc.killed) {
+  if (sidecarProc && !sidecarProc.killed && sidecarProc.exitCode === null) {
     try { sidecarProc.kill(); } catch (e) {}
     sidecarProc = null;
   }
@@ -272,16 +307,28 @@ if (gotLock) {
 // 遊戲中自動隱藏（HUD 只桌面顯示）：每 5 秒查活動狀態
 const ACTIVITY_SCRIPT = path.join(process.env.LOCALAPPDATA || '', 'hermes', 'scripts', 'activity_monitor.py');
 let actTimer = null;
+const ACTIVITY_LOG_MAX_BYTES = 10 * 1024 * 1024;
+function appendActivityLog(text) {
+  const fs = require('fs');
+  const alog = path.join(require('os').tmpdir(), 'jarvis_hud_activity.log');
+  try {
+    if (fs.existsSync(alog) && fs.statSync(alog).size > ACTIVITY_LOG_MAX_BYTES) {
+      const bak = alog + '.1';
+      try { fs.rmSync(bak, { force: true }); } catch (e) {}
+      fs.renameSync(alog, bak);
+    }
+  } catch (e) { /* 輪替失敗唔可以影響 HUD */ }
+  try { fs.appendFileSync(alog, text); } catch (e) { /* 寫唔到都唔可以 throw */ }
+}
 function checkActivity() {
   execFile(PYTHON, [ACTIVITY_SCRIPT], { windowsHide: true, timeout: 6000, env: { ...process.env, PYTHONPATH: '' } }, (err, stdout) => {
-    const alog = path.join(require('os').tmpdir(), 'jarvis_hud_activity.log');
     try {
       // activity 檢查失敗 → 保守：唔郁 HUD 可見性（遊戲中唔會因為 check 失敗而彈 HUD）
-      if (err) { require('fs').appendFileSync(alog, new Date().toISOString() + ' ERR:' + err.message + '\n'); return; }
-      if (!stdout) { require('fs').appendFileSync(alog, new Date().toISOString() + ' NOOUT\n'); return; }
+      if (err) { appendActivityLog(new Date().toISOString() + ' ERR:' + err.message + '\n'); return; }
+      if (!stdout) { appendActivityLog(new Date().toISOString() + ' NOOUT\n'); return; }
       const line = stdout.trim().split('\n').pop();
       const data = JSON.parse(line);
-      require('fs').appendFileSync(alog, new Date().toISOString() + ' state=' + data.state + ' game=' + data.game + '\n');
+      appendActivityLog(new Date().toISOString() + ' state=' + data.state + ' game=' + data.game + '\n');
       const hidden = data.state === 'playing' || data.fullscreen === true;
       if (win && !win.isDestroyed() && win.isVisible() === hidden) {
         if (hidden) win.hide(); else win.show();
@@ -621,9 +668,11 @@ function clampSettingsPatch(obj) {
     out.tts_volume = Math.max(0.1, Math.min(3.0, v));
   }
   if ('alerts_mcp_port' in out) {
-    let v = parseInt(out.alerts_mcp_port, 10);
-    if (Number.isNaN(v)) v = 8765;
-    out.alerts_mcp_port = Math.max(1024, Math.min(65535, v));
+    // 2026-09-23: FROZEN at 8765. This port is hardcoded in six places (main.js health +
+    // settings:load/save, Hermes config.yaml jarvis-alerts MCP url, hermes
+    // scripts/jarvis_sidecar_health.py, skill swap_hud_version.ps1 health check) — changing
+    // it silently breaks them, so any patch value is forced back to 8765.
+    out.alerts_mcp_port = 8765;
   }
   if ('alert_gpu_poll_s' in out) {
     let v = parseFloat(out.alert_gpu_poll_s);

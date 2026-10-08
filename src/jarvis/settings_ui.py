@@ -26,8 +26,6 @@ from jarvis.settings import (
     LLM_PRESET_DEEPSEEK,
     LLM_PRESET_OLLAMA,
     PRESET_LABELS,
-    SETTINGS_DIR,
-    SETTINGS_PATH,
     Settings,
     apply_llm_preset,
     hotkey_preset_label,
@@ -37,6 +35,8 @@ from jarvis.settings import (
     preset_from_label,
     probe_connection,
     save_settings,
+    settings_dir,
+    settings_path,
 )
 
 if TYPE_CHECKING:
@@ -235,7 +235,7 @@ class SettingsWindow:
         btn.pack(fill=tk.X, padx=8, pady=(0, 8))
         tk.Label(
             btn,
-            text=f"存檔 → {SETTINGS_PATH}",
+            text=f"存檔 → {settings_path()}",
             fg="#666",
             font=("Segoe UI", 8),
         ).pack(side=tk.LEFT)
@@ -653,7 +653,7 @@ class SettingsWindow:
         tk.Button(
             paths,
             text="開設定資料夾",
-            command=lambda: self._open_path(SETTINGS_DIR),
+            command=lambda: self._open_path(settings_dir()),
         ).pack(side=tk.LEFT, padx=(0, 6))
         tk.Button(
             paths,
@@ -664,7 +664,7 @@ class SettingsWindow:
         self._hint(
             frm,
             5,
-            f"settings.json：{SETTINGS_PATH}\n"
+            f"settings.json：{settings_path()}\n"
             f"profiles：{DEFAULT_PROFILES_PATH}\n"
             "桌面捷徑 JARVIS.lnk → companion；對話用 Hermes。",
             cols=2,

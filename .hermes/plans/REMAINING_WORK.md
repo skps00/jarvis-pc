@@ -5,6 +5,40 @@
 
 ---
 
+## 現況 sync（2026-09-28 06:5x Hermes 親核）
+
+- **JARVIS 線**：HUD **0.4.13** 行緊 (09-28 06:52:06 重開機 → 06:53 自動起)；8765 `/health` = `ok:true, wake_on:false`；**Slice 1 四檔仍未 commit** (`hud/main.js` / `hud/settings.html` / `src/jarvis/settings.py` / `src/jarvis/shell_app.py`) → 等 SK 擇驗收窗口 1 / 2
+- **Git（09-28 06:5x 親核）**：jarvis-pc HEAD `6d8e50c` (`feature/hermes-alerts-mcp`)：**未 push 68**（比 remote 同名分支）、**未 merge 入 main 124**（比 `origin/main`）；MC repo `013e4ac` == `origin/main`（已 push、0 ahead），只餘 Slice 1b 四檔未 commit + 真機 A/B 未跑
+- **5090 Tier 1**：registry 四個值 (`OverlayTestMode=5` / `TdrDelay=20` / `TdrDdiDelay=30` / `HwSchMode=2`) **兩次重啟後仍在** → Tier 1 收貨；剩 驅動 / 固件 / BIOS 決定
+- **DCT 求職**：第一場 Mike **09-28 11:30–12:30**；Elena / Dhaval 09-29；Owen 09-30
+- **Hermes 側**：cron `jarvis-session-handoff` 09-28 06:53 正常跑；反方 reviewer R1 報告已喺 subagent session `20260927_231610_3d99d0` 搵返（11.3k 字）、尚未出三段式
+
+---
+
+## 現況 sync（2026-09-30 21:0x Hermes 親核）
+
+- **DCT 求職線**：四場面試全部完成（Mike 9/28、Elena＋Dhaval 9/29、**Owen 9/30 11:00＝最後一場**）；**冇下一輪**，下星期有 conclusion。逐字稿＋情報摘要 `Documents\MS_DCT_Prep\records\`。
+- **MayaCraft DJ2 客戶端（玩家支援）**：今日 Actinium 版收口＋裝 NeoFontRender 0.6.1／ModularUI 3.2.0-nfr.2、移走錯版 resource pack（改 f3）。**文檔（使用說明補節＋v1.3 zip 打包）交咗另一個 AI 處理** → Hermes 只剩**測試**。測試現況：16:11 起連續玩到 19:10、**零 crash report**（最後一個 crash 係 10:13:11，喺換版之前）；等 SK 眼睇字體／GUI／光影三項。
+- **JARVIS 線**：Slice 1 四檔仍未 commit（`hud/main.js`／`hud/settings.html`／`src/jarvis/settings.py`／`src/jarvis/shell_app.py`）、等 SK 揀驗收窗口；jarvis-pc `feature/hermes-alerts-mcp` HEAD `26701c4`（未 push 95／未 merge 151）。
+- **packai**：HEAD `013e4ac` 已 push；Slice 1b 四檔未 commit ＋ 真機 A/B 未跑。
+- **5090 Tier 1**：registry `OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；watchdog cron 無新事件。
+
+## 現況 sync（2026-10-01 03:4x Hermes 親核）
+
+- **MayaCraft DJ2 客戶端**：聊天欄紅字「single player mode」根因查到（Cleanroom 聊天建議系統 → TP `checkPermission`；每次問＝2 行｛本地＋伺服器｝）；修法三選項等 SK 揀（詳 HANDOFF 10-01 section）。
+- **JARVIS 線**：Slice 1 四檔仍未 commit；`feature/hermes-alerts-mcp` HEAD `aa7fe67`（未 push 99／未 merge 152，03:1x 親核）。
+
+---
+
+## 現況 sync（2026-09-20 06:5x）
+
+- **JARVIS 線**：HUD 0.4.13 已 build／部署；`hud/main.js`＋`hud/package.json` 未 commit（等 SK 真機驗收）；語音／mic 線 **HOLD**（等新 mic）；jarvis-pc HEAD `feature/hermes-alerts-mcp` ahead 42 未 push。
+- **MC（packai）線**：詳 MC repo `.hermes/plans/HANDOFF.md`——v6 取得途徑已 push（`344e805`）；真 instance jar 仍 `06b5b129a114`（09-18），落後三批 code；73 檔未 commit（`mod_version` 0.2.3）；P1（全部資料：結構／挖礦取得，生態群系，礦物分佈，維度） 等 SK 定次序。
+- **Hermes 側**：cron `jarvis-session-handoff` 09-20 05:45 FAILED（API 429） → 零寫入，已手動補。
+- ⚠️ 以下 **2026-09-11 之前** 嘅 open item 清單多數已過時（例：push，PR #12，conftest APPDATA 隔離，MC 歸檔），唔准照抄落報告，要逐條 live 核。
+
+---
+
 ## H. 2026-08-29 Fragility Review（pass2）——三個月後最脆弱位 ⏳
 
 > 完整報告：`.hermes/plans/2026-08-29-fragility-review-pass2.md`（cursor review，10 findings）
@@ -276,3 +310,57 @@
 - 🆕 **未修新問題（09-13 05:4x cron 實錘）**：`tests/test_alert_piper_gate.py` 冇 APPDATA 隔離（`tests/` 亦冇 `conftest.py`）→ 跑 `pytest tests/` 會寫真檔 `%APPDATA%\Jarvis\voice_status.json`（`wake_on:false`／`status:"ready"`），HUD／MCP 顯示「聽候＝關」直到 sidecar 再寫；亦令 sidecar-health cron 00:51 誤報 fingerprint 變動。建議一行級 fix：`tests/conftest.py` autouse fixture 隔離 APPDATA（等 SK go）。
 - ⚠️ **等 SK**：① 真機驗收（4b，下次 session）② PR #12 merge 與否 ③ `.hermes/plans/self-evol-SUGGESTIONS.md` 3 行 commit ④ `detect_trend` sustained-high 規則（低優先）⑤ 語音 ASR 線＝**d（唔理住）**；另：新 mic（G 人手實測）、LHM autostart（等真 reboot）、stt_stats／clarify_stats ≥7 日數據、MC 兜底 FACT 測試（等 SK 關 game）、AI_Studio Phase 1 spike 時段。
 - 📌 **觀察（等 SK 判斷）**：窗口內（09-12 06:00–09-13 05:45）有 **75 個**語音 session 同一條問題「開啟 Chrome 瀏覽器」；每次 JARVIS 都因前景＝遊戲／使用中而只教 SK 自己開、冇代開 → 係唔係要支援「背景代開（唔搶焦點）」？
+
+
+## 現況 sync（2026-09-14 05:45 cron 核實）
+
+> 窗口 = 2026-09-13 06:00 → 09-14 05:45。逐個 session 核對：`20260913_075143_867d97`（09-13 07:51–13:0x：HANDOFF 自動化規則、Chrome 代開 6 種開法實測）、`20260913_131053_a4624cb8`（09-13 13:10 → 09-14 05:14 主 Discord session）、2 個 `jarvis-*` 語音 session（21:56／22:45 garble）、多個 review／subagent session。**JARVIS ONE 本體（sidecar／hud）本窗口零 code 改動**——工作全部喺 packai repo 同 plans docs。
+
+- ✅ **HANDOFF 自動化定案（09-13）**：頂部 STATE 五元素＋逐日 index；新 section 一定加喺 `STATE:END` **之下**；cron `jarvis-session-handoff` 每朝 05:45 跑；只准 `git add .hermes/plans/`（**禁 `-A`**）；`check_handoff_size.py` 做機械檢查。
+- **Git**：jarvis-pc `feature/hermes-alerts-mcp` tree clean、**ahead 28**（vs origin/feature）／**ahead 37**（vs origin/main）未 push；packai `main` **ahead 3**（`f0ac745`／`8d25433`／`9f9baaf`）未 push。PR #12 早前已 merge（`96be515`）。
+- **MC 線（packai）今日進度**：✅ 真機部署 jar sha256 `a4e689de…`（09-13 20:06）＋smoke **4/4**（T0 洩漏／JEI 全 id／Tetra 分流／footer 標籤）；🆕 **答案版面修正 plan v4**（`docs/plans/2026-09-14-packai-reply-layout-plan.md`）＝K1b 卡歸屬／K2 貼位／K3 單件模式（`modularToolSingleItem` 預設 ON）／R1 標題去重收窄／R2 物品名獨立行／R4-b 材料卡／R5 真 output stack 判定；兩輪反方 **R1／R2 都 7:3** → 依契約停手問 SK → SK 揀 a（先做 trace 再定 R5）；**Task S（cursor-agent）05:14 派出、05:30 仍跑緊 → 未 build／未驗**。
+- **Alert 線**：`shadow` 跑緊（8765 `/health` ok、`wake_on:true`、ctypes error 0）；一次性 cron `4695c33b8bdf` **09-15 03:15** 出三情境驗收清單；`enforce` 未做（等樣本＋真機驗收）。
+- **語音線**：ASR＝本地 Fun-ASR-Nano、**HOLD 等新 mic**（同 wake／聲紋／AEC 一齊排）；09-13 晚 2 句粵語 garble（serve.log `[ear] raw=` 實錘 21:56／22:45）＝短句粵語系統性弱，等新 mic 一齊處理。
+- ⚠️ **等 SK**：① push 兩 repo（jarvis-pc 28／packai 3 個 commit）② Task S 驗完後：SK 問一次單件 Tetra（`tetra:modular_sword`）產 trace，才定 R5／開工版面修正 ③ alert `enforce`（09-15 樣本齊）④ AI_Studio Phase 1、架構 A/B/C＝hold。
+
+---
+
+## 由 HANDOFF 搬入（2026-09-13）
+
+
+> **2026-09-12 更新（cron 核實）——現行 open items（呢條取代下面嗰條）**：① MC：加 raw-reply log（分辨「AI 照抄 payload」vs「程式貼 facts 兜底」，等 go）；② MC：commit + push 09-11 DSML scrub fix（4 檔，已驗、review SHIP，等 go）；③ jarvis-pc **61 個未 push commit** 要唔要 push（等 go）；④ **語音**：sensevoice 短句粵語**全日 6 句 garble 實錘** → ①打字重講 ②MiMo 雲端 ASR（key 已配）③本地 Fun-ASR-Nano（等揀）；⑤ `self-evol-SUGGESTIONS.md` 3 行要唔要 commit（等 go）；⑥ **AI_Studio Phase 1 spike 時段**（spec 已 staged，等揀）；⑦ 其餘不變：G 人手實測等新 mic（Settings tab 可隨時）、LHM autostart 等真 reboot、stt_stats／clarify_stats ≥7 日數據、GPU TDR 唔郁。
+>
+> **2026-09-11 更新（cron 核實）——現行 open items**：① 等 SK 一句 push（jarvis-pc 3 docs + MC `1ba048f`）；② MC Arch-3/3a 真機煙測（SK restart game）；③ AI_Studio：等 SK 答 power 策略 + spike 時段 → Phase 1 spike；④ GPU TDR = SK 決定唔郁（記錄完，反轉條件喺頂部）；⑤ G 人手實測等新 mic（Settings tab 可隨時）；⑥ stt_stats／clarify_stats 等數據 ≥7 日；⑦ LHM 開機 autostart 等真 reboot。**下面 2026-08-31 版清單保留做歷史**（多數已 ✅，細節睇各日期 section）：
+
+- ⏳ **SK 實測：戴 headset 試 wake**（2026-08-31 voice 診斷後）——onnxruntime 已修 + stt_preload 已開（2026-09-01）+ sidecar 已重啟；**而家 rms=0.000 = headset 休眠**；戴返試「hey jarvis」；如果戴住都唔 fire → 調低 wake_threshold（而家 0.75 可能偏高）
+- ✅ **刪舊 jarvis-hud 目錄**（2026-09-01 完成）：JARVIS 已重啟切換新位置 + 確認冇 process 由舊路徑 load → 已刪（釋放 765MB）
+- ⏳ **Electron auto-respawn 失效原因**（8/29 實測死咗冇 respawn；8/31 兩次都 respawn 成功）——下次再死要查 main.js health-check
+- ✅ **MCP tools restart**：已完成（jarvis_clarify_gate / jarvis_autonomy_state live）
+- ✅ **prompt_pipeline Optimizer**：已完成（prompt_optimizer.py）
+- ✅ **L1a sandbox**：已決定 Docker Desktop + sandbox.py 完成（sandbox_ready 仲係 False——要真開 Docker 先 promote）
+- ✅ **clarify precision consumer**：已完成（clarify_stats.py）——剩「接 cron 等數據夠」
+- ✅ **D2 Minecraft ready alert**：已完成（_start_game_alert_watch + game_started 事件；capitalize 微調 2026-08-31）
+- ✅ **E2 STT 準確度追蹤**：已完成（stt_stats.py + 9 tests）——剩「等數據先接 cron monitor」
+- ✅ **E3 Response 延遲**：已完成（mouth tts_ok timestamp + self_monitor resp_lat）——>5s 會 notable
+- ✅ **文檔**：docs/hermes-bridge-auth.md + docs/settings-field-map.md
+- 🟡 **等數據**：self_monitor.log / clarify_log / stt_stats.log 累積 ≥7 日先有真 finding signal（而家 fingerprint 多數 NONE）
+- 🟡 **G 人手實測（等新 mic——SK 2026-09-01 決定買新 mic，mic 相關全部 pause）**：headset wake / Tier 1（BGM 誤觸、喊完→有聲 ≤3s）/ 聲紋 enrollment（要新 mic）/ AEC voice call / Settings tab（HTML 已齊——呢項唔關 mic 事，可以隨時測）
+- ❌ **C 擴展連接**：已取消（SK：「用 Discord 就夠」）
+- ⏳ **Qwen2.5-VL 自動啟動**：SK 決定唔加（要睇片先手動開）
+
+- ✅ **alerts.py ctypes 64-bit hwnd bug：已完全收口（2026-09-11 cron 實錘）**——code 修 + push（`1bdac68`）→ 09-10 23:4x 重啟 sidecar → **`/health` ok、serve.log 27KB、`int too long to convert` = 0**（舊 136MB／370,905 次）；log 已 truncate（備份 `.gz`）。原 fix：cursor-agent 加 `_declare_winapi()` + 4 call sites declare user32/kernel32 argtypes；eval_gate 全綠。詳見頂部 09-11 cron 核實 section + `self-evol-SUGGESTIONS.md`（TREND-err-2026-09-05/06/10 三條同源，已標 ✅）
+- ⏳ **detect_trend sustained-high 規則（未做，低優先）**：self_review 只喺「連續單調變差」先出 finding → step-change + plateau（如 ctypes flood 09-05→09-06 微跌）會靜音 3 個月；建議加「連續 ≥2 日 >10x 中位數」都出 finding（來源 `self-evol-SUGGESTIONS.md` TREND-err-2026-09-06）。要唔要做由 SK 定。
+
+---
+
+## Content 吸收——HoloMat 影片（2026-09-27；SK 批記低「將來做」）
+
+> 來源：Concept Bytes《I Engineer Like Tony Stark! (Introducing the HoloMat)》 https://youtu.be/Yrj8bTTsQ2I
+> （10:27，2025-05-15 上架；字幕已抽、GitHub 已核）SK 2026-09-27 指示：「2 mark it to jarvis plan, we done it in future」→ **只記錄，唔排期、唔開工**。
+
+### H1. HUD 插件化 ＋ app carousel（⏳ 將來）
+- **影片做法**：HUD 係圓環式 app carousel，**一個 app ＝ 一個 JSX 檔**（＋一份 markdown 開發說明）；新 app 掉入目錄就自動出現，主程式唔需要為每個 app 改。
+- **我哋現狀（2026-09-27 實測）**：`hud/main.js` **825 行**；頁面寫死 4 個（`renderer/index.html`（HUD）／`companion.html`／`home.html`／`settings.html`）＋各自 preload；**冇 apps／plugins 目錄** → 加一件 widget 就要改 `main.js`，連帶要 rebuild／換版／人手驗收。
+- **將來目標**：`hud/apps/<name>/`——一個 app ＝ `app.js`（renderer）＋ optional `main.hook.js`（主程序 IPC 註冊）＋ `app.json`（名／icon／權限）；carousel 由目錄自動生成；主程序只暴露穩定 API（speak／sensors／alerts／media／settings），app 唔准直接摸 fs／shell。
+- **邊界**：唔引入第三方依賴、唔抄佢哋 UI、唔改現行 4 頁（先並存）；**要 SK 批先開工**。
+- **前置**：Slice 1（側車重啟循環修復）驗收＋換版完成先做，否則改 `main.js` 會同未 commit 嘅 Slice 1 撞。

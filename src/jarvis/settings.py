@@ -15,6 +15,22 @@ from typing import Any
 SETTINGS_DIR = Path.home() / "AppData" / "Roaming" / "Jarvis"
 SETTINGS_PATH = SETTINGS_DIR / "settings.json"
 
+
+def settings_dir() -> Path:
+    """Resolve the live Jarvis config dir at CALL time (env-first) so tests can isolate it."""
+    override = os.environ.get("JARVIS_SETTINGS_DIR")
+    if override:
+        return Path(override)
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return Path(appdata) / "Jarvis"
+    return Path.home() / "AppData" / "Roaming" / "Jarvis"
+
+
+def settings_path() -> Path:
+    """Path to settings.json (resolved at call time)."""
+    return settings_dir() / "settings.json"
+
 # ASR
 ASR_SENSEVOICE = "sensevoice"
 ASR_FUN_ASR = "fun_asr"  # Fun-ASR-Nano (optional higher-accuracy local)
@@ -154,11 +170,7 @@ class Settings:
 
 _cache: Settings | None = None
 _cache_mtime: float = 0.0
-
-
-def settings_path() -> Path:
-    """Path to settings.json."""
-    return SETTINGS_PATH
+_cache_path: str | None = None
 
 
 def default_settings() -> Settings:
@@ -359,11 +371,13 @@ def _clamp(s: Settings) -> Settings:
     except (TypeError, ValueError):
         s.alert_llm_timeout_s = 3.0
     s.alert_llm_timeout_s = max(1.0, min(10.0, s.alert_llm_timeout_s))
+    # 2026-09-23: FROZEN at 8765 — hardcoded in main.js health/settings, Hermes MCP url,
+    # jarvis_sidecar_health.py, swap_hud_version.ps1; changing silently breaks them.
     try:
         s.alerts_mcp_port = int(getattr(s, "alerts_mcp_port", 8765))
     except (TypeError, ValueError):
         s.alerts_mcp_port = 8765
-    s.alerts_mcp_port = max(1024, min(65535, s.alerts_mcp_port))
+    s.alerts_mcp_port = 8765
     s.alerts_mcp_token = str(getattr(s, "alerts_mcp_token", "") or "").strip()
     if isinstance(s.aec_enabled, str):
         s.aec_enabled = s.aec_enabled.lower() not in ("0", "false", "off", "no", "")
@@ -538,15 +552,15 @@ def load_settings(*, force: bool = False) -> Settings:
     Cached in-process; invalidated when settings.json mtime changes
     (e.g. Electron main.js writes directly). Pass force=True to re-read.
     """
-    global _cache, _cache_mtime
-    path = SETTINGS_PATH
+    global _cache, _cache_mtime, _cache_path
+    path = settings_path()
     mtime = 0.0
     if path.is_file():
         try:
             mtime = os.path.getmtime(path)
         except OSError:
             mtime = 0.0
-    if _cache is not None and not force and mtime == _cache_mtime:
+    if _cache is not None and not force and mtime == _cache_mtime and _cache_path == str(path):
         return _cache
     if path.is_file():
         try:
@@ -563,12 +577,13 @@ def load_settings(*, force: bool = False) -> Settings:
     s = _fill_from_env(s)
     _cache = s
     _cache_mtime = mtime
+    _cache_path = str(path)
     return s
 
 
 def _fill_from_env(s: Settings) -> Settings:
     """If no settings.json yet, seed from env (compat with .env installs)."""
-    if SETTINGS_PATH.is_file():
+    if settings_path().is_file():
         return _clamp(s)
     if not s.llm_api_key:
         s.llm_api_key = (
@@ -610,36 +625,39 @@ def _fill_from_env(s: Settings) -> Settings:
 
 def save_settings(s: Settings) -> Path:
     """Write settings.json and refresh cache."""
-    global _cache, _cache_mtime
+    global _cache, _cache_mtime, _cache_path
     s = _clamp(s)
-    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    path = settings_path()
+    settings_dir().mkdir(parents=True, exist_ok=True)
     existing: dict[str, Any] = {}
-    if SETTINGS_PATH.is_file():
+    if path.is_file():
         try:
-            raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            raw = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
                 existing = raw
         except (OSError, json.JSONDecodeError):
             pass
     merged = {**existing, **asdict(s)}
     merged = _encrypt_dict(merged)  # H4: encrypt secrets at rest
-    SETTINGS_PATH.write_text(
+    path.write_text(
         json.dumps(merged, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     _cache = s
+    _cache_path = str(path)
     try:
-        _cache_mtime = os.path.getmtime(SETTINGS_PATH)
+        _cache_mtime = os.path.getmtime(path)
     except OSError:
         _cache_mtime = 0.0
-    return SETTINGS_PATH
+    return path
 
 
 def invalidate_settings_cache() -> None:
     """Drop in-process cache (tests / after external write)."""
-    global _cache, _cache_mtime
+    global _cache, _cache_mtime, _cache_path
     _cache = None
     _cache_mtime = 0.0
+    _cache_path = None
 
 
 # ---- H2 (2026-08-29): single-writer settings patch (dir-lock + atomic + pending-apply) ----
@@ -648,10 +666,10 @@ _pending_apply: dict[str, Any] | None = None
 
 
 def _patch_lock_path() -> Path:
-    # Always derive from current SETTINGS_DIR — never cache. Tests monkeypatch
-    # SETTINGS_DIR to a TemporaryDirectory; a cached path dangles after teardown
-    # and breaks later save_settings_patch() calls in the same process.
-    return SETTINGS_DIR / ".settings.lockdir"
+    # Always derive from settings_dir() at call time — never cache. A tmp
+    # isolate dir can be deleted after teardown; a cached path then raises
+    # FileNotFoundError on .settings.lockdir.
+    return settings_dir() / ".settings.lockdir"
 
 
 def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:
@@ -661,10 +679,11 @@ def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:
     route settings writes through here, so concurrent writers can't lose keys.
     Returns the merged dict written to disk.
     """
-    global _cache, _cache_mtime, _pending_apply
+    global _cache, _cache_mtime, _cache_path, _pending_apply
     patch = dict(patch or {})
     lock = _patch_lock_path()
-    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    path = settings_path()
+    settings_dir().mkdir(parents=True, exist_ok=True)
     deadline = time.time() + 5.0
     while True:
         try:
@@ -680,9 +699,9 @@ def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:
             time.sleep(0.02)
     try:
         existing: dict[str, Any] = {}
-        if SETTINGS_PATH.is_file():
+        if path.is_file():
             try:
-                raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+                raw = json.loads(path.read_text(encoding="utf-8"))
                 if isinstance(raw, dict):
                     existing = raw
             except (OSError, json.JSONDecodeError):
@@ -703,15 +722,16 @@ def save_settings_patch(patch: dict[str, Any]) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             pass
         merged = _encrypt_dict(merged)  # H4: encrypt secrets at rest
-        tmp = SETTINGS_PATH.with_suffix(SETTINGS_PATH.suffix + ".tmp")
+        tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(
             json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        tmp.replace(SETTINGS_PATH)
+        tmp.replace(path)
         try:
             s = load_settings()
             _cache = s
-            _cache_mtime = os.path.getmtime(SETTINGS_PATH)
+            _cache_mtime = os.path.getmtime(path)
+            _cache_path = str(path)
         except Exception:  # noqa: BLE001
             invalidate_settings_cache()
         _pending_apply = dict(patch)
