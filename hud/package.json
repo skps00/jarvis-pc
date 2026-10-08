@@ -1,6 +1,6 @@
 {
   "name": "jarvis-hud",
-  "version": "0.4.15",
+  "version": "0.4.16",
   "description": "J.A.R.V.I.S. Iron Man HUD overlay for Windows desktop",
   "main": "main.js",
   "scripts": {
@@ -30,6 +30,8 @@
       "hud-theme.css",
       "renderer/**/*",
       "assets/**/*",
+      "apps_registry.js",
+      "apps/**/*",
       "package.json"
     ],
     "win": {
