@@ -34,6 +34,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# 2026-09-23: FROZEN at 8765 — sidecar alerts MCP + GET/POST /settings; also hardcoded
+# in hud/main.js and src/jarvis/settings.py — change all three together or it silently breaks.
 HEALTH_URL = "http://127.0.0.1:8765/health"
 STATE_PATH = (
     Path(os.environ.get("LOCALAPPDATA", ""))
@@ -48,6 +50,10 @@ _PY = re.compile(r"(?i)^pythonw?\.exe$")
 
 class StateIOError(Exception):
     """State file unreadable/unwritable."""
+
+
+class ProcessEnumError(Exception):
+    """Process listing failed (timeout/OS/JSON); not the same as empty list."""
 
 
 def _bucket(elapsed_s: float) -> str:
@@ -115,20 +121,20 @@ def _process_rows() -> list[dict]:
             timeout=20,
             creationflags=flags,
         )
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return []
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise ProcessEnumError("process enum failed") from exc
     out = (out or "").strip()
     if not out:
         return []
     try:
         data = json.loads(out)
-    except json.JSONDecodeError:
-        return []
+    except json.JSONDecodeError as exc:
+        raise ProcessEnumError("process enum json failed") from exc
     if isinstance(data, dict):
         return [data]
     if isinstance(data, list):
         return [x for x in data if isinstance(x, dict)]
-    return []
+    raise ProcessEnumError("process enum unexpected payload")
 
 
 def _is_intentional_off() -> bool:
@@ -179,7 +185,12 @@ def _fingerprint() -> str:
         _clear_state()
         return extra or "OK wake_on=None"
     reason = extra or "unhealthy"
-    if _is_intentional_off():
+    try:
+        intentional_off = _is_intentional_off()
+    except ProcessEnumError:
+        intentional_off = False
+        reason = "enum_failed"
+    if intentional_off:
         _clear_state()
         return "OFF"
     now = time.time()

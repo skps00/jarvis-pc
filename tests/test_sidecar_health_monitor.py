@@ -119,6 +119,36 @@ def test_fingerprint_off_no_process(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert mod._fingerprint() == "OFF"
 
 
+def test_fingerprint_enum_failed_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    mod = _load()
+    monkeypatch.setattr(mod, "STATE_PATH", tmp_path / "jarvis_sidecar_health_state.json")
+    monkeypatch.setattr(mod, "_probe", lambda: ("fail", "URLError"))
+
+    def _boom(*_a, **_k):
+        raise subprocess.TimeoutExpired(cmd="powershell", timeout=20)
+
+    monkeypatch.setattr(subprocess, "check_output", _boom)
+    fp = mod._fingerprint()
+    assert fp.startswith("DOWN")
+    assert "enum_failed" in fp
+    assert fp != "OFF"
+
+
+def test_fingerprint_off_empty_enum_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Negative control: successful enum with no matches stays OFF."""
+    mod = _load()
+    monkeypatch.setattr(mod, "STATE_PATH", tmp_path / "jarvis_sidecar_health_state.json")
+    monkeypatch.setattr(mod, "_process_rows", lambda: [])
+    monkeypatch.setattr(mod, "_probe", lambda: ("fail", "URLError"))
+    assert mod._fingerprint() == "OFF"
+
+
 def test_fingerprint_down_hud_and_stable_bucket(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
