@@ -7,10 +7,10 @@
 - **現狀（2026-10-08 01:1x 改寫；全部 Hermes 親核）**
 - **JARVIS ONE＝0.4.15 已上線（10-07 01:35 換版）**：`SWAP_RC=0`、五進程、`8642/8765/8770/8771` LISTEN、零可見 console 窗、3 個 `.lnk` 已指新版。累計驗收：Slice 1（0.4.14）＋窗口 2 **#8 spawn 負控（10-06 通過）**＋**Slice B log 輪替（已落地＋生產實證）**。輪替實證：舊 100 MB log 自動轉 `.log.1`、新 `.log` 由 364 B 重新寫（第一次寫入即輪替）；備份 `backups/jarvis_hud_activity.log.bak-20261007-003020`。
 - **alert shadow 現況（10-07 實測，重要）**：`alert_policy_mode=shadow` 但 **`alert_voice=false`**（09-22 語音 HOLD）→ `shell_app.py:586` 直接 return → **alert poller 從未啟動** → `shadow_ledger.jsonl` 最後一筆 **2026-09-22 19:07**、heartbeat 停 10-04 ⇒ **#9 真機驗收做唔到，同「等新 mic」綁死**（升 enforce 前必須重跑三個情境）。
-- **Git（jarvis-pc）**：`feature/hermes-alerts-mcp`；**已 push（origin tip＝`882ee25`，10-07 11:5x）**；PR **#13** 已更新（含該 6 個 commit；**merge 延後**＝SK 10-07：「after that review and merge in future」）；**未 push 3 個（`a95002e`／`88b301d`／`3aea917`，全部 docs，截至 10-08 01:1x）**、`origin/main..HEAD`＝199；未 commit＝`uv.lock`＋untracked `2026-10-04_agent-vm-3060-plan.md`。
+- **Git（jarvis-pc）**：**PR #13 已 merge 入 main**（merge commit `aaa9917`，2026-10-08 19:09 HKT；由 PR 上嘅 Cursor Approval Agent 自動 merge，Hermes 已覆核）——merge 內含 review 兩條 warning 嘅修正 `2952f6d`（W1 `settings_ui.py` 改 call-time path／W2 watchdog 列進程失敗→`DOWN enum_failed` 唔再靜默 `OFF`）＋S2 註解；`origin/feature/hermes-alerts-mcp` 同 `origin/main` 已同步。**部署副本已更新**：`hermes\scripts\jarvis_sidecar_health.py`（backup `backups/jarvis_sidecar_health.py.bak-20261008-191017`）；fingerprint 字串不變（`OK wake_on=False`、monitor hash `d46433…` 一致）⇒ 冇假警報。未 commit＝`uv.lock`＋untracked `2026-10-04_agent-vm-3060-plan.md`。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（10-05 03:2x 起；已核實執行中，javaw×3 affinity＝`0xffff`）；**Hermes cron `game-vcache-pin` 已於 10-07 刪除**（重複路徑、唔 elevated、`priv_err 1300` 每 tick 報 error；排程工作已完全覆蓋）。還原＝config `game_vcache_pin.json` `enabled:false`。
 - **MC heap 真相（10-06 jcmd 親核）**：DJ2 真 heap＝**8G**（G1GC，出自 Cleanroom `relauncher.json`）；Prism `MaxMemAlloc=12288` 從來冇生效。**SK 10-06 定案：維持 8G，唔改。**
-- **packai（MC 主線）**：**Slice 1b 已 commit＋push（`815c5cb`，main，10-07）**；真機 A/B **通過**（rewrite 真機生效：raw「脚本索引」→ 玩家 body「脚本资料」）；未覆蓋＝Tetra MODIFIED 零件行／火盆 self-drop 句（沙盒結構限制）。**坑**：沙盒 `mods/` 原有 09-19 舊 flagged jar → 頭兩輪跑舊 code（已移走；舊 jar 喺 `%TEMP%\packai_stale_jar_20261007\`）。
+- **packai（MC 主線）**：Slice 1b 已 push（`815c5cb`）；**10-08 晚開工閘真機跑完成（見下 section）：`packai_sandbox`＋`packai_sandbox_atm8` 各 4/4 OK、A9 通過**；**Modrinth slug 定案＝`pack-ai-assistant`**（`ac60a0a`，API 實查未佔用）。坑：沙盒 `mods/` 舊 flagged jar → 曾跑舊 code（已處理）。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 防呆已驗收；朋友部機自己裝（`Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）待 SK 眼睇；聊天欄紅字 filter 已裝待重啟驗收。
 - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）無新事件。
 - **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。**閘 0 已完成**（baseline：中位 650 FPS／1% low 235／GPU 81%／CPU 15%，62.7 分鐘；報告（正本）`Documents\PC_Troubleshoot\cs2-perf\BASELINE-2026-10-07-frameview.md`＋cron 自動報告 `gate0-2026-10-07-2355.md`／`gate0-2026-10-08-0136.md`（數字一致））；MSAA＋Steam overlay **已確認關好**；**10-08 收線**：動態陰影 A/B 取消（SK：必須「全部」）＋純 CS2 分段唔做（SK：暫無卡頓）＋NVIDIA 3 值**已核＝全部建議值 → 唔裝 Profile Inspector**（見 `cs2-perf\NVIDIA-SETTINGS-2026-10-08.md`）。LPI 0-15＝V-Cache CCD。
@@ -23,11 +23,19 @@
   - `AGENTS.md` 受保護（要 SK 明確 go）；唔准 `curl|sh`；**HANDOFF 視為可公開 → 唔准入 secrets**
   - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
   - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
-- **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④（10-07 SK「no」＝唔做）TRCC 自動關 ⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧（10-07 SK「ignore」）DJ2 郁動掉幀＝Litematica：**等 SK 遇到先講**，Hermes 唔主動追｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 1（動態陰影 A/B 等 SK 錄）；promo 宣傳片 Round-2 review；朋友求職個案（等朋友答 5 條，報告只留本機 `Documents\job-check\`）
-- **下一步（優先序）**：① promo ~~R2 review~~ **已完成 → v4 通過 8:2（10-08）**；下一步＝實作（要 SK 開機）② ~~NVIDIA Profile Inspector review~~ **已完成 → 唔裝（10-08）** ③ 朋友求職個案（等朋友答 5 條）④ ~~CS2 閘 1~~ **已收線（10-08）**⑤ HoloMat 3 條設計問題（等 SK）⑥ PR #13 將來 review＋merge ⑦ #9／#5 等新 mic
+- **未解（等 SK 決）**：① ~~PR #13 review＋merge~~ **已完成（10-08 19:09 merge 入 main）** ② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC 自動關（10-07 SK「no」＝唔做）⑤ HoloMat 3 條設計問題（10-08 已交詳解＋建議，等 SK 答）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦ `web_search` 屬間歇（10-07 實測成功）⑧ DJ2 郁動掉幀＝Litematica（SK 遇到先講）⑨（**新**）gap 面板 raw id 外洩（`chests/…`／`crafting_shaped -> …`）→ 等 SK 決定「修成人話」定「拍片避開」｜**10-08 晚已收**：Modrinth slug 定案＋plan 更新、開工閘真機跑（NFWC／ATM8）、PR #13 merge 入 main＋部署副本更新
+- **下一步（優先序）**：① promo 片：plan v4 已通過 8:2、**A9 已真跑過**（§12）→ 剩拍片（要 SK 開機）＋ gap 面板外洩處理（等 SK）② ~~NVIDIA Profile Inspector~~ 唔裝（已完成）③ 朋友求職個案（等朋友答 5 條）④ ~~CS2 閘 1~~ 已收線 ⑤ HoloMat 3 條（10-08 已詳解，等 SK 答）⑥ ~~PR #13 review＋merge~~ 已完成 ⑦ #9／#5 等新 mic ⑧（新）HoloMat 實作（SK 批就開工）
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-08 晚上（Discord；PR #13 merge 入 main、packai 開工閘真機跑、Modrinth slug 定案）
+- **PR #13 收尾（SK「go」）**：cursor-agent 修 review 兩條 warning → 我親驗：full pytest **564 passed**、`eval_gate --lock` 一致（55 檔）、`eval_gate --all` 三 suite 全綠、**負控**（只 revert 兩個 production 檔）新測試必紅（`'OFF'.startswith`）→ 還原即 11/11 綠；commit `2952f6d` push → PR **由 Cursor Approval Agent 自動 merge（`aaa9917`，19:09 HKT）**；覆核：`git merge-base --is-ancestor 2952f6d origin/main` ✅、main 上 `settings_ui.py` 0 個舊常數、watchdog 有 `ProcessEnumError`。
+- **部署副本同步**：`hermes\scripts\jarvis_sidecar_health.py` 由 `origin/main` 版本覆蓋（backup `backups/jarvis_sidecar_health.py.bak-20261008-191017`）；跑一次輸出 `OK wake_on=False`＝同 cron monitor 存住嘅 hash 一樣 ⇒ 冇假警報。
+- **packai 開工閘真機跑（A9 首次真驗收）**：`packai_sandbox`（現行 10-07 jar）4/4 OK／`cardsOut=5`／body 471–691 字／+159,995 tokens；`packai_sandbox_atm8`（09-20 jar）4/4 OK／`cardsOut=6–8`／body 1049–2225 字／+176,346 tokens；兩邊負控 `NO_SAMPLE`、自家 mod 例外 0。**澄清**：`/ai` 打 chat 唔出卡，出卡要行 AI 面板（＝plan 嘅 M1 薄驅動層）。詳見 packai `docs/promo/PROMO_PLAN-v4-2026-10-08.md` §12。
+- **揾到真缺陷（未修）**：gap 面板（「資料有、答案未提」）印 raw id（`chests/…`、`gameplay/…`、`crafting_shaped -> "…"`）→ NFWC 3/4、ATM8 2/4 條中招；等 SK 決定。
+- **Modrinth slug**：SK「use ur suggest」→ `pack-ai-assistant`；Modrinth API 實查 HTTP 404（未佔用）；已寫入 plan 4 處＋§11 核實表（commit `ac60a0a`，已 push）。
+- **窗口（老實記錄）**：NFWC run 用標題認窗失敗 → 遊戲窗留喺主螢幕約 2 分鐘；ATM8 run 改 **PID 認窗**成功搬副螢幕（`on_target_monitor=true`、`foreground_is_mc=false`）。SK 嘅 DJ2 全程冇被碰（javaw 由 4 返 3、冇 kill 過任何非自己嘅進程）。
 
 ## 2026-10-08 下午（Discord；promo plan v4 通過 8:2、NVIDIA 三值核完（唔裝 NPI）、CS2 線收線、packai 版控）
 
