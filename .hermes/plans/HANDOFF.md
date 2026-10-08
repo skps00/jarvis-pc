@@ -13,7 +13,7 @@
 - **packai（MC 主線）**：**Slice 1b 已 commit＋push（`815c5cb`，main，10-07）**；真機 A/B **通過**（rewrite 真機生效：raw「脚本索引」→ 玩家 body「脚本资料」）；未覆蓋＝Tetra MODIFIED 零件行／火盆 self-drop 句（沙盒結構限制）。**坑**：沙盒 `mods/` 原有 09-19 舊 flagged jar → 頭兩輪跑舊 code（已移走；舊 jar 喺 `%TEMP%\packai_stale_jar_20261007\`）。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 防呆已驗收；朋友部機自己裝（`Documents\MC_Patches\dj2-fixes\dist\`）；客戶端三項（字體／GUI／光影）待 SK 眼睇；聊天欄紅字 filter 已裝待重啟驗收。
 - **5090 黑屏 Tier 1**：`OverlayTestMode=5`／`TdrDelay=20`／`TdrDdiDelay=30` 仍在；還原 `mpo_restore.reg`；watchdog cron `4dfef80822b3`（*/5）無新事件。
-- **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。**閘 0 已完成**（baseline：中位 650 FPS／1% low 235／GPU 81%／CPU 15%，62.7 分鐘；報告（正本）`Documents\PC_Troubleshoot\cs2-perf\BASELINE-2026-10-07-frameview.md`＋cron 自動報告 `gate0-2026-10-07-2355.md`／`gate0-2026-10-08-0136.md`（數字一致））；MSAA＋Steam overlay **已確認關好**；剩＝**動態陰影 A/B**＋**純 CS2 一段（唔開 Minecraft）**（皆等 SK 錄）＋NVIDIA 驅動 3 項（Profile Inspector 待批）。LPI 0-15＝V-Cache CCD。
+- **CS2 卡頓**：計畫 `PC_Troubleshoot\cs2-perf\PLAN-v2.1-2026-10-03.md`（裁判判 `v2_adequate`）；**閘 0 watcher 已上線**＝cron `cs2-perf-gate0-watch`（`3f322ccff9a3`，*/5，monitor `hermes\scripts\cs2_watch.py`）：SK 開 CS2 → 一句提醒開 FrameView；收 game 有新 FrameView 檔 → 自動分析（avg／1% low／CPU vs GPU 樽頸）＋寫 `PC_Troubleshoot\cs2-perf\gate0-*.md`；其餘靜默。**閘 0 已完成**（baseline：中位 650 FPS／1% low 235／GPU 81%／CPU 15%，62.7 分鐘；報告（正本）`Documents\PC_Troubleshoot\cs2-perf\BASELINE-2026-10-07-frameview.md`＋cron 自動報告 `gate0-2026-10-07-2355.md`／`gate0-2026-10-08-0136.md`（數字一致））；MSAA＋Steam overlay **已確認關好**；**10-08 收線**：動態陰影 A/B 取消（SK：必須「全部」）＋純 CS2 分段唔做（SK：暫無卡頓）＋NVIDIA 3 值**已核＝全部建議值 → 唔裝 Profile Inspector**（見 `cs2-perf\NVIDIA-SETTINGS-2026-10-08.md`）。LPI 0-15＝V-Cache CCD。
 - **HoloMat HUD 插件化**：計畫已寫 `.hermes\plans\2026-10-07_0045-hud-app-plugins-holomat-h1.md`（6 task；**未開工，要 SK 批**；3 個待決：carousel vs 自由擺位／副螢幕／熱重載）。
 - **新 session 自動讀 handoff＝已上線（2026-10-04）**：`hooks.pre_llm_call` → `agent-hooks\session_brief.py`，每 session 一次；log `hermes\logs\session_brief.log`。還原＝刪 `config.yaml` `hooks:` 區塊（備份 `backups\config.yaml.bak-20261004-114002`）＋刪 script。
 - **求職線**：已入最後階段（panel discussion 下星期）；教練通話逐字稿＋摘要＝`Documents\MS_DCT_Prep\records\教練通話-20261007-1052-*`（**內幕只留該處，本檔唔寫細節**）。
@@ -24,10 +24,25 @@
   - packai code **一律經 cursor-agent**；**唔准 `git add -A`**；真 instance 唔准自動部署
   - **語音／mic 線 HOLD**：唔郁 `wake.py`／STT／AEC／聲紋／threshold／mic device
 - **未解（等 SK 決）**：① **PR #13 將來 review＋merge 入 main**（已 push、mergeable CLEAN、無真 CI gate；SK：future）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④（10-07 SK「no」＝唔做）TRCC 自動關 ⑤ HoloMat 3 個設計問題（SK 10-07：later）⑥ 窗口 2 剩 **#11 主觀體驗**（SK：暫無卡頓）⑦（更正）`web_search` 非全掛——10-07 04:2x 實測成功，屬間歇 ⑧（10-07 SK「ignore」）DJ2 郁動掉幀＝Litematica：**等 SK 遇到先講**，Hermes 唔主動追｜**10-07 已收**：push 兩個 repo、packai Slice 1b 真機驗收、DJ2 客戶端三項＋紅字 filter、MayaCraft ping 報告（唔送）；**進行中**：CS2 閘 1（動態陰影 A/B 等 SK 錄）；promo 宣傳片 Round-2 review；朋友求職個案（等朋友答 5 條，報告只留本機 `Documents\job-check\`）
-- **下一步（優先序）**：① promo 宣傳片 Round-2 review（Hermes 可自跑；plan v3 已寫）② NVIDIA Profile Inspector 先做第三方 review（唔裝）③ 朋友求職個案（等朋友答 5 條）④ CS2 閘 1＝動態陰影 A/B（等 SK 錄）⑤ HoloMat 3 條設計問題（等 SK）⑥ PR #13 將來 review＋merge ⑦ #9／#5 等新 mic
+- **下一步（優先序）**：① promo ~~R2 review~~ **已完成 → v4 通過 8:2（10-08）**；下一步＝實作（要 SK 開機）② ~~NVIDIA Profile Inspector review~~ **已完成 → 唔裝（10-08）** ③ 朋友求職個案（等朋友答 5 條）④ ~~CS2 閘 1~~ **已收線（10-08）**⑤ HoloMat 3 條設計問題（等 SK）⑥ PR #13 將來 review＋merge ⑦ #9／#5 等新 mic
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30；備份 `hermes\backups\HANDOFF.md.bak-20261003-0245`）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-08 下午（Discord；promo plan v4 通過 8:2、NVIDIA 三值核完（唔裝 NPI）、CS2 線收線、packai 版控）
+
+- **promo 宣傳片線收口**：R2＝4:6 → 修 5 條 flip condition（FC1–FC5）→ **R3＝正方 8 : 反方 2 → 達標**（3:7→4:6→8:2，未到停手線）。新檔：`docs/promo/PROMO_PLAN-v4-2026-10-08.md`（26,475 B）＋`docs/plans/reviews/2026-10-08_promo-plan-v{3,4}-round{2,3}.md`；commit `b8608ea`（已 push）。Hermes 親核：R3 引用嘅 sha256 同 v4 一致、ATM8 沙盒 380 jar、`New World (1)`＝19,273,115 B（v3 寫 1.2 MB 係錯）、`docs/PUBLISH.md` CF id 1643097。**未做**：拍片（要 SK 開機）＋開工閘嗰次 2 分鐘 `/ai` 真實測（A9 首條真 trace）。
+- **NVIDIA 三值（CS2 profile）已核**：Hermes 背景方式開 NVIDIA App（no-activate；`focus_stolen=true` 但已還原、開前開後前景都係 Discord；完事已閂 App）→ 圖形→程式設定→絕對武力 2 → 讀值：**低延遲模式＝全域-關閉**、**電源管理模式＝全域-慣用的最大效能**、**畫面播放速率上限＝全域-關閉** ⇒ 三個都係建議值 → **唔需要改、NVIDIA Profile Inspector 唔裝**（全唯讀，冇改任何設定）。記錄：`Documents\PC_Troubleshoot\cs2-perf\NVIDIA-SETTINGS-2026-10-08.md`。
+- **CS2 線收線（SK 10-08 指示）**：① 動態陰影 A/B **取消**（SK：動態陰影必須「全部」，否則見唔到其他玩家影子）② 「純 CS2 一段（閂 MC）」**唔做**（SK：暫無卡頓）③ 閘 2 **ignore for now**。已寫入 `PLAN-v2.1-2026-10-03.md`（「❌ 已排除」段）。watchdog cron 照留。
+- **packai 其他版控**：`AGENTS.md` 守門句加註「`mc-mod-jar-guard` 自 2026-09-15 20:25 paused（SK 09-27 決定維持）」＋`.gitignore` 加 `docs/research/artifacts/_*`（13 個 scratch 檔唔再阻 status）→ commit `355fe25`（已 push）。
+- **正合個案（side task）**：Chrome 重開後**補讀到 OfferToday 頁內全文**（之前只讀到摘要）→ 正合有**平台認證**（BRN 70580929）、自己都用短名招聘；佢自己嘅招聘聯絡人＝**陳小姐／Samson Tang（行政人事部部長）**、職位喺旺角 → 同「保捷＋梅先生＋油塘」睇唔到連繫。報告已更新：`Documents\job-check\2026-10-08-正合建築工程-深入核查.md`。
+- **等 SK**：① Modrinth 要唔要**新開專案頁**（SK 10-08：「mod c」＝CurseForge＋Modrinth 兩個都要）② packai 拍片／`/ai` 實測要開機配合 ③ 13 個 `_*` scratch 檔已按 SK 指示入 `.gitignore`（如想改入 git 講一聲）。
+
+
+## 今日完成（2026-10-08）
+- jarvis-pc 當日 commit 1 個（最新：9c9e7b3 docs(handoff): 10-08 凌晨 — 朋友求職個案風險調查、CS2 閘 0 baseline（含 Minecr）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 4 個 commit（未 push）
 
 ## 2026-10-07 深夜 → 10-08 凌晨（Discord；朋友求職個案風險調查、CS2 閘 0 baseline＋設定審計、promo plan v3）
 - **朋友求職個案（第三方）風險調查**：3 份檔存本機 `Documents\job-check\`（風險評估／查詢稿／新片分析）。**本檔唔寫公司名同行內細節**（本 repo＝public）。
