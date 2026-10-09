@@ -30,6 +30,8 @@
 - 旁白線 park：piper JARVIS 聲（SK 否決）＋edge-tts 14 把聲試聽包（`docs/promo/narration-20261009/audition/`）。
 - 成本（Hermes 用量庫估算）：本 session US$0.245／10-09 全日 US$0.248／10-07 起 US$2.02／開機至今 US$47.19。
 - mp4 暫未入 git（binary、26MB）；如要入 git 要 SK 講。
+- 追加（10-09 19:1x）：SK 要「見到完整操作流程」→ 補拍分鏡 `docs/promo/SHOTLIST-v5-user-journey-2026-10-09.md`（Y＝長按問 hovered 物品／`]`＝開面板，已由 `ClientSetup.java` 核實；ddagrab `draw_mouse` 預設開＝錄到游標；KubeJS demo 首選＝ATM8 刪走 Occultism 銀礦生成 `kubejs/server_scripts/ore_removal.js`）。
+- overlay 動態（字幕滑入＋淡出、卡文字漸入、底部流動光）完成 → 重出 50s（3.4MB）；修咗兩個 bug：流動光越界（`x1<x0` 令 render abort）＋字幕滑入第二行被下界切斷（改 bottom-anchored）。
 
 - jarvis-pc 當日 commit 7 個（最新：49edd34 docs(handoff): 10-09 04:53 JARVIS ONE 0.4.16 上線（H1 插件化）＋打包清單坑；）
 - 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
