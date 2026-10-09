@@ -20,9 +20,20 @@
 <!-- STATE:END -->
 
 ## 今日完成（2026-10-09）
+### promo（10-09 下午，Discord；SK 全程在線決策）
+- 方向改動（SK go）：**取消旁白**（查實 Create 官方 trailer 全片冇旁白＝純遊戲畫面＋古典樂）；吸收 SK 貼嘅 B 站片（BV16Lam6JEgV／Wish_Coder／2:00／7.6 萬 view）motion-graphics 風格——量測 118.5s 只有 13 個硬切＝慢剪，靠深色底＋3D 浮動圖示＋大字逐句＋圖表＋logo 結尾。
+- 產出（本機 PIL＋ffmpeg，0 API 成本）：`docs/promo/mg-20261009/promo_mg_27s.mp4`（27.2s）＋`promo_mg_50s.mp4`（50.3s、1920×1080/30fps/H.264/AAC）；版面＝深色底＋圓角窗框放真機畫面（唔遮 mod UI）＋底部大字卡＋標題卡／資訊卡／logo 結尾卡。
+- 配樂＝莫扎特《費加洛》序曲 **CC0**（Wikimedia Commons，出處記 `docs/promo/narration-20261009/LICENSES.md`）；音量 −16 LUFS。
+- 腳本：`%TEMP%\mg_promo_v3.py`（PIL 合成）＋`build_mg50.sh`（合成→壓片→配樂）；素材切段 `%TEMP%\mg2\s1..s5`（由 `promo_raw_20261009-034259.mp4` 105.2s 抽）。
+- SK 新內容要求：加「**mod 讀得到 KubeJS 改過嘅 item／recipe**」→ 已出資訊卡 c3；真機 demo 待補拍（ATM8 沙盒有 KubeJS 1902.6.2＋`AskKubeJsBridgeCheck` harness 為證）。
+- 待做：補拍 shot 1（JEI 清單）／shot 6（設定畫面）／KubeJS demo（全部要 SK 收機）＋封面＋分發包。
+- 旁白線 park：piper JARVIS 聲（SK 否決）＋edge-tts 14 把聲試聽包（`docs/promo/narration-20261009/audition/`）。
+- 成本（Hermes 用量庫估算）：本 session US$0.245／10-09 全日 US$0.248／10-07 起 US$2.02／開機至今 US$47.19。
+- mp4 暫未入 git（binary、26MB）；如要入 git 要 SK 講。
+
 - jarvis-pc 當日 commit 7 個（最新：49edd34 docs(handoff): 10-09 04:53 JARVIS ONE 0.4.16 上線（H1 插件化）＋打包清單坑；）
 - 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
-- 領先 remote 8 個 commit（未 push）
+- 10-09 13:5x 已 push（`165a149..2c939d3`）；現時 ahead 1（HANDOFF docs commit）
 
 ## 2026-10-09 凌晨（Discord；SK 睡覺期間自動跑：packai A1/A2＋M1/A9 真機驗收、H1 實作＋GUI 驗證、promo M0＋原片）
 
