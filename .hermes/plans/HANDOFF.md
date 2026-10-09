@@ -4,12 +4,13 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-09 04:0x 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-10 04:5x 改寫；全部 Hermes 親核）**
+- **10-10 過夜（SK 睡前派工 `1a 2a 3 A→C→D 4c`；Hermes 全自動）**：① **packai keybind 真機驗收 PASS**（沙盒 3 輪 13 條；run3 3/3；修咗 2 個真缺陷＋1 個路由錯）→ **已 commit＋已 push**（`0c778c6` 程式／`c72f1a2` 文件／`59d472a` HANDOFF；`aa1b98f..59d472a`）② **B：P0 剩餘量測報告出**（`docs/research/2026-10-10-p0-remaining-measurements.md`；⑤⑥ 已量、④ catalyst 未量附設計；實測 **9.09 萬 tokens／ask**）③ **C：promo 封面＋分發包＋合規 checklist 已出並 push** ④ **A：plan 2 輪 review 4:6→6:4（未達 8:2）→ 依規則停手，實作未派** ⑤ D（補拍 shot 1／6）**未做**。
 - **10-09 凌晨（SK 睡時 Hermes 自動跑，全部 PASS）**：① packai raw-id A1/A2 真機過（`packai_sandbox` 4/4 OK、玩家 body 0 path-token）② M1 面板驅動 A9 過（ATM8 cards 2／5）③ H1 插件化實作＋真 dev instance CDP 驗過（API 白名單／hw-ring 卡／sensors 對得上 nvidia-smi／**0 重疊**）④ promo M0 定案＝`ddagrab_dl`＋ATM8 原片 105.2s 已錄 ⑤ HEI crash（SK 自己換 4.35.1）Hermes 核實收線。**三者 code 全部未 commit（等 SK go）**。
 - **JARVIS ONE＝0.4.16 上線（10-09 04:53；H1 插件化＋hw-ring 卡）**：五進程／`8642/8765/8770/8771` LISTEN／零可見 console 窗／`/health` 200；exe sha256 `29d1be4e…`（SWAP 用官方 `swap_hud_version.ps1`）。alert shadow＋`alert_voice=false`（語音 HOLD）⇒ poller 從未啟動 ⇒ **#9 綁「等新 mic」**（升 enforce 前要重跑三個情境）。
 - **Git（jarvis-pc）**：PR #13 已 merge（`aaa9917`）＋部署副本 `hermes\scripts\jarvis_sidecar_health.py` 已更新（fingerprint 一致、冇假警報）。未 commit＝`uv.lock`＋untracked `2026-10-04_agent-vm-3060-plan.md`；**10-09 H1 code 已 commit＋已 push**（`165a149..2c939d3`，10-09 13:5x）。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（Hermes cron 已刪）；還原＝`game_vcache_pin.json` `enabled:false`。**MC heap**：DJ2 真 heap＝8G（G1GC，`relauncher.json`；Prism MaxMemAlloc 從來冇生效），10-06 SK 定案唔改。
-- **packai**：Slice 1b 已 push；Modrinth slug＝`pack-ai-assistant`；沙盒 jar 現為 `autotest-dev-0.2.3.jar`（sha256 `140b9c0cab35…`＝raw-id fix＋M1，backup `%TEMP%\deploy_backup_20261009_0325\`）。
+- **packai**：`main` **已同 remote 同步**（`59d472a`）；keybind lookup（第 15 個 tool）**真機驗收 PASS 並已上線 commit**；沙盒 jar 現為 `packai-autotest-dev.jar`（sha256 `9a885c413edb…`＝v5.3 路由指引版，backup `%TEMP%\deploy_backup_20261010_0440\`）；Modrinth slug＝`pack-ai-assistant`（**頁面未開**，API 404）。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 已驗收；**HEI 4.35.0→4.35.1 已由 SK 換入並親測**（Hermes 核 sha `8777b115592519ea…`）；客戶端三項（字體／GUI／光影）**SK 10-09 眼睇 OK**。
 - **5090 黑屏 Tier 1** 設定仍在（還原 `mpo_restore.reg`；watchdog cron 無新事件）；**CS2 線已收**（baseline 中位 650 FPS／1% low 235）。**新 session 自動 brief** 已上線（`hooks.pre_llm_call`）。**求職線**：最後階段（panel 下週），內幕只留 `Documents\MS_DCT_Prep\`。**語音／mic 線 HOLD**。
 - **唔准郁（硬限制）**：打機／用緊電腦＝零彈窗零搶焦點（先讀 `state/sk_activity.json`）；GUI 窗一律副螢幕、Chrome 主動開＝`bg_launch.py --minimized`；`AGENTS.md` 受保護；唔准 `curl|sh`；**HANDOFF 可公開→唔准入 secrets**；packai code 一律經 cursor-agent；唔准 `git add -A`；真 instance 唔准自動部署；語音／mic 線唔郁（wake／STT／AEC／聲紋／threshold）。
@@ -18,6 +19,14 @@
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-10 過夜（Discord；SK 睡前派工 `1a 2a 3 A→C→D 4c`）
+- **1a／2a（packai keybind）＝PASS 並已 commit＋push**：沙盒 `packai_sandbox` 三輪共 13 條 question case。run1 揭 2 個真缺陷（模型只傳 `item/machine` 唔傳 `query`；泛用 token「key」命中 235/273 行）→ v5.2 修；run2 4/5（唯一失敗＝模型當物品查詢狂叫 `item_search` 9 輪）→ v5.3 只改 `DESC` 加路由指引；**run3 3/3 OK**（`动力鞘翅推进器 → 空格 ⚠撞鍵` 等）。零搶焦點（before/after 都係 steamwebhelper）、body 零 raw 外洩、`cases.json` 無殘留、trace／logs 已還原。成本 90.9k → 33.4k tokens／ask。commits `0c778c6`（程式）／`c72f1a2`（文件）／`59d472a`（HANDOFF）；push `aa1b98f..59d472a`；push 前 12 檔 secrets 掃描 CLEAN。
+- **B（P0 剩餘量測）＝報告已出**：`docs/research/2026-10-10-p0-remaining-measurements.md`。⑤ 真機：JEI plugin callbacks ≈1,715 ms、JEI ENABLED→世界開完 13.6 s、cache 37 MB（**冷啟動掃描未量**）。⑥ 路由 4/4 正確；**9.09 萬 tokens／ask**（比 plan 錨高約 2 倍 ⇒ 拍片／驗收預算要重估）。④ catalyst 覆蓋率未量（instrumentation 設計已寫，等 SK 批）。
+- **C（promo 封面＋分發包）已出並 push**：`cover_1280x720.png`（真機截圖＋大字；視覺三輪檢查、已裁 windowed 標題列）＋`DISTRIBUTION.md`（三渠道文案＋CTA 核實：GitHub 200 ✅／CurseForge 403 Cloudflare／Modrinth 頁面未開 API 404）＋`COMPLIANCE-CHECKLIST.md`。
+- **A（離線能力索引）＝plan 過 2 輪 review 未達 8:2，實作停手等 SK**：R1 4:6（兩個獨立 reviewer；4 條指控我親核成立 → v2：A6 改 baseline-diff、`runtime_visible` 按真 runtime surface 重定義、A2 只留 javap 親核事實、加 javap 呼叫上限）→ R2 6:4（4 項已解決；2 個數字錯即修）→ R3 delta 抽核。**依 SK「≥8:2 才開工」規則未派 cursor 實作**。
+- **D（promo 補拍 shot 1／6）＝未做**（要 SK 收機）。
+- **等 SK**：① A 開唔開工（停手報告已寫入 plan §9）② P0 ④ catalyst instrumentation 批唔批 ③ 語音／mic 線仍 HOLD。
 
 ## 今日完成（2026-10-09）
 ### promo（10-09 下午，Discord；SK 全程在線決策）
