@@ -14,7 +14,7 @@
 - **5090 黑屏 Tier 1** 設定仍在（還原 `mpo_restore.reg`；watchdog cron 無新事件）；**CS2 線已收**（baseline 中位 650 FPS／1% low 235）。**新 session 自動 brief** 已上線（`hooks.pre_llm_call`）。**求職線**：最後階段（panel 下週），內幕只留 `Documents\MS_DCT_Prep\`。**語音／mic 線 HOLD**。
 - **唔准郁（硬限制）**：打機／用緊電腦＝零彈窗零搶焦點（先讀 `state/sk_activity.json`）；GUI 窗一律副螢幕、Chrome 主動開＝`bg_launch.py --minimized`；`AGENTS.md` 受保護；唔准 `curl|sh`；**HANDOFF 可公開→唔准入 secrets**；packai code 一律經 cursor-agent；唔准 `git add -A`；真 instance 唔准自動部署；語音／mic 線唔郁（wake／STT／AEC／聲紋／threshold）。
 - **未解（等 SK 決）**：① ~~raw-id＋M1~~ **真機驗收已過**（等 go 就 commit code＋artifacts）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC＝唔做 ⑤ ~~HoloMat：H1 已上線 0.4.16~~ → **SK 10-09 眼睇新卡 OK，收工** ⑥ 窗口 2 剩 #11 主觀體驗 ⑦ `web_search` 屬間歇 ⑧ DJ2 郁動掉幀＝Litematica ⑨（**新**）ATM8 答案出現 raw **item tag id** `forge:ingots/steel`（`namespace:tag/path` 唔喺 fail-closed 網前綴）→ 等 SK 揀「擴網」定「人化 tag」；promo A3 像素掃會撳到 ⑩ ✅ MayaCraft HEI 訊息 **SK 已發**（10-09）
-- **下一步（優先序）**：① promo：M0 定案＋原片已錄 → 剩 **shot 1／6（JEI 捲動／設定畫面＝要 GUI 驅動）＋剪輯（overlay／旁白／SRT／音樂／封面）** ② ✅ 兩 repo 已 push（10-09 13:5x；jarvis-pc 9 commits、packai 1 commit）③ 朋友求職個案（等對方答 5 條）④ CS2／NVIDIA 線已收 ⑤ #9／#5 等新 mic ⑥ 兩 repo push（等 SK 講）
+- **下一步（優先序）**：① promo：**motion-graphics 版 27 s 已出**（`docs/promo/mg-20261009/promo_mg_27s.mp4`，無旁白＋CC0 古典配樂）→ 剩 **補拍 shot 1／6＋KubeJS demo（要 SK 收機）＋擴到 50 s ＋封面／分發包** ② ✅ 兩 repo 已 push（10-09 13:5x；jarvis-pc 9 commits、packai 1 commit）③ 朋友求職個案（等對方答 5 條）④ CS2／NVIDIA 線已收 ⑤ #9／#5 等新 mic ⑥ 兩 repo push（等 SK 講）
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
@@ -43,6 +43,8 @@ SK 睡前指示：**1＋2＋3**（packai 驗收／HoloMat H1 開工／promo 拍�
 - **SK 決定（10-09）**：raw item tag id（`forge:ingots/steel` 類）＝**ignore**，唔開 plan、唔擴網；commit 兩 repo ✅；H1 換版 ✅ now；promo 粗剪 ✅ go。
 - **SK 報完成（10-09 中午，據 SK 口報、Hermes 未親驗）**：① MayaCraft AI HEI 更新訊息 **SK 已發** ② SK 已眼睇 DJ2 客戶端三項（字體／GUI／光影）＋ HUD 0.4.16 `hw-ring` 新卡 ⇒ 兩項收工。
 - **測試＋push 兩 repo（10-09 13:5x，SK「1 test it, then push」）**：packai＝compile OK＋**60/60 Java harness**＋Python 125 檔 **1 紅（已知 `check_ask_display_leak.py`＝要真機 log）**；jarvis-pc＝`node --check` OK＋hud 2 個 check PASS＋**pytest 564 passed**＋`eval_gate --lock` 一致＋`--all` 三 suite 綠（HASH `9307fc48192e0e8b` 冇 drift）。secrets 掃描 2 repo 乾淨（唯一命中＝evidence 檔名 `ask-*` 假陽性）。push 成功並已 fetch 覆核：jarvis-pc `165a149..2c939d3`、packai `345836c..edffe69`，兩邊 `main...origin/main` 同步。
+- **promo 方向改動（10-09 下午，SK「go」）**：**取消旁白**——查實 Create 官方 trailer（「This is Create. (2022)」）係**純音樂＋文字、零旁白**；再吸收 SK 貼嘅 B 站參考（BV16Lam6JEgV「我合并了1万个mc模组和插件加载器」，實測**118.5 s 只有 13 個硬切**＝靠 motion graphics 唔係快剪）→ 新版面＝深色底＋中間圓角窗框放真機畫面＋底部獨立大字卡（唔遮 UI）＋標題卡／logo 結尾卡＋進度條。產出 **`docs/promo/mg-20261009/promo_mg_27s.mp4`**（1920×1080、27.23 s、H.264＋AAC、配樂＝**CC0 莫扎特《費加洛》序曲**；`LICENSES.md` 已記出處）。工具＝`%TEMP%\mg_promo_v2.py`（PIL 逐格合成）＋`build_mg_promo.sh`；底片用**無字幕** `_base.mp4`（唔用有舊中文燒字嘅 roughcut）。
+- **promo 新增內容要求（SK）**：加 **KubeJS** 內容——我們個 mod 讀得到 KubeJS 改過嘅物品／配方（ATM8 沙盒確有 `kubejs-forge-1902.6.2`＋server scripts；harness `AskKubeJsBridgeCheck`；prompt 有 `// file: kubejs` 規則）→ 要補拍一段 demo（**等 SK 收機**，連 shot 1／6）。
 - 小坑：沙盒 `logs` 還原在 game 剛退出時會 `FileExistsError`（trace 還原 OK、證據已 collect 走）＝skill 已記錄之 Windows 檔鎖問題。
 ## 2026-10-08 深夜（Discord；packai raw-id 修復：cursor 實作完成、Hermes 真機 body 親核揭真漏）
 - **SK 20:19 派工（cursor-agent 實作 plan v3.1）**：改 3 檔＝`ReplyLang.idToLabel`＋`structureObtainLabel` 改 delegate／`AskReplyScrub` shape-first 人化＋post-humanisation 丟行網／新增 `RawIdScrubFixtureCheck`；`tmp-check.gradle` 由 `research/gen_tmp_check.py` 重生（無手改）。**未 commit、未部署**。回報 `%TEMP%\cursor_packai_rawid_report.md`。
