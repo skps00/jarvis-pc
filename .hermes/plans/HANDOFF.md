@@ -32,6 +32,9 @@
 - mp4 暫未入 git（binary、26MB）；如要入 git 要 SK 講。
 - 追加（10-09 19:1x）：SK 要「見到完整操作流程」→ 補拍分鏡 `docs/promo/SHOTLIST-v5-user-journey-2026-10-09.md`（Y＝長按問 hovered 物品／`]`＝開面板，已由 `ClientSetup.java` 核實；ddagrab `draw_mouse` 預設開＝錄到游標；KubeJS demo 首選＝ATM8 刪走 Occultism 銀礦生成 `kubejs/server_scripts/ore_removal.js`）。
 - overlay 動態（字幕滑入＋淡出、卡文字漸入、底部流動光）完成 → 重出 50s（3.4MB）；修咗兩個 bug：流動光越界（`x1<x0` 令 render abort）＋字幕滑入第二行被下界切斷（改 bottom-anchored）。
+- **promo review（反方 6:4，未過 8:2）＋ SK 三項決定（10-09 20:4x）**：① open source → **加 MIT LICENSE**（已建 `LICENSE`＋commit `5dafa9c`，未 push；copyright 用公開身份 `skps00`，唔用真名）② NeoForge 文案**刪走**（neoforge 支線 `README_PAUSED.md`、版本 0.2.1，未發佈）③ KubeJS 卡**留**，先驗證。
+- **KubeJS 能力已用真碼驗證（10-09）**：`%TEMP%\kjs_verify\` 用 repo 真 `PackIndex` class（經 `printRuntimeCp` init-script 取真 runtime classpath，118 entries）跑真 ATM8 沙盒 → `occultism:silver_ore` 同 `alltheores:silver_ore` **都抽到** `// file: kubejs/server_scripts/ore_removal.js` clip；對照 `minecraft:iron_ingot` 冇 → **KUBEJS_FACTS_OK (2/3)**。
+- promo 重出 50s（刪 NeoForge 文案；`mg_promo_v3.py`＋`build_mg50.sh` 已同步入 repo `docs/promo/mg-20261009/src/`）。
 
 - jarvis-pc 當日 commit 7 個（最新：49edd34 docs(handoff): 10-09 04:53 JARVIS ONE 0.4.16 上線（H1 插件化）＋打包清單坑；）
 - 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
