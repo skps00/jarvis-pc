@@ -10,14 +10,19 @@
 - **Git（jarvis-pc）**：PR #13 已 merge（`aaa9917`）＋部署副本 `hermes\scripts\jarvis_sidecar_health.py` 已更新（fingerprint 一致、冇假警報）。未 commit＝`uv.lock`＋untracked `2026-10-04_agent-vm-3060-plan.md`；**10-09 新增未 commit＝H1 code**。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`（Hermes cron 已刪）；還原＝`game_vcache_pin.json` `enabled:false`。**MC heap**：DJ2 真 heap＝8G（G1GC，`relauncher.json`；Prism MaxMemAlloc 從來冇生效），10-06 SK 定案唔改。
 - **packai**：Slice 1b 已 push；Modrinth slug＝`pack-ai-assistant`；沙盒 jar 現為 `autotest-dev-0.2.3.jar`（sha256 `140b9c0cab35…`＝raw-id fix＋M1，backup `%TEMP%\deploy_backup_20261009_0325\`）。
-- **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 已驗收；**HEI 4.35.0→4.35.1 已由 SK 換入並親測**（Hermes 核 sha `8777b115592519ea…`）；客戶端三項（字體／GUI／光影）仍待 SK 眼睇。
+- **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 已驗收；**HEI 4.35.0→4.35.1 已由 SK 換入並親測**（Hermes 核 sha `8777b115592519ea…`）；客戶端三項（字體／GUI／光影）**SK 10-09 眼睇 OK**。
 - **5090 黑屏 Tier 1** 設定仍在（還原 `mpo_restore.reg`；watchdog cron 無新事件）；**CS2 線已收**（baseline 中位 650 FPS／1% low 235）。**新 session 自動 brief** 已上線（`hooks.pre_llm_call`）。**求職線**：最後階段（panel 下週），內幕只留 `Documents\MS_DCT_Prep\`。**語音／mic 線 HOLD**。
 - **唔准郁（硬限制）**：打機／用緊電腦＝零彈窗零搶焦點（先讀 `state/sk_activity.json`）；GUI 窗一律副螢幕、Chrome 主動開＝`bg_launch.py --minimized`；`AGENTS.md` 受保護；唔准 `curl|sh`；**HANDOFF 可公開→唔准入 secrets**；packai code 一律經 cursor-agent；唔准 `git add -A`；真 instance 唔准自動部署；語音／mic 線唔郁（wake／STT／AEC／聲紋／threshold）。
-- **未解（等 SK 決）**：① ~~raw-id＋M1~~ **真機驗收已過**（等 go 就 commit code＋artifacts）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC＝唔做 ⑤ HoloMat：H1 **已上線 0.4.16**（10-09 04:53）→ 剩 SK 眼睇 HUD 新卡 ⑥ 窗口 2 剩 #11 主觀體驗 ⑦ `web_search` 屬間歇 ⑧ DJ2 郁動掉幀＝Litematica ⑨（**新**）ATM8 答案出現 raw **item tag id** `forge:ingots/steel`（`namespace:tag/path` 唔喺 fail-closed 網前綴）→ 等 SK 揀「擴網」定「人化 tag」；promo A3 像素掃會撳到 ⑩（**新**）MayaCraft AI 嘅 HEI 訊息已寫好，等 SK 發
-- **下一步（優先序）**：① promo：M0 定案＋原片已錄 → 剩 **shot 1／6（JEI 捲動／設定畫面＝要 GUI 驅動）＋剪輯（overlay／旁白／SRT／音樂／封面）** ② packai／H1 code commit（等一句 go）③ 朋友求職個案（等對方答 5 條）④ CS2／NVIDIA 線已收 ⑤ HoloMat 換版（等批）⑥ #9／#5 等新 mic ⑦ raw tag id 處理決定
+- **未解（等 SK 決）**：① ~~raw-id＋M1~~ **真機驗收已過**（等 go 就 commit code＋artifacts）② CS2 LPI 16-31 ③ cursor 凍線（SK 講「now」）④ TRCC＝唔做 ⑤ ~~HoloMat：H1 已上線 0.4.16~~ → **SK 10-09 眼睇新卡 OK，收工** ⑥ 窗口 2 剩 #11 主觀體驗 ⑦ `web_search` 屬間歇 ⑧ DJ2 郁動掉幀＝Litematica ⑨（**新**）ATM8 答案出現 raw **item tag id** `forge:ingots/steel`（`namespace:tag/path` 唔喺 fail-closed 網前綴）→ 等 SK 揀「擴網」定「人化 tag」；promo A3 像素掃會撳到 ⑩ ✅ MayaCraft HEI 訊息 **SK 已發**（10-09）
+- **下一步（優先序）**：① promo：M0 定案＋原片已錄 → 剩 **shot 1／6（JEI 捲動／設定畫面＝要 GUI 驅動）＋剪輯（overlay／旁白／SRT／音樂／封面）** ② packai `edffe69`／H1 `092a634`+`4951b41` **已 commit**（未 push；jarvis-pc 8 個、packai 1 個）③ 朋友求職個案（等對方答 5 條）④ CS2／NVIDIA 線已收 ⑤ #9／#5 等新 mic ⑥ 兩 repo push（等 SK 講）
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 今日完成（2026-10-09）
+- jarvis-pc 當日 commit 7 個（最新：49edd34 docs(handoff): 10-09 04:53 JARVIS ONE 0.4.16 上線（H1 插件化）＋打包清單坑；）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 8 個 commit（未 push）
 
 ## 2026-10-09 凌晨（Discord；SK 睡覺期間自動跑：packai A1/A2＋M1/A9 真機驗收、H1 實作＋GUI 驗證、promo M0＋原片）
 
@@ -36,6 +41,7 @@ SK 睡前指示：**1＋2＋3**（packai 驗收／HoloMat H1 開工／promo 拍�
 - **打包版自我證據（唔使截圖）**：`%APPDATA%\Jarvis\apps_registry.log` 04:53:08 寫住 `[apps] dir=C:\…\Temp\<hash>\resources\app.asar\apps count=1 mode=carousel occupied=7` ＋ `[apps] overlap resolve hw-ring (40,1240) -> (434,1080)` ⇒ 插件載入＋避位修正**喺打包版真跑住**；`hud_error.log`／`app_error.log` 換版後無新錯誤。
 - **promo 粗剪**（SK 04:5x「4 go」）：`docs/promo/roughcut-20261009/promo_roughcut_27s.mp4`（1920×1080、27.2s、字幕已燒）＋`roughcut.srt`＋5 張 still＋`PROMO_NOTES.md`（分鏡時間碼＋已知限制：視窗模式錄、shot3 問題含 `minecraft:diamond`、未做旁白／音樂／D2／D7）。
 - **SK 決定（10-09）**：raw item tag id（`forge:ingots/steel` 類）＝**ignore**，唔開 plan、唔擴網；commit 兩 repo ✅；H1 換版 ✅ now；promo 粗剪 ✅ go。
+- **SK 報完成（10-09 中午，據 SK 口報、Hermes 未親驗）**：① MayaCraft AI HEI 更新訊息 **SK 已發** ② SK 已眼睇 DJ2 客戶端三項（字體／GUI／光影）＋ HUD 0.4.16 `hw-ring` 新卡 ⇒ 兩項收工。
 - 小坑：沙盒 `logs` 還原在 game 剛退出時會 `FileExistsError`（trace 還原 OK、證據已 collect 走）＝skill 已記錄之 Windows 檔鎖問題。
 ## 2026-10-08 深夜（Discord；packai raw-id 修復：cursor 實作完成、Hermes 真機 body 親核揭真漏）
 - **SK 20:19 派工（cursor-agent 實作 plan v3.1）**：改 3 檔＝`ReplyLang.idToLabel`＋`structureObtainLabel` 改 delegate／`AskReplyScrub` shape-first 人化＋post-humanisation 丟行網／新增 `RawIdScrubFixtureCheck`；`tmp-check.gradle` 由 `research/gen_tmp_check.py` 重生（無手改）。**未 commit、未部署**。回報 `%TEMP%\cursor_packai_rawid_report.md`。
