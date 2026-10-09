@@ -24,7 +24,7 @@
 - **1a／2a（packai keybind）＝PASS 並已 commit＋push**：沙盒 `packai_sandbox` 三輪共 13 條 question case。run1 揭 2 個真缺陷（模型只傳 `item/machine` 唔傳 `query`；泛用 token「key」命中 235/273 行）→ v5.2 修；run2 4/5（唯一失敗＝模型當物品查詢狂叫 `item_search` 9 輪）→ v5.3 只改 `DESC` 加路由指引；**run3 3/3 OK**（`动力鞘翅推进器 → 空格 ⚠撞鍵` 等）。零搶焦點（before/after 都係 steamwebhelper）、body 零 raw 外洩、`cases.json` 無殘留、trace／logs 已還原。成本 90.9k → 33.4k tokens／ask。commits `0c778c6`（程式）／`c72f1a2`（文件）／`59d472a`（HANDOFF）；push `aa1b98f..59d472a`；push 前 12 檔 secrets 掃描 CLEAN。
 - **B（P0 剩餘量測）＝報告已出**：`docs/research/2026-10-10-p0-remaining-measurements.md`。⑤ 真機：JEI plugin callbacks ≈1,715 ms、JEI ENABLED→世界開完 13.6 s、cache 37 MB（**冷啟動掃描未量**）。⑥ 路由 4/4 正確；**9.09 萬 tokens／ask**（比 plan 錨高約 2 倍 ⇒ 拍片／驗收預算要重估）。④ catalyst 覆蓋率未量（instrumentation 設計已寫，等 SK 批）。
 - **C（promo 封面＋分發包）已出並 push**：`cover_1280x720.png`（真機截圖＋大字；視覺三輪檢查、已裁 windowed 標題列）＋`DISTRIBUTION.md`（三渠道文案＋CTA 核實：GitHub 200 ✅／CurseForge 403 Cloudflare／Modrinth 頁面未開 API 404）＋`COMPLIANCE-CHECKLIST.md`。
-- **A（離線能力索引）＝plan 過 2 輪 review 未達 8:2，實作停手等 SK**：R1 4:6（兩個獨立 reviewer；4 條指控我親核成立 → v2：A6 改 baseline-diff、`runtime_visible` 按真 runtime surface 重定義、A2 只留 javap 親核事實、加 javap 呼叫上限）→ R2 6:4（4 項已解決；2 個數字錯即修）→ R3 delta 抽核。**依 SK「≥8:2 才開工」規則未派 cursor 實作**。
+- **A（離線能力索引）＝完成＋已 push**：plan v2（R1 4:6 → R2 6:4 → **R3 8:2**）→ cursor 實作 `tools/mine_capability_index.py`＋查詢表＋自檢；真 DJ2 首跑抽到 JSU `sipush 270`／`256`／`func_77976_d`；Hermes 自驗（自檢 RC=0、兩次 byte-identical、LF-only、timeout 真強制）；**code review 2 阻塞已修**。commits `3bb9b89`／`0deb4f2`（packai）。**候選 ≠ 確認、精度低、DJ2 `.lang` ⇒ runtime_visible=false**。
 - **D（promo 補拍 shot 1／6）＝未做**（要 SK 收機）。
 - **等 SK**：① A 開唔開工（停手報告已寫入 plan §9）② P0 ④ catalyst instrumentation 批唔批 ③ 語音／mic 線仍 HOLD。
 
