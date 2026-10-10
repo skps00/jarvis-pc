@@ -20,6 +20,11 @@
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
 
+## 今日完成（2026-10-10）
+- jarvis-pc 當日 commit 2 個（最新：f05658c docs(handoff): A capability index done+pushed; overnight resul）
+- 未 commit 檔案 2 個：uv.lock, .hermes/plans/2026-10-04_agent-vm-
+- 領先 remote 2 個 commit（未 push）
+
 ## 2026-10-10 過夜（Discord；SK 睡前派工 `1a 2a 3 A→C→D 4c`）
 - **1a／2a（packai keybind）＝PASS 並已 commit＋push**：沙盒 `packai_sandbox` 三輪共 13 條 question case。run1 揭 2 個真缺陷（模型只傳 `item/machine` 唔傳 `query`；泛用 token「key」命中 235/273 行）→ v5.2 修；run2 4/5（唯一失敗＝模型當物品查詢狂叫 `item_search` 9 輪）→ v5.3 只改 `DESC` 加路由指引；**run3 3/3 OK**（`动力鞘翅推进器 → 空格 ⚠撞鍵` 等）。零搶焦點（before/after 都係 steamwebhelper）、body 零 raw 外洩、`cases.json` 無殘留、trace／logs 已還原。成本 90.9k → 33.4k tokens／ask。commits `0c778c6`（程式）／`c72f1a2`（文件）／`59d472a`（HANDOFF）；push `aa1b98f..59d472a`；push 前 12 檔 secrets 掃描 CLEAN。
 - **B（P0 剩餘量測）＝報告已出**：`docs/research/2026-10-10-p0-remaining-measurements.md`。⑤ 真機：JEI plugin callbacks ≈1,715 ms、JEI ENABLED→世界開完 13.6 s、cache 37 MB（**冷啟動掃描未量**）。⑥ 路由 4/4 正確；**9.09 萬 tokens／ask**（比 plan 錨高約 2 倍 ⇒ 拍片／驗收預算要重估）。④ catalyst 覆蓋率未量（instrumentation 設計已寫，等 SK 批）。
@@ -358,41 +363,3 @@ SK 睡前指示：**1＋2＋3**（packai 驗收／HoloMat H1 開工／promo 拍�
 - **兩引擎**：SenseVoice 30 秒分塊（**120 塊／110 有聲／0 錯**，rtf≈0.003）＋ faster-whisper `small` 全檔 3 進程（**1,529 行**）。
 - **出檔（腳本 render，非手抄）**：逐字稿＋情報摘要 → 本機 `Documents\MS_DCT_Prep\records\`（48,225／10,342 bytes）。**內容含面試官身分／評語 ⇒ 依規則唔入可公開文件**。
 - **未做**：(c) 中文玩家回覆、(b) A/B FPS 量測（SK：b later、interview first、a ignore）。
-## 2026-09-30 10:3x（Discord；DJ2-Cleanroom Actinium 版收口）
-
-- **使用說明.txt**：加【版本選擇：要 FPS 定要光影】一節（A 版 Nothirium 組／B 版 Actinium 0.0.11 對照表、切換步驟、兩條紅線、實測記錄、Actinium 已知小問題）＋Actinium 官方下載連結（包 zip 冇跟呢個 jar）→ 108 行、UTF-8 無 BOM、LF、sha16 `7cef1cc4d2858c46`；改前備份 `hermes\backups\dj2-actinium-test1-20260930\使用說明.txt.before-20260930-1034`。
-- **快照**：`…dj2-actinium-test1-20260930\版本對照-20260930.md`（2,698 bytes；四次實測＋現況 mod 開停清單；唔跟包出去）。
-- **Skill**：`cleanroom-modpack-crash-triage`（software-development）已建＋補 `## When to Use`。
-- **GUI／slot 對唔上（SK 2026-09-30 15:1x 貼圖問）＝用錯 resource pack 版本**：DJ2 開住 `Modernity-**f1**-3.10.3.1.zip`（pack_format 1；`options.txt` 有 `incompatibleResourcePacks` 證明遊戲自己 flag 佢唔相容）；作者 Modrinth 元數據 f1-3.10.3.1 = **1.12.2 False**、f3-3.10.3 = **1.12.2 True**。實測：把 1.12.2 格線（x8/y84、18px pitch）疊上兩版 inventory.png → f1 明顯偏（工藝 2×2 位置亦唔同），f3 對正；兩版 GUI 差 3.9% 像素。已下載正確版 `Modernity-f3-3.10.3.zip`（Modrinth、sha512 核對）入 DJ2 resourcepacks（未啟用）；**等 SK 決定要唔要 Hermes 改 options.txt（停 f1／開 f3）**。另一 pack `2.2.0_plain_Jappafied_Modded.zip` 無 GUI 圖、唔關事。
-- **錯版已移除（SK 2026-09-30 16:10 叫 Hermes 做）**：`Modernity-f1-3.10.3.1.zip` 由 DJ2 `minecraft\resourcepacks` 移去 `…\hermes\backups\dj2-actinium-test1-20260930\removed-packs\`（可還原）；`options.txt` 已備份（`options.txt.before-20260930-161050`，改後 byte-identical）；SK 自己已切換，現況 `resourcePacks:["2.2.0_plain_Jappafied_Modded.zip","Modernity-f3-3.10.3.zip"]`、`incompatibleResourcePacks:[]`、`guiScale:0`。全 instances 掃描：冇其他 f1 殘留（NovaEngineering 用 f3-3.10.2＋Adjunct／Extra addons）。
-- **遊戲 ping 266ms 查證（SK 2026-09-30 16:2x–16:5x）**：MayaCraft 主機＝**台灣台北 mayacraft 主機（Chunghwa AS3462）**。**路徑健康**：tracert 11 hop 25ms、ICMP 31/31 25ms 零 spike、單發 TCP 26ms、LAN 1ms、1.1.1.1 2ms、HiNet 168.95.1.1:443 24ms 零 spike、無 VPN（6 個 OpenVPN adapter 全 Disconnected）、Ethernet 5GbE Up。**但 Minecraft 應用層 ping（25 次）中位 93ms、7/25（28%）跳 700–756ms**；同 IP 換 port 一樣跳 → 屬「SK ↔ server」之間 TCP 層間歇延遲（不是 server 對所有人）。**推翻早前「server 端限流」結論**（SK 朋友同為香港但 25ms）。仍在查：ISP 路由（路徑 HKBN 112.118→PCCW→中華）、NIC 三個可疑設定（**節能乙太網路 EEE＝開啟、Selective Suspend＝開啟、流量控制 Rx&Tx 開啟**）、join 後大量 chunk 下載。顯示來源：**Universal Tweaks `UTGuiPlayerTabOverlayMixin`** 讀 `func_178853_c`（=getResponseTime，server keep-alive 量值）→ 真數據非顯示 bug。
-- **ping 續查（SK 2026-09-30 17:0x 貼 server-list 圖）**：SK **未入遊戲時 server list 顯示 26ms**（同我 TCP 量度 25–26ms 一致）→ 路徑正常。未入遊戲嘅 idle 期再量（每 0.35s 一次、13 次）：game host min25/med26/**max242**，對照 HiNet 24/24/25 → 「+240ms 間歇懲罰」只發生喺「SK ↔ 呢個 host」。實測上傳 20.6 Mbit/s、下載測試被 CF 403 擋（未量）。**關鍵未解**：in-game 數字係 **server 用 keep-alive 量**、server list 數字係 **client 量** → 要問 SK 朋友 25ms 係喺邊度睇。
-- **ping 結案（SK 2026-09-30 17:1x）**：**入到遊戲、load 完之後 tab list ＝ 51ms 綠色**（圖證）→ 之前 266ms 係**join 後大量 chunk／資料下載期間嘅暫態**，唔係故障。結論：路徑 26ms（server list 實測）＋ in-game 51ms 正常；唔需要任何改動。若再見高數字 → 等 2–3 分鐘俾佢載完，仍高先 relog／試 VPN 對比 ISP path。
-- **ping 再查（SK 2026-09-30 17:2x：朋友 in-game 都係 25ms、SK 常見 200+）**：排除法完成 —— **SK 部機冇事**（5ms sleep overshoot 1940 樣本 max **0.6ms**、total CPU 5–8%、LAN 1ms、無 cFos/Killer/GameFirst/加速軟件；只有 ms_pacer/ms_l2bridge 標準 binding）。**尖峰只出現喺 game host**：15 次 TCP :5601 有 **4 次連續（約 1.5 秒窗口）236–248ms**，同一時間 HiNet 168.95.1.1 = 24–25ms 零尖峰；114.34.59.0/24 其他 IP 唔通（filtered）。→ 結論：**server 側／該 host 網絡嘅 1–2 秒週期性尖峰**（唔係 SK 網絡）。下一步靠 SK：同時段朋友對比、VPN 換出口測試、必要時出報告畀 server 管理員。
-- **SK 揀 B → 已裝 NeoFontRender（2026-09-30 14:45）**：`mods\neofontrender-0.6.1-full.jar`（28,399,167；sha256 `0560eceb…`＝官方 digest）＋`mods\modularui-3.2.0-nfr.2.jar`（2,742,727；sha256 `50babd81…`；NFR 嘅 `mcmod.info` 明寫 `requiredMods: modularui@[3.2.0-nfr.2,)`，本包原本冇 ModularUI）。兩個都無鎖；未重開遊戲（未生效）。還原＝`hermes\backups\dj2-neofontrender-20260930\restore_neofontrender.py`（只刪呢兩個 jar）。⚠️ **SmoothFont-mc1.12.2-2.1.4.jar 唔喺 DJ2 mods**（14:41 仲有、14:44 已冇；唔係 Hermes 刪）→ 其他 instance（Enigmatica 2 Expert Extended）有同一版本可複製返。遊戲內開 NFR 設定＝按 `O`；`/neofontrender info`。
-- **SmoothFont 冇效（SK 2026-09-30 問）**：根因＝**Actinium 接管字體**（`mixins.actinium.vintage.json` 嘅 `MixinFontRenderer` 改 `renderStringAtPos`／`renderStringAligned`／`getCharWidth` ＋ Angelica `BatchingFontRenderer`）→ SmoothFont 自行停用（`latest.log` 14:40:08 `Disabled smoothfont functions.(reason:renderChar methods might be replaced.)`）；A 版 run（`2026-09-30-6.log.gz`）**冇**呢行＝A 版 SmoothFont 正常。上游 Actinium issue #1 已記（官方建議關 SmoothFont 或用 optimize-only）。四條路：A 切 A 版／B 改裝 NeoFontRender 0.6.1（Actinium 有內建 compat）／C `-Dactinium.disableFontBatcher=true`（未官方測試）／D `runMode=2`。診斷檔 `hermes\backups\dj2-actinium-test1-20260930\smoothfont-診斷-20260930.md`。
-- **現況組合**：Actinium 0.0.11（sha256 `688efc58…`＝官方 digest）＋Chibi 5.33 開；Nothirium／RenderLib／Naughthirium／meldexun EntityCulling `.disabled`；`celeritasextra`／`celeritasdynamiclights`／舊 compat bridge 已移。
-
-
-## 陷阱（重溫）
-
-- **JARVIS ONE 進程數唔等於開咗幾多個 app**：一個 app 正常有 **4 個同名進程**（主進程／GPU／network service／renderer）＋ portable 外層 exe；Task Manager「詳細資料」每個進程一行（2026-09-25 查證）。**唔好 kill 主進程**。
-
-- **Settings 單一 writer**：改 settings 用 sidecar `POST /settings`（Bearer = `%APPDATA%\Jarvis\alerts\mcp_token.txt`），唔好直接寫 settings.json
-- **dpapi:** 值唔好當明文讀；settings.json 已加密
-- **jarvis serve** 由 Electron spawn（JARVIS_ELECTRON_HOST=1 headless）；唔好手動起第二個
-- **⚠️ onnxruntime 1.28 bug（2026-08-31 實測）**：openwakeword 0.6.0 喺 onnxruntime 1.28 上模型輸出全 0 → wake 死（best 卡 0.001）。pyproject 已 pin `<1.28`；**唔好升級 onnxruntime**。wake_debug `best` 一直 0.001 + 冇 `oww_predict_err` = 呢個坑
-- **Arctis headset 休眠**：rms=0.000 持續 = mic 斷連（headset 休眠）——戴返/喚醒先叫到；`mic_signal_ok=false` 喺 voice_status 顯示
-- **Qwen2.5-VL server**：用 jarvis-pc env python 跑（`env -u PYTHONPATH`）；transformers video decode 壞咗 → server 內建 pyav 抽幀（16 幀 640p）；model 要 `torch_dtype=torch.bfloat16`（auto 會 OOM）
-- **Mage-VL**：`check_imports` monkeypatch 已喺 mage_engine.py 內建；單幀理解
-- Python：`C:\Users\skps9\AppData\Local\Python\pythoncore-3.14-64\python.exe`，跑 jarvis 用 `env -u PYTHONPATH`
-- 換版流程：bump version → `npm run dist` → kill JARVIS（單斜線 taskkill）→ 開新 exe → 更新 3 個 .lnk
-- 語音一律英文；GUI 操作前讀 sk_activity.json（playing/using 禁彈窗）
-- **Code Review 兩次**（契約規則）：pass1 刪重複/拆函數/補註釋/降耦合；pass2 三個月後脆弱位
-## 語音/硬體設定（驗證過）
-
-- wake_mic = 「麥克風 (2- Arctis Nova 7)」44.1k；TTS 輸出 = G27Q 螢幕喇叭；AEC reference = Sonar Media + Sonar Chat（唔用 Arctis loopback）
-- ⚠️ Arctis 週期性 rms=0.000（headset 休眠/斷連）——叫唔醒先睇 wake_debug.log
-- mic 細（avg ~0.05）→ AGC 上線；wake_threshold 0.75（self-monitor 自動調出嚟）
-
-
