@@ -4,21 +4,34 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-11 02:5x 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-11 04:1x 改寫；全部 Hermes 親核）**
+- **10-11 凌晨（SK 瞓前派 all）**：① **packai 22 條 case 一次跑完 = PASS**（`caseCount=22`、ok=20、零搶焦點、零殘留）⇒ **MAX_CASES 60 真機生效** ② **raw item tag 人化 PASS**（修前 body 真出現 `forge:ingots/steel`、修後零 raw tag，有 A/B 對照）③ **catalyst 覆蓋率（P0 ④）量到**：387 個 JEI category 之中 **92.5% 有 catalyst**、599 個 distinct catalyst 89%（下界）有 lang 名 ④ 夜晚計劃：農場 plan（R1 4:6→R2 6:4 停手）／能力反查 B（R1 3:7，建議唔做）／**L1 索引原型**（7 s／49 MB、查詢 <0.1 s、首名 10/10）⑤ **Slice 3**：開 game 固定開銷 **≈101 s**（唔係 36 s）⑥ **packai 已 push `540ddb5..f200297`**（6 個 commit）。
 - **10-10 晚上（18:5x–19:2x，同一 session 後段）**：① **舊 plan 被實測推翻**：harness「免重開」（rearm）3 次真機 run **每次都換新 jar**（sha 全不同）⇒ 對「改 code → 重測」省 0 秒 → 全文降 backlog（R1 5:5／R2 6:4／R3 5:5、review log 保留），改寫成 `docs/plans/2026-10-10-real-machine-loop-first-principles.md`（實測成本公式 `wall ≈ 36 s ＋ N×12 s`）② **新工具 `tools/packai_smoke.py`**＝一條命令做完真機驗收（activity 閘→備份→部署→原子落 case→開 game→收 summary→還原）`ea792fa`；**真機 V1 PASS**（3 條 case、ok=2、1 條 `NO_SAMPLE`＝範例物品沙盒冇、**零搶焦點**、跑完零殘留）③ `AutoTestHarness` `MAX_CASES` 20→**60**（`javap` 打真 jar 見 `bipush 60`）`e67e703` ④ **未驗**：換新 jar（60 cap）一次跑 22 條（撞部署閘＝有 java 進程時自動停手，冇硬闖）⑤ packai **9 個 commit 未 push**。
 - **10-10 下午（SK 授權自主，Discord）**：① **成本地基收線**＝真機 cache 命中 **94.5%**（91.7–96.0%）、≈**US$0.0015/ask**（已省 81.9%）⇒ **改 prompt（Design B）唔做**（早前「82% 白付」講法已實測撤回更正）；`af621c6`（程式）／`586a3ee`／`2f0839b`（文件）② **CI 閘落地**：`python tools/ci_gate.py` 一個指令答綠唔綠；親跑＝**129 檢查／1 已知紅（要真機 log）／failed=0**；`540ddb5` ③ 我早前做對照測試留低一個 cmd 彈窗（`ping -n 14`）——已認錯、已清（0 殘留）、規則寫入 skill `cursor-cli-integration`。
 - **10-10 過夜（SK 睡前派工 `1a 2a 3 A→C→D 4c`）**：① **packai keybind 真機 PASS**（3 輪 13 條；修 2 真缺陷＋1 路由錯）→ commit＋push（`0c778c6`／`c72f1a2`／`59d472a`）② **B：P0 剩餘量測報告**（`docs/research/2026-10-10-p0-remaining-measurements.md`；**9.09 萬 tokens／ask**；④ catalyst 未量附設計）③ **C：promo 封面＋分發包＋合規 checklist 已出並 push** ④ **A：離線能力索引**（SK 已批 A→C→B；R1 4:6→R2 6:4→**R3 8:2**）→ 實作並 push（`3bb9b89`／`0deb4f2`；候選≠確認、精度低、DJ2 `.lang` ⇒ `runtime_visible=false`）⑤ D（補拍 shot 1／6）**未做**（要 SK 收機）。
 - **JARVIS ONE＝0.4.16 上線（10-09 04:53；H1 插件化＋hw-ring 卡）**：五進程／`8642/8765/8770/8771` LISTEN／零可見 console 窗／`/health` 200；exe sha256 `29d1be4e…`（SWAP 用官方 `swap_hud_version.ps1`）。alert shadow＋`alert_voice=false`（語音 HOLD）⇒ poller 從未啟動 ⇒ **#9 綁「等新 mic」**。
-- **Git**：jarvis-pc `main` HEAD `f1e968c`（**ahead 1 未 push**；未 commit＝`uv.lock`）；packai `main` HEAD `e67e703`（**ahead 9 未 push**）。兩 repo 都等 SK 講 push。
+- **Git**：packai `main` HEAD `f200297`（**已同 remote 同步**，10-11 04:0x push）；jarvis-pc `main`（未 commit＝`uv.lock`）。
 - **X3D CCD 派工**：主導＝最高權限 Windows 排程 `\JARVIS-GameVCachePin`；還原＝`game_vcache_pin.json` `enabled:false`。**MC heap**：DJ2 真 heap＝8G（G1GC，`relauncher.json`），10-06 SK 定案唔改。
 - **DJ2-Cleanroom**：`dj2-fixes-1.1.1` 已驗收；HEI 4.35.1 已由 SK 換入（Hermes 核 sha `8777b115…`）；客戶端三項（字體／GUI／光影）SK 眼睇 OK。
 - **5090 黑屏 Tier 1** 設定仍在（還原 `mpo_restore.reg`；watchdog 無新事件）；CS2 線已收（中位 650 FPS／1% low 235）。**求職線**：最後階段（panel 下週），內幕只留 `Documents\MS_DCT_Prep\`。**語音／mic 線 HOLD**。
 - **唔准郁（硬限制）**：打機／用緊電腦＝零彈窗零搶焦點（先讀 `state/sk_activity.json`）；GUI 窗一律副螢幕、Chrome 主動開＝`bg_launch.py --minimized`；`AGENTS.md` 受保護；唔准 `curl|sh`；**HANDOFF 可公開→唔准入 secrets**；packai code 一律經 cursor-agent；唔准 `git add -A`；真 instance 唔准自動部署；語音／mic 線唔郁（wake／STT／AEC／聲紋／threshold）。
-- **未解（等 SK 決）**：① **packai 22 條真機驗（60 cap）＝要 SK 收機** ② P0 ④ catalyst instrumentation 批唔批 ③ **ATM8 答案出 raw item tag id**（`forge:ingots/steel`）→ 揀「擴網」定「人化 tag」 ④ CS2 LPI 16-31 ⑤ cursor 凍線（SK 講「now」）⑥ TRCC＝唔做 ⑦ `web_search` 屬間歇 ⑧ DJ2 郁動掉幀＝Litematica ⑨ 窗口 2 剩 #11 主觀體驗
-- **下一步（優先序）**：① **packai：等 SK 收機 → 換 60-cap jar 一次跑 22 條真機驗** → 之後 Slice 2（case 檔格式）／Slice 3（量 36 s 固定開銷，只量唔改）② promo：補拍 shot 1／6＋KubeJS demo（要 SK 收機；封面／分發包已出）③ 兩 repo push（等 SK 講）④ 朋友求職個案（等對方答 5 條）⑤ #9／#5 等新 mic
+- **未解（等 SK 決）**：① **能力反查 B**：收檔／只做零風險 B0 離線量度／轉 L1-L2 索引路線？② **農場／自動化**：先跑離線 Slice 0 語料量度閘定 defer？③ **L1 原型**要唔要接入產品（現時純離線工具）④ 上架（SK 講「唔好掂」，等佢講）⑤ CS2 LPI 16-31 ⑥ cursor 凍線 ⑦ TRCC＝唔做 ⑧ `web_search` 屬間歇 ⑨ DJ2 郁動掉幀＝Litematica ⑩ 窗口 2 剩 #11 主觀體驗
+- **下一步（優先序）**：① 等 SK 對三個決定拍板（B 收唔收檔／農場 Slice 0／L1 接入）② packai：如果做落點 B0 或 Slice 2（case 檔格式）→ 我可以直接開工 ③ promo：補拍 shot 1／6＋KubeJS demo（要 SK 收機）④ 朋友求職個案（等對方答 5 條）⑤ #9／#5 等新 mic
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-11 凌晨（Discord；SK 瞓前派「all」＋3 個決定 → Hermes 全自動跑）
+
+- **packai 真機驗收（Hermes 親跑，全部有 artifact）**：
+  ① **22 條 case 一次跑完** ⇒ `status=DONE`、`caseCount=22`、`ok=20`、wall 389 s、**零搶焦點**（前後都係 Discord）、`cases_removed=true`；2 條 NO_SAMPLE 係預期（bedrock 負控、ender_pearl 唔係 JEI 產物）⇒ **MAX_CASES 20→60 真機生效**（唔再被迫分 3 輪開 3 次遊戲）。證據 `%TEMP%\packai_smoke_results_packai_sandbox_20261011-034827\`。
+  ② **item tag 人化 PASS**（ATM8 沙盒 4 條 case 全 OK）：同一問句（steel made from）——**修前**（10-09 trace）dump 出裸 `#forge:ingots/steel` 且**玩家 body 真出現** `forge:ingots/steel`；**修後** dump 出 `Steel Ingot（tag #forge:ingots/steel）`、**玩家 body 零 raw tag**。證據 `%TEMP%\packai_smoke_results_packai_sandbox_atm8_20261011-035502\`＋舊 trace 負控對照。
+  ③ **catalyst 覆蓋率（P0 ④，SK 批）**：ATM8 runtime **387 個 JEI category**，**358（92.5%）有 catalyst**、29（7.5%）冇（多屬資訊頁／序列合成／就地轉換）；599 個 distinct catalyst、**89%（下界）**有 lang 名。報告 `docs/research/2026-10-11-catalyst-coverage.md`。
+- **packai code（cursor 實作、Hermes 親驗：compile／harness／ci_gate 132 檢查 0 失敗／真機）**：`6dffd93`（tag 人化＋最終 pass 窄網 `BARE_ITEM_TAG`，三語 lang）／`92d7dd2`（autotest `catalyst_census`，只喺 flag build，正式版零新 I/O）／`f200297`（L1 原型）＋`b2209c3`（計劃／研究 doc）；**已 push `540ddb5..f200297`**（push 前 secrets 掃描乾淨）。
+- **夜晚計劃／review（subagent 跑，Hermes 親核後 commit）**：① **農場／自動化設計** plan（R1 4:6 → R2 6:4，未達 8:2 ⇒ 依規則停手；建議先跑離線 Slice 0 語料量度閘）② **能力反查 B（`capability_search` tool）** plan（R1 **3:7** ⇒ 建議**唔做**；同源 10-10 四輪 3:7→3:7→4:6→5:5 亦停手；可改零風險 B0 離線量度或轉 L1/L2 索引）③ **L1 平價檢索原型** `tools/capability_index_l1.py`（SQLite+FTS5、唔用 javap）：建索引 **7 s／49 MB（380 jar）**、查詢 **<0.1 s／0 LLM token**、首名 **10/10** 啱、首 5 名約 5 成純。
+- **Slice 3 啟動開銷（只量唔改）**：真機 `latest.log` 拆解 ⇒ 固定開銷 **≈101 s**（JVM 19／mod 載入 29／資源包 29／世界+JEI 34），**唔係舊 plan 講嘅 36 s** ⇒ 「一次 launch 跑多條 case」更值錢。報告 `docs/research/2026-10-11-startup-cost-breakdown.md`。
+- **未做／等 SK**：① 上架（SK 明確講「唔好掂」）② 能力反查 B：收檔／只做 B0／轉索引路線？③ 農場：先跑 Slice 0 量度閘定 defer？④ promo 補拍 shot 1／6＋KubeJS demo（要 SK 收機）。
+
 
 ## 2026-10-10 晚上（Discord；harness 重構 plan＋可重用 smoke driver＋上限 20→60）
 
