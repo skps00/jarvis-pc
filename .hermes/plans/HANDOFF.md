@@ -4,7 +4,8 @@
 ## 狀態（每次 session 尾／cron **改寫**；新 section 一律加喺本區塊**之下**）
 
 - **目標**：JARVIS ONE（語音／HUD／alerts）穩定收尾 ＋ MC packai（Forge 1.19.2 primary）＋ MayaCraft DJ2 客戶端玩家支援（非 repo 專案）。計畫書：`.hermes/plans/REMAINING_WORK.md`
-- **現狀（2026-10-10 04:5x 改寫；全部 Hermes 親核）**
+- **現狀（2026-10-10 18:5x 改寫；全部 Hermes 親核）**
+- **10-10 下午（SK 授權自主，Discord）**：① **成本地基收線**＝真機 cache 命中 **94.5%**（91.7–96.0%）、≈**US$0.0015/ask**（已省 81.9%）⇒ **改 prompt（Design B）唔做**（早前「82% 白付」講法已實測撤回更正）；commit `af621c6`（程式）／`586a3ee`／`2f0839b`（文件changelog）② **CI 閘落地**：`python tools/ci_gate.py` 一個指令答綠唔綠；Hermes 親跑＝**129 檢查／1 已知紅（check_ask_display_leak 要真機 log）／failed=0**；commit `540ddb5` ③ 我早前做對照測試留低一個 cmd 彈窗（`ping -n 14`）——**已認錯、已清（0 殘留進程／0 可見 console 窗）**、規則已寫入 skill `cursor-cli-integration`（唔准喺 SK 打機時做故意彈窗測試）④ **新 plan**：autotest harness re-arm（同一個 game session 換 `cases.json` 再跑，免重開 game）`21373b5`，R1 反方＋數字核實 review 跑緊。
 - **10-10 過夜（SK 睡前派工 `1a 2a 3 A→C→D 4c`；Hermes 全自動）**：① **packai keybind 真機驗收 PASS**（沙盒 3 輪 13 條；run3 3/3；修咗 2 個真缺陷＋1 個路由錯）→ **已 commit＋已 push**（`0c778c6` 程式／`c72f1a2` 文件／`59d472a` HANDOFF；`aa1b98f..59d472a`）② **B：P0 剩餘量測報告出**（`docs/research/2026-10-10-p0-remaining-measurements.md`；⑤⑥ 已量、④ catalyst 未量附設計；實測 **9.09 萬 tokens／ask**）③ **C：promo 封面＋分發包＋合規 checklist 已出並 push** ④ **A：plan 2 輪 review 4:6→6:4（未達 8:2）→ 依規則停手，實作未派** ⑤ D（補拍 shot 1／6）**未做**。
 - **10-09 凌晨（SK 睡時 Hermes 自動跑，全部 PASS）**：① packai raw-id A1/A2 真機過（`packai_sandbox` 4/4 OK、玩家 body 0 path-token）② M1 面板驅動 A9 過（ATM8 cards 2／5）③ H1 插件化實作＋真 dev instance CDP 驗過（API 白名單／hw-ring 卡／sensors 對得上 nvidia-smi／**0 重疊**）④ promo M0 定案＝`ddagrab_dl`＋ATM8 原片 105.2s 已錄 ⑤ HEI crash（SK 自己換 4.35.1）Hermes 核實收線。**三者 code 全部未 commit（等 SK go）**。
 - **JARVIS ONE＝0.4.16 上線（10-09 04:53；H1 插件化＋hw-ring 卡）**：五進程／`8642/8765/8770/8771` LISTEN／零可見 console 窗／`/health` 200；exe sha256 `29d1be4e…`（SWAP 用官方 `swap_hud_version.ps1`）。alert shadow＋`alert_voice=false`（語音 HOLD）⇒ poller 從未啟動 ⇒ **#9 綁「等新 mic」**（升 enforce 前要重跑三個情境）。
@@ -19,6 +20,13 @@
 - **歸檔索引**：`plans/archive/HANDOFF-2026-09.md`（最近 2026-10-03 搬 09-24～09-30）
 - **參考段（檔尾）**：陷阱（重溫）／語音·硬體設定（驗證過）
 <!-- STATE:END -->
+
+## 2026-10-10 下午（Discord；SK 授權自主完成 packai 目標功能）
+- **成本地基＝收線（真機實測，Hermes 親跑）**：Slice A 只加量度（`logic/TokenUsage.java` 加 `promptCacheHitTokens`／`promptCacheMissTokens`，`logic/LlmClient.java` 兩個解析點 log 一行，`AskService` usage 行加 cache 欄 ＋ 新 `usage` trace 事件）。沙盒真機 4 條 ask：cache 命中 **94.5%**（91.7–96.0%）、≈**US$0.0015/ask** ⇒ **改 prompt 結構（Design B）決定唔做**。commit `af621c6`（已 push）；驗證＝`compileJava compileTestJava` RC=0、Java harness 60/60、python 128 檔 1 已知紅（baseline 不變）。
+- **撤回更正**：我早前同 SK 講「每問一次 82% 嘅錢係白付、搬走尾句可便宜 50 倍」＝**錯**。實測（兩個主線 system prompt 首分歧 index=14539＝99.63% 相同；冷啟換尾句只多 miss ≈900 tok）⇒ DeepSeek 係**最長共同前綴**命中，前段大部分已係 cache 價。已在 plan v4 同 Discord 明寫更正。
+- **CI 閘＝落地**：`python tools/ci_gate.py`（可選 `--compile`／`--harness`）；known-red allowlist 只准 RC=2（`tools/ci_known_red.txt`）；Hermes 親跑 **checks=129 known_red=1 failed=0 RC=0**。commit `540ddb5`（已 push）。文檔 `docs/CI.md`。
+- **新 plan：autotest harness re-arm**（`docs/plans/2026-10-10-autotest-harness-rearm.md`，`21373b5`）：現時 `cases.json` 一個 JVM session 只讀一次（`AutoTestHarness.java:76/:133`）＋ `finish()` 後 `finished=true`（:720）⇒ 每輪測試要重開 game（開 game＋JEI 13.6 s）。Plan 加 `maybeRearm()`（SHA-256 去重＋`MAX_ROUNDS=8`＋session 總時限 60 min＋世界唔同名唔 re-arm）＋ per-round `round`／`batchSha8` 寫入 status。R1 反方＋數字核實 review 進行中（`deleg_b8f2207a`）。
+- **我做錯並已修**：對照測試用 `ping -n 14` 令 SK 打機時見到一個 cmd 彈窗（`I just saw I cmd popup and ping`）。已確認 0 殘留、清理完成，並把規則寫入 skill `cursor-cli-integration`（可能見到窗嘅測試要先問 SK 或改用唔開窗嘅等價測法）。
 
 ## 今日完成（2026-10-10）
 - jarvis-pc 當日 commit 2 個（最新：f05658c docs(handoff): A capability index done+pushed; overnight resul）
